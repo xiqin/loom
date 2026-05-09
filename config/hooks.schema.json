@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/xiqin/rss/config/hooks.schema.json",
+  "title": "rss Hook System",
+  "description": "Hook 系统定义 — 生命周期钩子、平台兼容、失败回退策略。驱动 src/hooks/run-hook.js。",
+  "version": 1,
+  "hooks": {
+    "type": "array",
+    "description": "所有注册的 hook 定义",
+    "items": {
+      "type": "object",
+      "required": ["id", "entry"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Hook 唯一标识（kebab-case）",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "entry": {
+          "type": "string",
+          "description": "Handler 模块路径（相对于 hooks/ 目录），.cjs 格式，由 run-hook.js 通过 createRequire 加载"
+        },
+        "description": {
+          "type": "string",
+          "description": "Hook 用途说明"
+        },
+        "platforms": {
+          "type": "array",
+          "description": "支持的平台列表。空数组或缺失 = 全平台支持",
+          "items": {
+            "type": "string",
+            "enum": ["linux", "macos", "windows"]
+          },
+          "default": ["linux", "macos", "windows"]
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "description": "执行超时（毫秒）。0 = 不超时",
+          "minimum": 0,
+          "default": 10000
+        },
+        "blocking": {
+          "type": "boolean",
+          "description": "失败时是否阻塞后续流程。true = fallback 为 error/retry；false = fallback 为 skip/warn",
+          "default": false
+        },
+        "idempotent": {
+          "type": "boolean",
+          "description": "是否幂等（重复执行无副作用）。用于未来去重调度",
+          "default": true
+        },
+        "fallback": {
+          "type": "string",
+          "description": "失败时的回退策略",
+          "enum": ["skip", "warn", "error", "retry"],
+          "default": "warn"
+        },
+        "retryCount": {
+          "type": "integer",
+          "description": "fallback 为 retry 时的重试次数",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 2
+        }
+      }
+    }
+  },
+  "fallbackStrategies": {
+    "skip": {
+      "description": "静默跳过，不输出任何警告",
+      "exitCode": 0,
+      "logLevel": "debug"
+    },
+    "warn": {
+      "description": "输出警告但继续执行",
+      "exitCode": 0,
+      "logLevel": "warn"
+    },
+    "error": {
+      "description": "输出错误并以非零退出码终止",
+      "exitCode": 1,
+      "logLevel": "error"
+    },
+    "retry": {
+      "description": "重试 N 次后仍失败则按 error 处理",
+      "exitCode": 1,
+      "logLevel": "error",
+      "retryDelayMs": 500
+    }
+  },
+  "executionModel": {
+    "description": "Hook 执行模型",
+    "runner": "src/hooks/run-hook.js",
+    "shellWrapper": "hooks/<hook-id>",
+    "flow": [
+      "1. Shell wrapper 被宿主工具调用",
+      "2. Shell wrapper 定位并调用 node run-hook.js <hook-id>",
+      "3. Runner 从 hooks.json 加载 hook 定义",
+      "4. 检查平台兼容性（不支持则 skip with warning）",
+      "5. 通过 createRequire 加载 .cjs handler 模块",
+      "6. 带超时执行 handler",
+      "7. 失败时按 fallback 策略处理"
+    ]
+  },
+  "platformDetection": {
+    "description": "平台检测逻辑",
+    "mapping": {
+      "process.platform": {
+        "linux": "linux",
+        "darwin": "macos",
+        "win32": "windows"
+      }
+    },
+    "fallback": "unknown 平台视为不支持，skip with warning"
+  }
+}

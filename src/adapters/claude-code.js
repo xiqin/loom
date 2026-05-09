@@ -22,6 +22,7 @@ export class ClaudeCodeAdapter extends BaseAdapter {
       join(projectRoot, '.rss', 'skills'),
       join(projectRoot, '.rss', 'commands'),
       join(projectRoot, '.rss', 'hooks'),
+      join(projectRoot, '.rss', 'hooks', 'handlers'),
       join(projectRoot, '.rss', 'templates'),
       join(projectRoot, '.rss', 'core'),
     ];
