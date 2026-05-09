@@ -47,6 +47,7 @@ program
   .command('uninstall')
   .description('Uninstall rss from your project')
   .option('--tool <target>', 'Target tool (auto-detect if omitted)')
+  .option('--purge', 'Also clean .gitignore entries and remove .rss-backup directory')
   .action(async (options) => {
     const { default: uninstall } = await import('./commands/uninstall.js');
     await uninstall(options);

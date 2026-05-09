@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { readFileSync, unlinkSync, rmSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { getAdapter, listAdapters } from '../adapters/registry.js';
 import { parseVersion } from '../utils/version.js';
@@ -17,8 +17,30 @@ function uninstallPluginClaude(projectRoot) {
   }
 }
 
+function cleanGitignore(projectRoot) {
+  const gitignorePath = join(projectRoot, '.gitignore');
+  if (!existsSync(gitignorePath)) return;
+
+  try {
+    let content = readFileSync(gitignorePath, 'utf-8');
+    const before = content;
+    content = content
+      .replace(/# rss-engineering\n?/g, '')
+      .replace(/\.rss-backup\/\n?/g, '')
+      .replace(/\n{2,}/g, '\n')
+      .trim();
+    if (content !== before) {
+      writeFileSync(gitignorePath, content + '\n');
+      console.log('  Cleaned .gitignore rss entries');
+    }
+  } catch {
+    // best effort
+  }
+}
+
 export default async function uninstall(options) {
   const projectRoot = process.cwd();
+  const { purge = false } = options;
 
   // Auto-detect tool if not specified
   let tool = options.tool;
@@ -63,6 +85,13 @@ export default async function uninstall(options) {
 
   // Remove common .rss directory
   rmIfExists(join(projectRoot, '.rss'));
+
+  // --purge: additional cleanup
+  if (purge) {
+    cleanGitignore(projectRoot);
+    rmIfExists(join(projectRoot, '.rss-backup'));
+    console.log('  Purge complete (backups and .gitignore entries removed).');
+  }
 
   console.log('  Uninstalled.\n');
 }

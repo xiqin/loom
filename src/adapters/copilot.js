@@ -8,6 +8,10 @@ export class CopilotAdapter extends BaseAdapter {
     return 'copilot';
   }
 
+  get entryFilename() {
+    return '.github/copilot-instructions.md';
+  }
+
   getTargetFiles(projectRoot) {
     return [join(projectRoot, '.github', 'copilot-instructions.md')];
   }

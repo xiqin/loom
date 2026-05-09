@@ -1,5 +1,5 @@
 {
-  "name": "rss",
+  "name": "rss-engineering",
   "version": "1.0.0",
   "description": "Requirement-Driven Software Engineering — AI 工程化框架",
   "type": "module",
@@ -9,6 +9,10 @@
     "type": "git",
     "url": "https://github.com/xiqin/rss"
   },
+  "bugs": {
+    "url": "https://github.com/xiqin/rss/issues"
+  },
+  "homepage": "https://github.com/xiqin/rss#readme",
   "bin": {
     "rss": "./bin/rss.js"
   },
@@ -20,14 +24,20 @@
     "core/",
     "hooks/",
     "templates/",
-    "plugin-meta/"
+    "plugin-meta/",
+    "install.sh",
+    "install.ps1",
+    "uninstall.sh",
+    "uninstall.ps1"
   ],
   "engines": {
     "node": ">=18"
   },
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepack": "npm test",
+    "prepublishOnly": "npm test"
   },
   "dependencies": {
     "commander": "^12.0.0"

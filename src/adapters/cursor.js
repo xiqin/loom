@@ -8,6 +8,10 @@ export class CursorAdapter extends BaseAdapter {
     return 'cursor';
   }
 
+  get entryFilename() {
+    return '.cursorrules';
+  }
+
   getTargetFiles(projectRoot) {
     return [join(projectRoot, '.cursorrules')];
   }
