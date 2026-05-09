@@ -1,5 +1,7 @@
 # 进度追踪规范（core/progress-tracker.md）
 
+> Schema 定义：[`config/pipeline.schema.json`](../config/pipeline.schema.json) → `progressFileFormat`
+
 ## progress.md
 
 每个功能开发过程中，维护 `specs/<date+feature>/progress.md`，可视化流水线状态。

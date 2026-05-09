@@ -1,5 +1,40 @@
 # 流水线定义（core/pipeline.md）
 
+> Schema 定义：[`config/pipeline.schema.json`](../config/pipeline.schema.json)
+
+## 功能级状态机
+
+每个功能（`specs/<date+feature>/`）独立跟踪以下 7 个状态：
+
+| 状态 | 对应 Step | 说明 |
+|------|----------|------|
+| `brainstorming` | Step 1 | 需求头脑风暴，探索 2-3 种实现方案 |
+| `planning` | Step 2 | 按项目架构分层拆解 task |
+| `approved` | — | 用户已确认计划，等待执行（检查点） |
+| `executing` | Step 3-4 | 创建隔离分支，派发 subagent 编码 |
+| `reviewing` | Step 4-5 | 代码审查（spec 合规 + 代码质量） |
+| `synced` | Step 5 | 工程索引同步，功能完成 |
+| `failed` | — | 任意阶段失败 |
+
+```mermaid
+stateDiagram-v2
+    [*] --> brainstorming
+    brainstorming --> planning : 用户确认 spec
+    brainstorming --> failed : 错误
+    planning --> approved : 用户确认 plan
+    planning --> failed : 错误
+    approved --> executing : 触发 execute-plan
+    approved --> failed : 错误
+    executing --> reviewing : 所有 task 完成
+    executing --> failed : 测试失败/BLOCKED
+    reviewing --> synced : 审查通过
+    reviewing --> executing : BLOCKER 派回修复
+    reviewing --> failed : Critical 失败
+    failed --> brainstorming : 从头重来
+    failed --> executing : 修复后重试
+    failed --> reviewing : 修复后重试审查
+```
+
 ## 5 步流水线
 
 rss 框架的核心是 5 步流水线，定义了从需求到代码交付的完整执行流程。

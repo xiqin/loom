@@ -1,5 +1,7 @@
 # 5 维审查框架（core/review-framework.md）
 
+> Schema 定义：[`config/review.schema.json`](../config/review.schema.json)
+
 ## 审查维度
 
 rss 使用 5 维审查替代通用 code review，覆盖架构、质量、安全、性能、规范。
@@ -26,13 +28,13 @@ flowchart TD
 
 ### 维度定义
 
-| # | 维度 | 默认等级 | 说明 |
-|---|------|---------|------|
-| 1 | 架构合规 | BLOCKER | 分层是否正确，有无循环依赖 |
-| 2 | 代码质量 | BLOCKER | 编码规范、错误处理、日志格式 |
-| 3 | 安全风险 | BLOCKER | SQL 注入、认证、输入验证、信息泄露 |
-| 4 | 性能隐患 | WARNING | N+1 查询、缺少分页、无缓存 |
-| 5 | 规范一致性 | WARNING | 命名规范、响应格式、数据模型 |
+| # | 维度 | ID | 默认等级 | 说明 |
+|---|------|----|---------|------|
+| 1 | 架构合规 | `architecture` | BLOCKER | 分层是否正确，有无循环依赖 |
+| 2 | 代码质量 | `code-quality` | BLOCKER | 编码规范、错误处理、日志格式 |
+| 3 | 安全风险 | `security` | BLOCKER | SQL 注入、认证、输入验证、信息泄露 |
+| 4 | 性能隐患 | `performance` | WARNING | N+1 查询、缺少分页、无缓存 |
+| 5 | 规范一致性 | `conformance` | WARNING | 命名规范、响应格式、数据模型 |
 
 ### 严重等级
 
@@ -114,3 +116,42 @@ flowchart TD
 6. 业务逻辑正确性 — BLOCKER — 验证业务规则是否正确实现
 7. API 兼容性 — WARNING — 检查接口变更是否影响现有调用方
 ```
+
+## 规格审查（Spec Review）
+
+规格审查对照 `spec.md` 和 `plan.md` 检查实现是否符合规格。
+
+### 检查项
+
+1. **接口定义检查** — 接口定义是否全部实现，参数、响应结构是否正确
+2. **Task 完成度** — task 中定义的每个步骤是否都已完成
+3. **范围检查** — 是否有多余的实现（超出 spec 范围）
+4. **测试覆盖** — 测试用例是否覆盖 spec 中的关键场景
+
+### 判定
+
+| 结果 | 说明 | 处理 |
+|------|------|------|
+| `SPEC_COMPLIANT` | 实现符合规格 | 继续质量审查 |
+| `SPEC_DEVIATION` (Critical) | 关键偏离 | 派回 implementer 修复 |
+| `SPEC_DEVIATION` (Important) | 重要偏离 | 记录，继续质量审查 |
+| `SPEC_DEVIATION` (Suggestion) | 建议偏离 | 记录，继续质量审查 |
+
+## 合并审查判定（Combined Verdict）
+
+合并审查将规格审查和质量审查合为一次审查（`combined-reviewer-prompt.md`）。
+
+| 条件 | 结果 | 处理 |
+|------|------|------|
+| `SPEC_COMPLIANT` + `QUALITY_PASS` | **PASS** | 进入下一个 task |
+| 任一 Critical 偏差 或 BLOCKER | **FAIL** | 派回 implementer 修复 |
+| 仅有 Important/Suggestion/WARNING | **PASS** | 记录，继续 |
+
+## Implementer 状态
+
+| 状态 | 说明 | 处理 |
+|------|------|------|
+| `DONE` | 任务完成 | 进入审查 |
+| `DONE_WITH_CONCERNS` | 完成但有疑虑 | 进入审查，审查员关注 concerns |
+| `NEEDS_CONTEXT` | 需要更多信息 | 等待用户决策 |
+| `BLOCKED` | 被阻塞 | 等待用户解决问题 |

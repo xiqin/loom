@@ -1,0 +1,214 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/xiqin/rss/config/review.schema.json",
+  "title": "rss Review Framework",
+  "description": "审查框架定义 — 维度、严重等级、判定规则。驱动 combined-reviewer / spec-reviewer / code-quality-reviewer。",
+  "version": 1,
+  "dimensions": [
+    {
+      "id": "architecture",
+      "name": "架构合规",
+      "order": 1,
+      "defaultSeverity": "BLOCKER",
+      "description": "分层是否正确，有无循环依赖",
+      "checks": [
+        "是否遵循项目架构分层（从 project-structure.md 读取）",
+        "是否存在跨层调用",
+        "是否存在循环依赖",
+        "新增模块是否遵循项目分层模式",
+        "依赖是否单向流动"
+      ],
+      "source": ".rss/rules/project-structure.md"
+    },
+    {
+      "id": "code-quality",
+      "name": "代码质量",
+      "order": 2,
+      "defaultSeverity": "BLOCKER",
+      "description": "编码规范、错误处理、日志格式",
+      "checks": [
+        "是否使用了项目禁止的调试函数",
+        "SQL 是否参数化（防注入）",
+        "是否硬编码配置值（密码、密钥、URL）",
+        "是否捕获异常后静默吞掉",
+        "错误码是否使用项目统一格式",
+        "命名规范",
+        "日志格式"
+      ],
+      "source": ".rss/memory/constitution.md"
+    },
+    {
+      "id": "security",
+      "name": "安全风险",
+      "order": 3,
+      "defaultSeverity": "BLOCKER",
+      "description": "SQL 注入、认证、输入验证、信息泄露",
+      "checks": [
+        "SQL 注入检查",
+        "认证/授权是否正确",
+        "输入验证是否充分",
+        "敏感信息是否泄露（日志、响应）",
+        "CSRF/XSS 防护",
+        "硬编码凭证检查",
+        "权限校验"
+      ],
+      "source": null
+    },
+    {
+      "id": "performance",
+      "name": "性能隐患",
+      "order": 4,
+      "defaultSeverity": "WARNING",
+      "description": "N+1 查询、缺少分页、无缓存",
+      "checks": [
+        "N+1 查询检查",
+        "分页查询是否使用框架分页组件",
+        "缓存策略是否合理",
+        "批量操作是否优化",
+        "循环内 IO 操作"
+      ],
+      "source": null
+    },
+    {
+      "id": "conformance",
+      "name": "规范一致性",
+      "order": 5,
+      "defaultSeverity": "WARNING",
+      "description": "命名规范、响应格式、数据模型",
+      "checks": [
+        "命名是否符合项目规范",
+        "响应格式是否统一",
+        "数据模型是否正确嵌入",
+        "日志格式是否规范",
+        "注释是否必要且准确",
+        "错误码格式",
+        "配置项命名"
+      ],
+      "source": ".rss/rules/project-structure.md"
+    }
+  ],
+  "severity": {
+    "BLOCKER": {
+      "level": 1,
+      "label": "阻塞",
+      "description": "必须修复，阻塞流水线",
+      "action": "派回 implementer 修复 → 重新审查",
+      "blocksPipeline": true
+    },
+    "WARNING": {
+      "level": 2,
+      "label": "警告",
+      "description": "建议修复，不阻塞",
+      "action": "标记待处理，用户确认后继续",
+      "blocksPipeline": false
+    },
+    "SUGGESTION": {
+      "level": 3,
+      "label": "建议",
+      "description": "优化建议",
+      "action": "仅记录，不阻塞",
+      "blocksPipeline": false
+    }
+  },
+  "specReview": {
+    "description": "规格审查 — 对照 spec.md 和 plan.md 检查实现",
+    "checks": [
+      {
+        "id": "interface-completeness",
+        "name": "接口定义检查",
+        "items": [
+          "接口定义是否全部实现",
+          "参数、响应结构是否正确",
+          "业务规则是否完整实现"
+        ]
+      },
+      {
+        "id": "task-completion",
+        "name": "Task 完成度",
+        "items": [
+          "task 中定义的每个步骤是否都已完成",
+          "是否有遗漏的功能点"
+        ]
+      },
+      {
+        "id": "scope-check",
+        "name": "范围检查",
+        "items": [
+          "是否有多余的实现（超出 spec 范围）",
+          "是否引入了不必要的功能"
+        ]
+      },
+      {
+        "id": "test-coverage",
+        "name": "测试覆盖",
+        "items": [
+          "测试用例是否覆盖 spec 中的关键场景",
+          "正常流程、异常流程、边界条件是否都有测试"
+        ]
+      }
+    ],
+    "verdicts": {
+      "SPEC_COMPLIANT": {
+        "description": "实现符合规格",
+        "action": "继续质量审查"
+      },
+      "SPEC_DEVIATION": {
+        "description": "实现偏离规格",
+        "subLevels": {
+          "Critical": { "action": "失败，派回 implementer 修复", "blocksReview": true },
+          "Important": { "action": "记录，继续质量审查", "blocksReview": false },
+          "Suggestion": { "action": "记录，继续质量审查", "blocksReview": false }
+        }
+      }
+    }
+  },
+  "qualityReview": {
+    "description": "5 维质量审查",
+    "dimensions": ["architecture", "code-quality", "security", "performance", "conformance"],
+    "verdicts": {
+      "QUALITY_PASS": {
+        "description": "无 BLOCKER",
+        "action": "通过"
+      },
+      "QUALITY_FAIL": {
+        "description": "存在 BLOCKER",
+        "action": "派回 implementer 修复"
+      }
+    }
+  },
+  "combinedVerdict": {
+    "description": "合并审查最终判定（combined-reviewer-prompt.md）",
+    "rules": [
+      {
+        "condition": "SPEC_COMPLIANT + QUALITY_PASS",
+        "result": "PASS",
+        "action": "进入下一个 task"
+      },
+      {
+        "condition": "任一 Critical 偏差 或 BLOCKER",
+        "result": "FAIL",
+        "action": "派回 implementer 修复"
+      },
+      {
+        "condition": "仅有 Important/Suggestion/WARNING",
+        "result": "PASS",
+        "action": "记录，继续"
+      }
+    ]
+  },
+  "outputFormat": {
+    "description": "审查报告输出格式",
+    "template": "## 审查报告\n\n### BLOCKER (N)\n- [ ] **[维度]** 问题描述\n\n### WARNING (N)\n- [ ] **[维度]** 问题描述\n\n### SUGGESTION (N)\n- [ ] **[维度]** 问题描述"
+  },
+  "customDimensions": {
+    "description": "项目可追加自定义维度",
+    "source": ".rss/rules/review-dimensions.md",
+    "format": "在默认 5 维基础上追加，格式：序号. 维度名 — 默认等级 — 说明"
+  },
+  "implementerStatuses": {
+    "DONE": { "description": "任务完成", "action": "进入审查" },
+    "DONE_WITH_CONCERNS": { "description": "完成但有疑虑", "action": "进入审查，审查员关注 concerns" },
+    "NEEDS_CONTEXT": { "description": "需要更多信息", "action": "等待用户决策" },
+    "BLOCKED": { "description": "被阻塞", "action": "等待用户解决问题" }
+  }
+}
