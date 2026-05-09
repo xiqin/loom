@@ -2,21 +2,57 @@
 
 AI 工程化框架。将 AI 编程工具从"聊天助手"升级为"工程化开发流水线"。
 
-## 核心特性
+## rss 是什么
 
-- **5 步流水线**：brainstorming → writing-plans → git-worktree → subagent-dev → index-update，从需求到交付的完整流程
-- **项目宪章自动生成**：`/rss-init-project` 扫描项目源码，自动生成宪章 + 工程结构 + 编码红线
-- **5 维代码审查**：架构合规 / 代码质量 / 安全风险 / 性能隐患 / 规范一致性
-- **Subagent 隔离派发**：每任务独立派发 implementer + spec-reviewer + quality-reviewer，互不污染上下文
-- **Git Worktree 隔离**：每个 feature 独立分支，不污染主分支
-- **进度追踪**：progress.md 可视化流水线状态，断点续做
-- **多工具兼容**：Claude Code / OpenCode / Cursor / GitHub Copilot
+- 一套 **skills + commands + hooks** 的集合，注入到 AI 编程工具中
+- 一条 **5 步开发流水线**：需求分析 → 计划拆解 → 隔离开发 → 代码审查 → 索引同步
+- 一个 **CLI 工具**（`rss`），负责安装、更新、诊断、卸载
+- 一个 **项目初始化器**（`/rss-init-project`），自动扫描项目生成宪章和工程结构
+
+## 名称说明
+
+**rss** = **R**equirement-Driven **S**oftware **S**engineering
+
+强调"需求驱动"：从需求描述出发，经过头脑风暴、计划拆解、隔离开发、代码审查，最终交付。不是从代码出发，而是从需求出发。
+
+## 支持工具矩阵
+
+| 工具           | 支持等级 | 入口文件                          | Skills | Hooks | Plugin 注册 | 平台                    |
+| -------------- | -------- | --------------------------------- | ------ | ----- | ----------- | ----------------------- |
+| Claude Code    | full     | `CLAUDE.md`                       | ✅     | ✅    | ✅          | Linux / macOS / Windows |
+| Cursor         | full     | `.cursorrules`                    | ✅     | ✗     | ✗           | Linux / macOS / Windows |
+| GitHub Copilot | full     | `.github/copilot-instructions.md` | ✅     | ✗     | ✗           | Linux / macOS / Windows |
+| OpenCode       | full     | `AGENTS.md`                       | ✅     | ✗     | ✅          | Linux / macOS / Windows |
+| Codex          | planned  | `AGENTS.md`                       | —      | —     | —           | —                       |
+
+- **full**：完整支持，适配器已实现
+- **planned**：计划中，适配器待实现
+- **Hooks**：仅 Claude Code 支持会话级钩子（session-start）
+- **Plugin 注册**：Claude Code 和 OpenCode 支持自动注册插件
+
+## 安装方式与安全等级
+
+| 安装方式                | 命令                                        | 安全等级 | 说明                             |
+| ----------------------- | ------------------------------------------- | -------- | -------------------------------- |
+| 本地 clone + bash       | `bash install.sh --tool claude-code`        | ★★★ 最高 | 代码可见，可审计，可 dry-run     |
+| 本地 clone + PowerShell | `.\install.ps1 -Tool claude-code`           | ★★★ 最高 | 同上，Windows 平台               |
+| npm 全局安装            | `npm i -g rss-engineering && rss init`      | ★★☆ 中等 | 从 npm registry 拉取，需信任 npm |
+| 远程 curl-pipe          | `curl ... \| bash -s -- --tool claude-code` | ★☆☆ 最低 | 直接执行远程脚本，适合 CI/CD     |
+
+**安全建议**：
+
+- 生产环境推荐本地 clone 方式，可审计脚本内容
+- 所有安装方式均支持 `--dry-run` 预览，不实际写入
+- 安装前自动检测冲突，冲突文件自动备份到 `.rss-backup/`
+- 卸载时基于 SHA-256 校验和判断文件是否被修改，修改过的文件不会被删除
 
 ## 安装
 
-### 方式一：一键安装脚本
+### 前置条件
 
-从本地 clone 的仓库运行：
+- Node.js >= 18
+
+### 方式一：本地安装
 
 ```bash
 git clone https://github.com/xiqin/rss.git
@@ -24,52 +60,33 @@ cd rss
 bash install.sh --tool claude-code
 ```
 
-Unix 远程一键安装：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/xiqin/rss/main/install.sh | bash -s -- --tool claude-code
-```
-
-Windows PowerShell：
-
-```powershell
-irm https://raw.githubusercontent.com/xiqin/rss/main/install.ps1 | iex -Tool claude-code
-```
-
-同时安装到多个工具：
-
-```bash
-bash install.sh --tool claude-code --tool cursor --link
-```
-
-| Flag              | 作用                                                                  |
-| ----------------- | --------------------------------------------------------------------- |
-| `--tool <target>` | 目标工具：`claude-code` / `cursor` / `copilot` / `opencode`（可重复） |
-| `--force`         | 覆盖已有文件（自动备份）                                              |
-| `--link`          | 注册 `rss` CLI 到全局（`npm link`）                                   |
-| `--dry-run`       | 预览，不实际写入                                                      |
-
-### 方式二：从 npm 安装
+### 方式二：npm 安装
 
 ```bash
 npm i -g rss-engineering
+cd your-project
+rss init --tool claude-code
 ```
 
-在项目根目录运行：
+### 方式三：远程一键安装
 
 ```bash
-# Claude Code
-rss init --tool claude-code
+# Unix
+curl -fsSL https://raw.githubusercontent.com/xiqin/rss/main/install.sh | bash -s -- --tool claude-code
 
-# OpenCode
-rss init --tool opencode
-
-# Cursor
-rss init --tool cursor
-
-# GitHub Copilot
-rss init --tool copilot
+# Windows PowerShell
+irm https://raw.githubusercontent.com/xiqin/rss/main/install.ps1 | iex -Tool claude-code
 ```
+
+### 安装选项
+
+| Flag              | 作用                                     |
+| ----------------- | ---------------------------------------- |
+| `--tool <target>` | 目标工具（必填，可重复）                 |
+| `--force`         | 覆盖已有文件（自动备份）                 |
+| `--dry-run`       | 预览，不实际写入                         |
+| `--from-release`  | 从 GitHub release tag 下载（可重现安装） |
+| `--version <ver>` | 指定版本（默认脚本内嵌版本）             |
 
 ### 安装后验证
 
@@ -78,14 +95,147 @@ rss doctor    # 诊断安装状态
 rss list      # 列出可用 skills 和 commands
 ```
 
-## 快速开始
+## 初始化前后目录对比
 
-1. 运行 `rss init --tool <target>` 安装框架
-2. 在 AI 工具中运行 `/rss-init-project` 扫描项目并生成配置
-3. 使用 `/rss-brainstorm <需求描述>` 开始需求分析
-4. 按流水线逐步执行
+### 安装前
 
-## 流水线详解
+```
+my-project/
+├── src/
+├── package.json
+└── ...
+```
+
+### 安装后（以 Claude Code 为例）
+
+```
+my-project/
+├── CLAUDE.md                         # ← rss 生成：入口文档
+├── .claude-plugin/
+│   ├── plugin.json                   # ← rss 生成：插件注册
+│   └── marketplace.json              # ← rss 生成：插件市场
+├── .rss/
+│   ├── install-manifest.json         # ← rss 生成：安装清单
+│   ├── skills/                       # ← rss 生成：16 个 skills
+│   ├── commands/                     # ← rss 生成：5 个 commands
+│   ├── hooks/                        # ← rss 生成：会话钩子
+│   ├── templates/                    # ← rss 生成：项目模板
+│   └── core/                         # ← rss 生成：核心框架文档
+├── skills/                           # ← rss 生成：Claude Code 发现路径
+├── commands/                         # ← rss 生成：Claude Code 发现路径
+├── src/
+├── package.json
+└── ...
+```
+
+### 运行 `/rss-init-project` 后
+
+```
+my-project/
+├── CLAUDE.md
+├── .rss/
+│   ├── memory/
+│   │   ├── constitution.md           # ← init-project 生成：项目宪章
+│   │   └── MEMORY.md                 # ← init-project 生成：记忆文件
+│   ├── rules/
+│   │   └── project-structure.md      # ← init-project 生成：工程结构约束
+│   └── ...
+├── rss.md                            # ← init-project 生成：项目入口文档
+└── ...
+```
+
+## 生成文件说明
+
+| 文件                              | 生成时机                  | 用途                                      | 可安全删除                      |
+| --------------------------------- | ------------------------- | ----------------------------------------- | ------------------------------- |
+| `CLAUDE.md` / `AGENTS.md`         | `rss init`                | AI 工具入口文档，包含流水线说明和快速开始 | ✗（删除后 AI 工具无法识别 rss） |
+| `.rss/skills/`                    | `rss init`                | Skills 定义文件                           | ✗                               |
+| `.rss/commands/`                  | `rss init`                | Commands 定义文件                         | ✗                               |
+| `.rss/hooks/`                     | `rss init`                | 会话钩子及处理器                          | ✗                               |
+| `.rss/templates/`                 | `rss init`                | 项目模板                                  | ✗                               |
+| `.rss/core/`                      | `rss init`                | 核心框架文档                              | ✗                               |
+| `.rss/install-manifest.json`      | `rss init`                | 安装清单（文件列表 + SHA-256 校验和）     | ✗（卸载依赖此文件）             |
+| `.rss/memory/constitution.md`     | `/rss-init-project`       | 项目宪章（编码准则、技术栈、红线）        | ✓（可重新生成）                 |
+| `.rss/memory/MEMORY.md`           | `/rss-init-project`       | 记忆文件（踩坑、偏好、状态）              | ✓（可重新生成）                 |
+| `.rss/rules/project-structure.md` | `/rss-init-project`       | 工程结构约束                              | ✓（可重新生成）                 |
+| `rss.md`                          | `/rss-init-project`       | 项目入口文档                              | ✓（可重新生成）                 |
+| `specs/<date+feature>/`           | 流水线执行                | 需求规格、实现计划、进度追踪              | ✓（项目数据）                   |
+| `.rss-backup/`                    | `--force` 安装            | 冲突文件备份（自动保留最近 3 份）         | ✓                               |
+| `.claude-plugin/`                 | `rss init`（Claude Code） | 插件注册元数据                            | ✗                               |
+| `.opencode/`                      | `rss init`（OpenCode）    | 插件注册元数据                            | ✗                               |
+| `skills/`、`commands/`            | `rss init`（Claude Code） | Claude Code 发现路径（副本）              | ✗                               |
+
+## 卸载与恢复策略
+
+### 卸载
+
+```bash
+# 脚本卸载
+bash uninstall.sh --tool claude-code
+.\uninstall.ps1 -Tool claude-code
+
+# CLI 卸载
+rss uninstall --tool claude-code
+```
+
+### 卸载安全策略
+
+卸载器基于 `install-manifest.json` 中的 SHA-256 校验和判断文件状态：
+
+| 文件状态               | 行为                   |
+| ---------------------- | ---------------------- |
+| 未修改（校验和匹配）   | 安全删除               |
+| 已修改（校验和不匹配） | 跳过，输出 warning     |
+| 已不存在               | 跳过                   |
+| 无 manifest            | 拒绝卸载，提示手动删除 |
+
+**这意味着**：如果你修改了 rss 生成的文件，卸载时不会删除它们。你不会丢失任何手动修改。
+
+### 完全清理
+
+```bash
+rss uninstall --tool claude-code --purge
+```
+
+`--purge` 额外清理：
+
+- `.rss-backup/` 备份目录
+- `.gitignore` 中的 rss 条目
+
+### 恢复
+
+如果误卸载，重新安装即可：
+
+```bash
+rss init --tool claude-code
+```
+
+如果需要恢复被 `--force` 覆盖的文件：
+
+```bash
+ls .rss-backup/           # 查看备份
+cp .rss-backup/<file> .   # 手动恢复
+```
+
+## 版本与发布策略
+
+- 遵循 [Semantic Versioning](https://semver.org/)
+- 版本号在 `package.json` 中定义，通过 `scripts/sync-version.mjs` 同步到所有元数据文件
+- 每个生成的文件包含 `rss:version=x.y.z` 标记，用于检测已安装版本
+- `rss update` 自动比较版本号，仅在版本不同时更新
+- `rss doctor` 显示当前安装状态和版本
+
+### 版本检查
+
+```bash
+rss doctor
+# 输出示例：
+#   Tool: claude-code
+#   Version: 1.0.1
+#   Status: installed
+```
+
+## 流水线
 
 ```
 brainstorming → writing-plans → git-worktree → subagent-dev → index-update
@@ -97,9 +247,17 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 | 2    | writing-plans               | 按项目架构分层拆解 task                   | `specs/<date+feature>/plan.md` |
 | 3    | git-worktree                | 创建隔离 feature 分支                     | feature 分支                   |
 | 4    | subagent-driven-development | Subagent 隔离派发 + 双审查                | 源码 + 测试                    |
-| 5    | index-update                | 同步工程索引、记忆文件、入口文档          | ENGINEERING-INDEX.md           |
+| 5    | index-update                | 同步工程索引、记忆文件                    | ENGINEERING-INDEX.md           |
 
-## Commands（斜杠命令）
+### 代码审查（5 维）
+
+1. 架构合规 — 分层正确性、循环依赖
+2. 代码质量 — 编码规范、错误处理、日志
+3. 安全风险 — SQL 注入、认证、输入验证
+4. 性能隐患 — N+1 查询、缓存策略
+5. 规范一致性 — 命名、响应格式、数据模型
+
+## Commands
 
 | 命令                | 说明                                   |
 | ------------------- | -------------------------------------- |
@@ -107,9 +265,9 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 | `/rss-brainstorm`   | 需求头脑风暴，探索方案，输出 spec.md   |
 | `/rss-write-plan`   | 按分层拆解实现计划，输出 plan.md       |
 | `/rss-execute-plan` | 派发 subagent 执行编码 + 审查          |
-| `/rss-import-rules` | 导入已有项目规则到 rss 框架            |
+| `/rss-import-rules` | 导入已有项目规则到 rss 框架（待实现）  |
 
-## Skills（15 个）
+## Skills（16 个）
 
 ### 核心流水线
 
@@ -132,32 +290,6 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 
 test-driven-development / systematic-debugging / verification-before-completion / finishing-a-development-branch / requesting-code-review / receiving-code-review / dispatching-parallel-agents / writing-skills
 
-## 项目结构
-
-安装后在目标项目中生成：
-
-```
-项目根目录/
-├── .rss/
-│   ├── memory/
-│   │   ├── constitution.md        # 项目宪章
-│   │   └── MEMORY.md              # 记忆文件
-│   ├── rules/
-│   │   └── project-structure.md   # 工程结构约束
-│   ├── skills/                    # Skills 定义
-│   ├── commands/                  # Commands 定义
-│   ├── hooks/                     # 会话钩子
-│   ├── templates/                 # 模板文件
-│   └── core/                      # 核心框架
-├── CLAUDE.md                      # Claude Code 入口
-├── AGENTS.md                      # OpenCode 入口
-└── specs/                         # 需求规格（按需生成）
-    └── <date+feature>/
-        ├── spec.md
-        ├── plan.md
-        └── progress.md
-```
-
 ## CLI 参考
 
 ```bash
@@ -169,12 +301,25 @@ rss update                            # 更新已安装文件
 rss doctor                            # 诊断安装状态
 rss list [--type skills|commands|all] # 列出可用资源
 rss uninstall --tool <target>         # 卸载
-  --purge                             # 同时清理 .gitignore 和备份目录
+  --purge                             # 同时清理备份和 .gitignore 条目
 ```
 
 ## 与 superpowers 的关系
 
 rss 继承 superpowers 的插件基础设施，替换/增强核心 skills 为 rss 版本（增加流水线、宪章、审查维度等），并新增项目规则自动生成、进度追踪、索引同步等能力。
+
+## 已知限制
+
+- **Codex 适配器未实现**：`codex` 标记为 `planned`，无可用适配器
+- **`/rss-import-rules` 未实现**：命令定义存在但功能未开发
+- **Hooks 仅支持 Claude Code**：其他工具不支持会话级钩子
+- **Cursor/Copilot 无 plugin 注册**：仅通过入口文件注入规范
+- **远程安装需要 curl + tar**：`--from-release` 模式依赖系统工具
+- **Windows 远程安装需要 tar**：PowerShell 脚本的 `-FromRelease` 模式需要 tar 命令
+- **Node.js >= 18 硬性要求**：不支持更低版本
+- **单项目单工具**：一个项目同时只能安装一个工具的适配器
+- **流水线依赖 Git**：git-worktree 步骤需要 Git 仓库
+- **子 agent 上下文隔离**：subagent 无法访问主 agent 的完整上下文
 
 ## License
 
