@@ -1,4 +1,13 @@
+---
+title: Skills 参考
+description: rss 全部技能快速参考
+---
+
+<!-- rss:version=1.0.0 -->
+
 # Skills 参考
+
+> **本文件由各 SKILL.md 自动汇总，内容可能滞后于实际 skills。最新定义请直接参考 `skills/` 目录中各 SKILL.md。**
 
 ## 核心流水线 Skills
 

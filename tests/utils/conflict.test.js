@@ -1,0 +1,63 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { detectConflicts, ensureGitignore } from '../../src/utils/conflict.js';
+
+const TEST_DIR = join(import.meta.dirname, '__test_conflict__');
+
+beforeEach(() => {
+  mkdirSync(TEST_DIR, { recursive: true });
+});
+
+afterEach(() => {
+  rmSync(TEST_DIR, { recursive: true, force: true });
+});
+
+describe('detectConflicts', () => {
+  it('returns empty when no files exist', () => {
+    const targets = [join(TEST_DIR, 'new-file.md')];
+    expect(detectConflicts(targets)).toEqual([]);
+  });
+
+  it('detects files without rss version marker', () => {
+    const file = join(TEST_DIR, 'existing.md');
+    writeFileSync(file, 'user content');
+    const result = detectConflicts([file]);
+    expect(result).toEqual([
+      { file, status: 'conflict', reason: 'File exists without rss version marker' }
+    ]);
+  });
+
+  it('detects files with rss version marker', () => {
+    const file = join(TEST_DIR, 'rss-managed.md');
+    writeFileSync(file, '<!-- rss:version=1.0.0 -->\ncontent');
+    const result = detectConflicts([file]);
+    expect(result).toEqual([
+      { file, status: 'rss-managed', version: '1.0.0' }
+    ]);
+  });
+});
+
+describe('ensureGitignore', () => {
+  it('creates .gitignore with rss-backup entry', () => {
+    ensureGitignore(TEST_DIR);
+    const content = readFileSync(join(TEST_DIR, '.gitignore'), 'utf-8');
+    expect(content).toContain('.rss-backup/');
+  });
+
+  it('appends to existing .gitignore', () => {
+    writeFileSync(join(TEST_DIR, '.gitignore'), 'node_modules/\n');
+    ensureGitignore(TEST_DIR);
+    const content = readFileSync(join(TEST_DIR, '.gitignore'), 'utf-8');
+    expect(content).toContain('node_modules/');
+    expect(content).toContain('.rss-backup/');
+  });
+
+  it('does not duplicate rss-backup entry', () => {
+    writeFileSync(join(TEST_DIR, '.gitignore'), '.rss-backup/\n');
+    ensureGitignore(TEST_DIR);
+    const content = readFileSync(join(TEST_DIR, '.gitignore'), 'utf-8');
+    const matches = content.match(/\.rss-backup\//g);
+    expect(matches.length).toBe(1);
+  });
+});

@@ -13,10 +13,10 @@
 导入项目已有的自定义规则到 rss 框架：
 
 1. 扫描项目中可能的规则文件：
-   - `.claude/memory/constitution.md`
-   - `.claude/rules/*.md`
-   - `.claude/skills/*/SKILL.md`
-   - `CLAUDE.md`
+   - `.rss/memory/constitution.md`
+   - `.rss/rules/*.md`
+   - `.rss/skills/*/SKILL.md`
+   - `CLAUDE.md` / `AGENTS.md`
    - `.cursorrules`
    - `.github/copilot-instructions.md`
    - `AGENTS.md` / `GEMINI.md`
@@ -35,7 +35,7 @@
 ## 适用场景
 
 - 已有项目规则，需要导入 rss 框架
-- 从其他 AI 工具迁移（Cursor、Copilot 等）
+- 从其他 AI 编程工具迁移
 - 整合多个规则文件
 
 ## 注意事项

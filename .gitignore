@@ -12,11 +12,5 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Local settings
-.claude/settings.local.json
-
 # User-generated specs
 specs/
-
-# rss-engineering node_modules
-rss-engineering/node_modules/

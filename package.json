@@ -2,10 +2,37 @@
   "name": "rss",
   "version": "1.0.0",
   "description": "Requirement-Driven Software Engineering — AI 工程化框架",
+  "type": "module",
   "license": "MIT",
   "keywords": ["ai", "engineering", "skills", "pipeline", "tdd", "chinese"],
   "repository": {
     "type": "git",
     "url": "https://github.com/xiqin/rss"
+  },
+  "bin": {
+    "rss": "./bin/rss.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "skills/",
+    "commands/",
+    "core/",
+    "hooks/",
+    "templates/",
+    "plugin-meta/"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
   }
 }

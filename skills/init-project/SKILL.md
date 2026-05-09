@@ -2,6 +2,7 @@
 name: init-project
 description: >
   项目初始化。扫描项目源码，自动生成宪章、工程结构、子 agent 上下文等配置文件。
+  核心配置存放在 .rss/（工具无关），自动分发到检测到的 AI 编码工具目录。
   Use when: first setting up rss in a project, or when project structure has significantly changed.
   Trigger keywords: init-project, 初始化项目, 扫描项目, 生成配置
 ---
@@ -11,7 +12,7 @@ description: >
 ## 触发条件
 
 - 用户输入 `/rss-init-project`
-- 项目中不存在 `.claude/memory/constitution.md`（首次使用自动提示）
+- 项目中不存在 `.rss/constitution.md`（首次使用自动提示）
 - 项目结构发生重大变更后重新生成
 
 ## 状态输出
@@ -32,9 +33,34 @@ description: >
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  pipeline [init] — 项目初始化 (init-project)
  status:  ✅ 完成
- 输出:    4 个配置文件已生成
+ 输出:    4 个核心文件 + N 个工具适配文件
  下一步:  检查生成的文件，手动完善 [TODO] 部分
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## 目录架构
+
+```
+.rss/                              ← 核心配置（工具无关，唯一维护点）
+  memory/
+    constitution.md                ← 项目宪章
+    MEMORY.md                      ← 记忆文件
+  rules/
+    project-structure.md           ← 工程结构约束
+  templates/
+    subagent-context.md            ← 子 agent 上下文
+  skills/                          ← Skills
+  commands/                        ← Commands
+  hooks/                           ← Hooks
+  core/                            ← 核心框架定义
+
+CLAUDE.md                          ← Claude Code 入口（自动分发）
+AGENTS.md                          ← OpenCode 入口（自动分发）
+
+.cursor/                           ← Cursor 适配（自动分发）
+  rules/
+    constitution.mdc
+    project-structure.mdc
 ```
 
 ## 执行流程
@@ -56,7 +82,7 @@ description: >
 | 日志 | import 分析 | Zap |
 | DI | import 分析 | Google Wire |
 
-**语言检测后，生成对应的构建/测试/检查命令（示例以 Go 为例，其他语言同理）：**
+**语言检测后，生成对应的构建/测试/检查命令：**
 
 | 语言 | BUILD_CMD | VET_CMD | TEST_CMD |
 |------|-----------|---------|----------|
@@ -113,9 +139,9 @@ internal/
 pkg/          → 公共工具包
 ```
 
-### Step 4: 生成项目文件
+### Step 4: 生成核心配置文件到 `.rss/`
 
-**4.1 `.claude/memory/constitution.md`**（宪章）
+**4.1 `.rss/constitution.md`**（宪章）
 
 从 `templates/constitution.md` 渲染，包含固定编码准则和项目专属原则：
 
@@ -143,7 +169,7 @@ pkg/          → 公共工具包
 ...
 ```
 
-**4.2 `.claude/rules/project-structure.md`**（工程结构）
+**4.2 `.rss/project-structure.md`**（工程结构）
 
 从 `templates/project-structure.md` 渲染：
 
@@ -163,15 +189,59 @@ pkg/          → 公共工具包
 {{DEV_FLOW}}
 ```
 
-**4.3 `.claude/memory/MEMORY.md`**（记忆文件）
+**4.3 `.rss/memory.md`**（记忆文件）
 
 从 `templates/memory.md` 渲染，初始化为空模板。
 
-**4.4 `.claude/templates/subagent-context.md`**（子 agent 上下文）
+**4.4 `.rss/subagent-context.md`**（子 agent 上下文）
 
 根据分析结果生成精简版项目约束。
 
-### Step 5: 输出报告
+### Step 5: 检测工具目录并分发
+
+**5.1 检测项目中存在的 AI 编码工具目录**
+
+| 检测目标 | 分发条件 |
+|----------|----------|
+| `CLAUDE.md` 文件 / `.claude-plugin/` 目录 | 项目使用 Claude Code |
+| `.opencode/` 目录 | 项目使用 OpenCode |
+| `.cursor/` 目录 | 项目使用 Cursor |
+| `AGENTS.md` 文件 | 项目需要通用 agent 上下文 |
+
+检测逻辑：
+1. 检查项目根目录下是否存在上述目录/文件
+2. 如果没有任何工具目录被检测到，询问用户使用哪些工具
+3. 根据用户回答创建对应目录
+
+**5.2 分发规则**
+
+| 源文件 (`.rss/`) | Claude Code 目标 | OpenCode 目标 | Cursor 目标 |
+|------------------|------------------|---------------|-------------|
+| `constitution.md` | `.rss/memory/constitution.md` | `.rss/memory/constitution.md` | `.cursor/rules/constitution.mdc` |
+| `project-structure.md` | `.rss/rules/project-structure.md` | `.rss/rules/project-structure.md` | `.cursor/rules/project-structure.mdc` |
+| `memory.md` | `.rss/memory/MEMORY.md` | `.rss/memory/MEMORY.md` | — |
+| `subagent-context.md` | `.rss/templates/subagent-context.md` | `.rss/templates/subagent-context.md` | — |
+
+**5.3 分发格式适配**
+
+- **rss**: 直接复制内容
+- **Cursor**: 在文件头部添加 frontmatter：
+  ```markdown
+  ---
+  description: [文件描述]
+  globs:
+  alwaysApply: true
+  ---
+  [原始内容]
+  ```
+- **AGENTS.md**: 将宪章和工程结构合并为单一文件，头部标注来源
+
+**5.4 分发执行**
+
+- 已有目标文件时，提示用户确认是否覆盖
+- 分发后在报告中记录每个目标的状态
+
+### Step 6: 输出报告
 
 ```markdown
 ## 项目初始化报告
@@ -179,20 +249,28 @@ pkg/          → 公共工具包
 **项目名称：** {{PROJECT_NAME}}
 **检测到的技术栈：** {{TECH_STACK_SUMMARY}}
 
-### 已生成文件
+### 核心配置文件（`.rss/`）
 
 | 文件 | 状态 | 说明 |
 |------|------|------|
-| .claude/memory/constitution.md | ✅ 已生成 | 项目宪章，5 项核心原则 |
-| .claude/rules/project-structure.md | ✅ 已生成 | 工程结构约束 |
-| .claude/memory/MEMORY.md | ✅ 已生成 | 记忆文件（空模板） |
-| .claude/templates/subagent-context.md | ✅ 已生成 | 子 agent 精简上下文 |
+| .rss/constitution.md | ✅ 已生成 | 项目宪章，5 项核心原则 |
+| .rss/project-structure.md | ✅ 已生成 | 工程结构约束 |
+| .rss/memory.md | ✅ 已生成 | 记忆文件（空模板） |
+| .rss/subagent-context.md | ✅ 已生成 | 子 agent 精简上下文 |
+
+### 工具适配分发
+
+| 工具 | 检测 | 分发文件数 | 状态 |
+|------|------|-----------|------|
+| Claude Code | ✅ 检测到 CLAUDE.md | 4 | ✅ 已分发 |
+| OpenCode | ✅ 检测到 .opencode/ | 4 | ✅ 已分发 |
+| Cursor 适配 | ✅ 检测到 .cursor/ | 2 | ✅ 已分发 |
 
 ### 需人工完善的 [TODO]
 
-- [ ] constitution.md 中的「编码红线」需确认是否完整
-- [ ] project-structure.md 中的「开发流程」需确认
-- [ ] MEMORY.md 需在使用中逐步积累
+- [ ] .rss/constitution.md 中的「编码红线」需确认是否完整
+- [ ] .rss/project-structure.md 中的「开发流程」需确认
+- [ ] .rss/memory.md 需在使用中逐步积累
 ```
 
 ## 模板变量
@@ -228,6 +306,10 @@ pkg/          → 公共工具包
 | `{{ERROR_DESC}}` | 错误处理检测 | 统一错误码 + 包装错误 |
 | `{{CODEGEN_PRINCIPLE}}` | 代码生成检测 | 代码生成 |
 | `{{CODEGEN_DESC}}` | 代码生成检测 | GORM Gen 自动生成 Model |
+| `{{LANGUAGE_VERSION}}` | 版本检测 | Go 1.24 |
+| `{{FRAMEWORK_VERSION}}` | 版本检测 | Gin 1.9 |
+| `{{ORM_VERSION}}` | 版本检测 | GORM v2 |
+| `{{DATABASE_VERSION}}` | 版本检测 | MySQL 5.7 |
 | `{{CACHE_VERSION}}` | 版本检测 | go-redis v9 |
 | `{{LOGGING_VERSION}}` | 版本检测 | Zap v1.27 |
 | `{{DI_VERSION}}` | 版本检测 | Wire v0.6 |
@@ -237,15 +319,18 @@ pkg/          → 公共工具包
 
 ## 约束
 
+- `.rss/` 是唯一维护点，工具目录中的副本不得独立修改
 - 已有配置文件时，必须提示用户确认是否覆盖
 - 检测到不明确的信息时，使用 `[TODO]` 标记
 - 生成的文件必须是完整可用的，不包含未渲染的模板变量
 - 禁止修改任何业务代码
+- 分发时自动创建不存在的工具目录（如用户确认使用该工具）
 
 ## 完成条件与下一步
 
 初始化完成后：
 
-1. 输出报告，列出已生成文件和需人工完善的 [TODO]
-2. 提示用户检查并完善生成的文件
-3. 后续可使用 `/rss-import-rules` 导入已有项目规则
+1. 输出报告，列出已生成文件和分发状态
+2. 提示用户检查 `.rss/` 下的核心文件并完善 [TODO]
+3. 提示用户：修改配置应只改 `.rss/`，工具目录文件为副本
+4. 后续可使用 `/rss-import-rules` 导入已有项目规则

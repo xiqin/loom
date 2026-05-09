@@ -15,10 +15,10 @@
 1. 扫描项目根目录（语言、框架、目录结构）
 2. 深度分析源码（错误处理、响应格式、日志、DI 模式）
 3. 生成项目文件：
-   - `.claude/memory/constitution.md`（宪章）
-   - `.claude/rules/project-structure.md`（工程结构）
-   - `.claude/memory/MEMORY.md`（记忆文件）
-   - `.claude/templates/subagent-context.md`（子 agent 上下文）
+   - `.rss/memory/constitution.md`（宪章）
+   - `.rss/rules/project-structure.md`（工程结构）
+   - `.rss/memory/MEMORY.md`（记忆文件）
+   - `.rss/templates/subagent-context.md`（子 agent 上下文）
 4. 输出报告（已生成 + 需人工完善的 [TODO]）
 
 ## 适用场景

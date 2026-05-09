@@ -13,7 +13,7 @@
 加载 `skills/writing-plans/SKILL.md`，拆解实现计划：
 
 1. 读取 `specs/<date+feature>/spec.md`
-2. 按 Model → Service → Controller → Router 分层拆分 task
+2. 按项目架构分层拆解 task
 3. 输出 `specs/<date+feature>/plan.md`
 4. 等待用户确认 plan
 

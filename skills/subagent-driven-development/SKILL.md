@@ -2,7 +2,7 @@
 name: subagent-driven-development
 description: >
   使用 subagent 派发方式执行编码任务。每个 task 派发独立 subagent，
-  每轮编码后派发 reviewer subagent 审查（spec + quality 合并）。
+  每轮编码后派发 reviewer subagent 审查（支持合并或拆分模式）。
   Use when: executing a plan with isolated subagents and review checkpoints.
 ---
 
@@ -19,35 +19,151 @@ description: >
 执行开始时：
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  pipeline [■■■■□] Step 4/5 — 编码执行 (subagent-dev)
  skill:   subagent-driven-development
  功能:    <功能名>
  status:  ▶ 开始执行 (N 个 task)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 执行结束时：
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  pipeline [■■■■□] Step 4/5 — 编码执行 (subagent-dev)
  status:  ✅ 完成 (N/N task PASS, 测试报告已生成)
  下一步:  → Step 5: index-update
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## 公告
+
+开始时宣布："我正在使用 Subagent-Driven Development 执行这个计划。"
 
 ## 核心机制
 
-**每个 task 派发 2 个独立 subagent，上下文互不继承：**
+**每个 task 派发独立 subagent，上下文互不继承：**
 
 ```
-Task N ──→ implementer ──→ reviewer（spec + quality 合并）──→ PASS/FAIL
-                │                       │
-                │                 发现问题
-                │                       │
-                └───────────────────────┘
+Task N ──→ implementer ──→ reviewer ──→ PASS/FAIL
+                 │              │
+                 │         发现问题
+                 │              │
+                 └──────────────┘
                     派回 implementer 修复
+```
+
+**为什么使用 subagent：** 你将任务委托给具有隔离上下文的专门 agent。通过精确构建他们的指令和上下文，确保他们保持专注并成功完成任务。他们永远不应该继承你会话的上下文或历史 — 你精确构建他们需要什么。这也保留了你自己的上下文用于协调工作。
+
+**核心原则：** 每个 task 一个 fresh subagent + 审查（spec 然后 quality）= 高质量、快速迭代
+
+**持续执行：** 不要在 task 之间暂停与你的合作伙伴交流。在没有停止的情况下执行计划中的所有 task。停止的唯一原因是：你无法解决的 BLOCKED 状态、真正阻碍进度的歧义，或所有 task 完成。"我应该继续吗？"提示和进度摘要浪费他们的时间 — 他们要求你执行计划，所以执行它。
+
+## 何时使用
+
+```dot
+digraph when_to_use {
+    "有实现计划?" [shape=diamond];
+    "task 大多独立?" [shape=diamond];
+    "留在这个会话?" [shape=diamond];
+    "subagent-driven-development" [shape=box];
+    "executing-plans" [shape=box];
+    "手动执行或先头脑风暴" [shape=box];
+
+    "有实现计划?" -> "task 大多独立?" [label="是"];
+    "有实现计划?" -> "手动执行或先头脑风暴" [label="否"];
+    "task 大多独立?" -> "留在这个会话?" [label="是"];
+    "task 大多独立?" -> "手动执行或先头脑风暴" [label="否 - 紧密耦合"];
+    "留在这个会话?" -> "subagent-driven-development" [label="是"];
+    "留在这个会话?" -> "executing-plans" [label="否 - 并行会话"];
+}
+```
+
+**vs. Executing Plans（并行会话）：**
+
+- 同一会话（无上下文切换）
+- 每个 task 一个 fresh subagent（无上下文污染）
+- 每个 task 后两阶段审查：先 spec 合规，然后代码质量
+- 更快迭代（task 之间没有人工环节）
+
+## 模型选择
+
+使用最强大的模型来处理每个角色，以节省成本并提高效率：
+
+**机械实现任务**（隔离函数、清晰规范、1-2 个文件）：使用快速、便宜的模型。当计划明确时，大多数实现任务都是机械的。
+
+**集成和判断任务**（多文件协调、模式匹配、调试）：使用标准模型。
+
+**架构、设计和审查任务**：使用可用的最强模型。
+
+**任务复杂度信号：**
+
+- 触及 1-2 个文件且有完整规范 → 便宜模型
+- 触及多个文件且有集成问题 → 标准模型
+- 需要设计判断或广泛的代码库理解 → 最强模型
+
+## 处理 Implementer 状态
+
+Implementer subagent 报告四种状态之一。适当处理每一种：
+
+**DONE：** 继续 spec 合规审查。
+
+**DONE_WITH_CONCERNS：** 实现者完成了工作但标记了疑虑。在继续审查之前阅读疑虑。如果疑虑是关于正确性或范围，在审查前解决它们。如果它们是观察（例如，"这个文件越来越大"），注意它们并继续审查。
+
+**NEEDS_CONTEXT：** 实现者需要未提供的信息。提供缺失的上下文并重新派发。
+
+**BLOCKED：** 实现者无法完成任务。评估 blocker：
+
+1. 如果是上下文问题，提供更多上下文并使用相同模型重新派发
+2. 如果任务需要更多推理，使用更强大的模型重新派发
+3. 如果任务太大，把它分解成更小的部分
+4. 如果计划本身是错误的，上报给人类
+
+**永远**不要忽略升级或强制相同模型在没有任何更改的情况下重试。如果实现者说它被卡住了，需要改变一些东西。
+
+## 执行流程
+
+```dot
+digraph process {
+    rankdir=TB;
+
+    subgraph cluster_per_task {
+        label="每个 Task";
+
+        "派发 implementer subagent" [shape=box];
+        "实现者问问题?" [shape=diamond];
+        "回答问题和提供上下文" [shape=box];
+        "实现者实现、测试、提交、自检" [shape=box];
+        "派发 spec reviewer subagent" [shape=diamond];
+        "派发 reviewer subagent" [shape=box];
+        "审查通过?" [shape=diamond];
+        "实现者修复问题" [shape=box];
+        "标记 task 完成" [shape=box];
+    }
+
+    "读取计划，提取所有 task，创建 TodoWrite" [shape=box];
+    "还有更多 task?" [shape=diamond];
+    "派发最终代码审查 subagent" [shape=box];
+    "使用 finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
+
+    "读取计划，提取所有 task，创建 TodoWrite" -> "派发 implementer subagent";
+    "派发 implementer subagent" -> "实现者问问题?";
+    "实现者问问题?" -> "回答问题和提供上下文" [label="是"];
+    "回答问题和提供上下文" -> "派发 implementer subagent";
+    "实现者问问题?" -> "实现者实现、测试、提交、自检" [label="否"];
+    "实现者实现、测试、提交、自检" -> "派发 spec reviewer subagent";
+    "派发 spec reviewer subagent" -> "审查通过?" [label="使用拆分模式"];
+    "审查通过?" -> "派发 reviewer subagent" [label="spec 通过"];
+    "派发 reviewer subagent" -> "审查通过?" [label="使用合并模式"];
+    "审查通过?" -> "实现者修复问题" [label="否"];
+    "实现者修复问题" -> "派发 reviewer subagent" [label="重新审查"];
+    "审查通过?" -> "标记 task 完成" [label="是"];
+    "标记 task 完成" -> "还有更多 task?";
+    "还有更多 task?" -> "派发 implementer subagent" [label="是"];
+    "还有更多 task?" -> "派发最终代码审查 subagent" [label="否"];
+    "派发最终代码审查 subagent" -> "使用 finishing-a-development-branch";
+}
 ```
 
 ## 派发前准备
@@ -58,107 +174,42 @@ Task N ──→ implementer ──→ reviewer（spec + quality 合并）──
 
 ### Step 2：读取项目约束（派发时传入精简上下文）
 
-每个 subagent 注入精简上下文模板：`.claude/templates/subagent-context.md`（约 30-50 行，替代完整宪章 + 工程结构）。
+每个 subagent 注入精简上下文模板：`.rss/subagent-context.md`（约 30-50 行，替代完整宪章 + 工程结构）。
 
 同时传入：`specs/<date+feature>/spec.md` — 需求规格
 
 ## 每个 Task 的执行循环
 
-### Phase 1：派发 implementer subagent
+### Phase1：派发 implementer subagent
 
 **输入上下文：**
+
 - task 完整文本（来自 plan.md）
-- `.claude/templates/subagent-context.md`（精简项目约束）
+- `.rss/subagent-context.md`（精简项目约束）
 - `specs/<date+feature>/spec.md` 中相关章节
 
 **implementer 的指令模板：**
+参见 `implementer-prompt.md`
 
-```
-你是项目的编码实现者。
+### Phase2：派发 reviewer subagent（支持两种模式）
 
-## 任务
-<plan.md 中的完整 task 文本>
+**审查模式选项：**
 
-## 项目约束（必须严格遵守）
-<subagent-context.md 全文>
+- **合并模式**（rss 当前）：spec + quality 一次审查，参见 `combined-reviewer-prompt.md`
+- **拆分模式**（superpowers）：先 spec → 通过后 quality，参见 `spec-reviewer-prompt.md` 和 `code-quality-reviewer-prompt.md`
 
-## 实现要求
-1. 严格按 task 中的实现步骤编写代码
-2. 编写对应的单元测试文件
-3. 根据上方项目约束中的构建和测试命令执行（BUILD_CMD、VET_CMD、TEST_CMD 已在 subagent-context.md 模板中渲染为实际命令）
-4. 如果 task 有依赖的前置 task，检查相关代码是否已存在
+**输入上下文（合并模式）：**
 
-## 输出
-列出所有创建/修改的文件路径，附完整代码。
-```
-
-### Phase 2：派发 reviewer subagent（spec + quality 合并）
-
-**输入上下文：**
 - implementer 的输出（创建/修改的文件列表 + 代码）
 - `specs/<date+feature>/spec.md`（完整需求）
 - `specs/<date+feature>/plan.md`（当前 task 定义）
 - git diff（仅变更部分）
-- `.claude/templates/subagent-context.md`（精简项目约束）
-
-**reviewer 指令模板（合并 spec 审查 + 5 维质量审查）：**
-
-```
-你是项目的代码审查员，执行规格审查和质量审查。
-
-## Part 1：规格审查
-
-对照 spec.md 和 plan.md 检查：
-1. 接口定义、参数、响应结构、业务规则是否全部实现
-2. task 中定义的每个步骤是否都已完成
-3. 是否有多余的实现（超出 spec 范围）
-4. 测试用例是否覆盖 spec 中的关键场景
-
-### SPEC 结果
-- **SPEC_COMPLIANT** / **SPEC_DEVIATION**
-  - 偏差点: <描述> | 严重度: Critical/Important/Suggestion
-
-## Part 2：5 维质量审查
-
-### 维度 1：架构合规性（BLOCKER）
-- 是否遵循项目架构分层（从 subagent-context.md 读取）
-- 是否跨层调用
-- 依赖是否单向流动
-
-### 维度 2：代码质量（BLOCKER）
-- 命名规范、错误处理、日志格式
-- 是否违反编码红线（从 subagent-context.md 读取）
-
-### 维度 3：安全风险（BLOCKER）
-- SQL 注入、硬编码、权限校验、信息泄露
-
-### 维度 4：性能隐患（WARNING）
-- N+1 查询、循环内 IO、缓存使用
-
-### 维度 5：规范一致性（WARNING）
-- 响应格式、错误码、配置、注释
-
-### QUALITY 结果
-## BLOCKER (0)
-（无）
-
-## WARNING (N)
-- W1: ...
-
-## SUGGESTION (N)
-- S1: ...
-
-## QUALITY_PASS / QUALITY_FAIL
-
-## 最终判定
-- SPEC_COMPLIANT + QUALITY_PASS → PASS，进入下一个 task
-- 任一 Critical 偏差 或 BLOCKER → FAIL，派回 implementer 修复
-- 仅有 Important/Suggestion/WARNING → 记录，PASS
-```
+- `.rss/subagent-context.md`（精简项目约束）
 
 **判定规则：**
+
 - PASS → 进入下一个 task
-- FAIL → 派回 Phase 1 修复，重新走 Phase 2
+- FAIL → 派回 Phase1 修复，重新走 Phase2
 
 ## 全部 task 完成后
 
@@ -166,35 +217,8 @@ Task N ──→ implementer ──→ reviewer（spec + quality 合并）──
 
 全部 task 通过审查后，派发一个 test-reporter subagent 生成集成测试报告。
 
-**输入上下文：**
-- `specs/<date+feature>/spec.md`（完整需求，含所有接口定义）
-- `specs/<date+feature>/plan.md`（实现计划）
-- 项目测试命令的完整输出
-- 编译和静态分析的输出
-
 **test-reporter 的指令模板：**
-
-```
-你是项目的测试报告生成者。
-
-## 任务
-基于 spec.md 中的接口定义和已实现的代码，生成集成测试报告。
-
-## 执行步骤
-
-### 1. 运行全量测试
-执行项目测试命令并收集输出。
-
-### 2. 对照 spec 验证
-对 spec.md 中定义的每个接口，逐一检查：
-- 正常流程：接口是否能正确响应
-- 参数验证：缺少必填参数、类型错误、越界值是否正确返回错误
-- 权限校验：无 Token / 过期 Token / 无权限是否正确拦截
-- 业务逻辑：创建/更新/删除后数据状态是否正确
-
-### 3. 输出测试报告
-保存到 `specs/<date+feature>/test-report.md`。
-```
+参见 `test-reporter-prompt.md`
 
 ### Phase 3 判定规则
 
@@ -206,10 +230,99 @@ Task N ──→ implementer ──→ reviewer（spec + quality 合并）──
 
 在 test-reporter 之前，先执行全量编译和测试。全部通过后方可派发 test-reporter 生成报告。同时更新 `specs/<date+feature>/progress.md`。
 
+## 优势
+
+**vs. 手动执行：**
+
+- Subagent 自然遵循 TDD
+- 每个 task 新鲜上下文（无混淆）
+- 并行安全（subagent 不干扰）
+- Subagent 可以问问题（之前和工作中）
+
+**vs. Executing Plans：**
+
+- 同一会话（无交接）
+- 持续进度（无等待）
+- 审查检查点自动
+
+**效率提升：**
+
+- 无文件读取开销（controller 提供完整文本）
+- Controller 精确策划所需上下文
+- Subagent 获得完整信息 upfront
+- 问题在工作开始前浮现（不是之后）
+
+**质量门禁：**
+
+- 自检在交接前捕获问题
+- 两阶段审查：spec 合规，然后代码质量
+- 审查循环确保修复实际工作
+- Spec 合规防止过度/不足构建
+- 代码质量确保实现构建良好
+
+**成本：**
+
+- 更多 subagent 调用（每个 task 的 implementer + 2 个 reviewer）
+- Controller 做更多准备工作（提前提取所有 task）
+- 审查循环增加迭代
+- 但早期捕获问题（比以后调试更便宜）
+
+## 红线（Red Flags）
+
+**永远不要：**
+
+- 在没有明确用户同意的情况下在主/主分支上开始实现
+- 跳过审查（spec 合规 OR 代码质量）
+- 在有未修复问题的情况下继续
+- 并行派发多个实现 subagent（冲突）
+- 让 subagent 读取计划文件（改为提供完整文本）
+- 跳过场景设置上下文（subagent 需要理解 task 适合的位置）
+- 忽略 subagent 问题（在让他们继续之前回答）
+- 接受 spec 合规的"足够接近"（spec reviewer 发现问题 = 未完成）
+- 跳过审查循环（reviewer 发现问题 = 实现者修复 = 再次审查）
+- 让实现者自检替代实际审查（两者都需要）
+- **在 spec 合规为 ✅ 之前开始代码质量审查**（顺序错误）
+- 任一审查有未解决问题时移动到下一个 task
+
+**如果 subagent 问问题：**
+
+- 清晰完整地回答
+- 如果需要，提供额外上下文
+- 不要催促他们实现
+
+**如果 reviewer 发现问题：**
+
+- 实现者（相同 subagent）修复它们
+- Reviewer 再次审查
+- 重复直到批准
+- 不要跳过重新审查
+
+**如果 subagent 失败 task：**
+
+- 使用特定指令派发修复 subagent
+- 不要尝试手动修复（上下文污染）
+
+## 集成
+
+**必需工作流技能：**
+
+- **using-git-worktrees** - 确保隔离工作空间（创建一个或验证现有）
+- **writing-plans** - 创建此技能执行的计划
+- **requesting-code-review** - reviewer subagent 的代码审查模板
+- **finishing-a-development-branch** - 所有 task 后完成开发
+
+**Subagent 应该使用：**
+
+- **test-driven-development** - Subagent 遵循每个 task 的 TDD
+
+**替代工作流：**
+
+- **executing-plans** - 当相同会话执行不可用时使用并行会话
+
 ## 关键规则
 
 1. **subagent 互不继承上下文** — 每个 subagent 是全新会话，必须完整传入所需上下文
-2. **绝不跳过审查** — implementer 完成后必须过 reviewer（spec + quality 合并）
+2. **绝不跳过审查** — implementer 完成后必须过 reviewer
 3. **BLOCKER 阻断** — 任一审查有 BLOCKER 或 Critical 偏差则不进入下一个 task
 4. **TDD 验证** — implementer 必须编写并运行单元测试，测试失败等同 BLOCKER
 5. **测试报告必须生成** — 全部 task 完成后必须派发 test-reporter，报告有 FAIL 则禁止进入 index-update

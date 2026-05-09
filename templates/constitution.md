@@ -69,4 +69,4 @@
 brainstorming → writing-plans → git-worktree → subagent-dev → index-update
 ```
 
-详见 CLAUDE.md。
+详见 {{ENTRY_FILE}}。

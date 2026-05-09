@@ -53,7 +53,7 @@ description: >
 对照 `REFERENCE/update-checklist.md` 中的检查清单，逐一检查并更新。
 
 **更新顺序：**
-按项目架构分层的依赖顺序（从底层到上层），参考 `.claude/rules/project-structure.md` 中定义的分层：
+按项目架构分层的依赖顺序（从底层到上层），参考 `.rss/project-structure.md` 中定义的分层：
 1. 先更新底层数据源（数据库表等）
 2. 再更新数据模型层
 3. 再更新业务逻辑层
@@ -78,14 +78,14 @@ description: >
 **3.3 项目状态**
 - 项目有重大变更（新增技术栈、架构调整等） → 更新"项目状态"节
 
-### Step 4: 更新 CLAUDE.md（仅在必要时）
+### Step 4: 更新 {{ENTRY_FILE}}（仅在必要时）
 
-以下情况才更新 CLAUDE.md：
+以下情况才更新 {{ENTRY_FILE}}：
 - 引入了新的约定或命令
 - 入口程序有变化
 - 开发流程有调整
 
-一般性代码变更**不更新** CLAUDE.md。
+一般性代码变更**不更新** {{ENTRY_FILE}}。
 
 ### Step 5: 输出更新报告
 
@@ -108,7 +108,7 @@ description: >
 - [ ] 踩坑记录：无新增
 - [x] 用户偏好：新增偏好 XXX
 
-### CLAUDE.md 更新
+### {{ENTRY_FILE}} 更新
 
 - 无需更新
 ```

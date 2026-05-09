@@ -14,9 +14,6 @@
 {{ARCH_PATTERN}}
 ```
 
-- Controller：{{CONTROLLER_DESC}}
-- Service：{{SERVICE_DESC}}
-- Repository：{{REPOSITORY_DESC}}
 - 依赖单向流动，禁止循环依赖
 
 ## 编码红线
@@ -60,7 +57,7 @@
 
 ## 编码要求
 
-- Controller 仅处理 HTTP 请求解析和响应，禁止写业务逻辑
+- 接口层仅处理请求解析和响应，禁止写业务逻辑
 - 错误必须使用项目统一错误处理
 - 日志必须使用项目日志组件
 - 新增配置项必须同时添加到配置结构体和配置文件

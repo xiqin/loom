@@ -23,7 +23,7 @@ rss 与 superpowers 同步记录。
 **变更摘要**:
 - 建立 5 步流水线：brainstorming → writing-plans → git-worktree → subagent-dev → index-update
 - 新增中文工程化框架支持
-- 新增多工具适配（Claude Code / OpenCode / Cursor / Copilot）
+- 新增多工具安装桥接层（--tool 参数）
 
 **处理方式**: 初始版本
 
