@@ -1,21 +1,28 @@
+import { IMPLEMENTED_TOOL_IDS } from '../generated/tooling.js';
 import { ClaudeCodeAdapter } from './claude-code.js';
 import { CursorAdapter } from './cursor.js';
 import { CopilotAdapter } from './copilot.js';
 import { OpenCodeAdapter } from './opencode.js';
 
-const adapters = {
-  'claude-code': new ClaudeCodeAdapter(),
-  'cursor': new CursorAdapter(),
-  'copilot': new CopilotAdapter(),
-  'opencode': new OpenCodeAdapter(),
+const adapterClasses = {
+  'claude-code': ClaudeCodeAdapter,
+  'cursor': CursorAdapter,
+  'copilot': CopilotAdapter,
+  'opencode': OpenCodeAdapter,
 };
 
+// Lazy-instantiate adapters
+const adapterInstances = {};
+
 export function getAdapter(tool) {
-  const adapter = adapters[tool];
-  if (!adapter) {
-    throw new Error(`Unknown tool: "${tool}". Supported: ${listAdapters().join(', ')}`);
+  if (!adapterInstances[tool]) {
+    const Cls = adapterClasses[tool];
+    if (!Cls) {
+      throw new Error(`Unknown tool: "${tool}". Supported: ${listAdapters().join(', ')}`);
+    }
+    adapterInstances[tool] = new Cls();
   }
-  return adapter;
+  return adapterInstances[tool];
 }
 
 export function getEntryFilename(tool) {
@@ -23,5 +30,5 @@ export function getEntryFilename(tool) {
 }
 
 export function listAdapters() {
-  return Object.keys(adapters);
+  return IMPLEMENTED_TOOL_IDS.filter(id => id in adapterClasses);
 }

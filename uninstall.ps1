@@ -1,52 +1,58 @@
-# rss — 一键卸载脚本 (Windows PowerShell)
+# rss — 卸载脚本（安全、可审计、可 dry-run）
 #
-# 使用方式：
-#   # 本地模式（从 clone 的仓库运行）
+# 本地模式：
 #   .\uninstall.ps1 -Tool claude-code
-#   .\uninstall.ps1 -Tool claude-code,cursor -Purge
+#   .\uninstall.ps1 -Tool claude-code -DryRun
 #
-#   # 远程模式（irm 一键卸载）
-#   irm https://raw.githubusercontent.com/xiqin/rss/main/uninstall.ps1 | iex -Tool claude-code
+# Release 模式（从指定版本 tag 下载）：
+#   .\uninstall.ps1 -Tool claude-code -FromRelease
+#   .\uninstall.ps1 -Tool claude-code -FromRelease -Version 1.0.1
 
 [CmdletBinding()]
 param(
   [string[]]$Tool = @(),
-  [switch]$Purge,
+  [string]$Version = "",
   [switch]$DryRun,
+  [switch]$Purge,
+  [switch]$FromRelease,
   [switch]$NoColor,
   [switch]$Help
 )
 
 $Repo = "xiqin/rss"
-$RawBase = "https://raw.githubusercontent.com/$Repo/main"
-$Version = "1.0.0"
+$DefaultVersion = "1.0.1"
+# TODO: replace hardcoded list — import from config/tools.schema.json via generate-tooling.mjs
 $SupportedTools = @("claude-code", "cursor", "copilot", "opencode", "codex")
 
 # ── Help ────────────────────────────────────────────────────────────────
 if ($Help) {
 @"
-rss 一键卸载脚本 (Windows)
+rss 卸载脚本
 
 USAGE
-  uninstall.ps1 [flags]
-
-  本地模式（仓库内）：
-    .\uninstall.ps1 -Tool claude-code
-
-  远程模式（irm 管道）：
-    irm $RawBase/uninstall.ps1 | iex -Tool claude-code
+  uninstall.ps1 -Tool <target> [flags]
 
 FLAGS
-  -Tool <target>    目标工具（必填，逗号分隔）
-                    支持：claude-code | cursor | copilot | opencode | codex
-  -Purge            额外清理：移除全局 rss CLI、删除 .rss-backup/ 备份目录
-  -DryRun           预览，不实际执行
-  -NoColor          禁用颜色输出
-  -Help             显示帮助信息
+  -Tool <target>      目标工具（必填，逗号分隔或重复指定）
+                      支持：claude-code | cursor | copilot | opencode | codex
+  -Version <ver>      指定版本（默认取脚本内嵌版本）
+  -DryRun             预览删除文件，不实际执行
+  -FromRelease        从 GitHub release tag 下载（可重现卸载）
+                      默认：本地模式（需 clone 仓库）
+  -Purge              额外清理：移除备份目录和 .gitignore 条目
+  -NoColor            禁用颜色输出
+  -Help               显示帮助信息
+
+安全策略
+  - 只删除 install-manifest.json 中记录的文件
+  - 文件被用户修改后不会删除（输出 warning）
+  -Purge 也不能越过 manifest 边界
 
 示例
-  .\uninstall.ps1 -Tool claude-code                       # 卸载 Claude Code
-  .\uninstall.ps1 -Tool claude-code,cursor -Purge         # 卸载两个工具 + 清理全局 CLI
+  .\uninstall.ps1 -Tool claude-code
+  .\uninstall.ps1 -Tool claude-code -DryRun
+  .\uninstall.ps1 -Tool claude-code -Purge
+  .\uninstall.ps1 -Tool claude-code -FromRelease -Version 1.0.1
 "@
   exit 0
 }
@@ -58,6 +64,9 @@ function Note($msg)  { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc
 function Ok($msg)    { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc[32m$msg$Esc[0m" } }
 function Warn($msg)  { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc[33m$msg$Esc[0m" } }
 function Err($msg)   { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc[31m$msg$Esc[0m" } }
+
+# ── Resolve version ─────────────────────────────────────────────────────
+$InstallVersion = if ($Version) { $Version } else { $DefaultVersion }
 
 # ── Validate tool ───────────────────────────────────────────────────────
 $Tools = @()
@@ -93,50 +102,26 @@ function Get-RepoRoot {
   return $null
 }
 
-# ── Try-Run helper ──────────────────────────────────────────────────────
-function Try-Run {
-  param([string]$Exe, [string[]]$Argv)
-  if ($DryRun) {
-    Note "  would run: $Exe $($Argv -join ' ')"
-    return $true
-  }
-  Write-Host "  $ $Exe $($Argv -join ' ')"
-  try {
-    & $Exe @Argv
-    return ($LASTEXITCODE -eq 0)
-  } catch {
-    Warn "  $($_.Exception.Message)"
-    return $false
-  }
-}
+$RepoRoot = Get-RepoRoot
 
 # ── Resolve RSS source ──────────────────────────────────────────────────
 $RssCli = ""
 $CleanupDir = ""
 $Cleanup = $false
-$RepoRoot = Get-RepoRoot
 
 function Resolve-Source {
-  # First try: globally installed rss CLI
-  $globalRss = Get-Command "rss" -ErrorAction SilentlyContinue
-  if ($globalRss) {
-    $script:RssCli = "rss"
-    Note "  mode: global CLI"
-    return
-  }
-
-  # Second try: local repo clone
-  if ($RepoRoot) {
-    $script:RssCli = Join-Path $RepoRoot "bin\rss.js"
+  if (-not $FromRelease -and $RepoRoot) {
     Note "  mode: local ($RepoRoot)"
+    $script:RssCli = Join-Path $RepoRoot "bin\rss.js"
     return
   }
 
-  # Third try: download remote
-  Note "  mode: remote (irm-pipe)"
+  # Remote: download from release tag
+  Note "  mode: release (v$InstallVersion)"
+
   $curlCmd = if (Get-Command "curl.exe" -ErrorAction SilentlyContinue) { "curl.exe" } else { "curl" }
   if (-not (Get-Command $curlCmd -ErrorAction SilentlyContinue)) {
-    Err "error: curl is required for remote uninstall"
+    Err "error: curl is required for -FromRelease"
     exit 1
   }
 
@@ -145,106 +130,91 @@ function Resolve-Source {
   $script:Cleanup = $true
 
   $tarball = Join-Path $CleanupDir "rss.tar.gz"
-  Say "  downloading rss from $Repo..."
-  & $curlCmd -fsSL "https://github.com/$Repo/archive/main.tar.gz" -o $tarball 2>$null
+  Say "  downloading rss v$InstallVersion from $Repo..."
+  & $curlCmd -fsSL "https://github.com/$Repo/archive/refs/tags/v$InstallVersion.tar.gz" -o $tarball 2>$null
+  if ($LASTEXITCODE -ne 0) {
+    Err "error: download failed"
+    exit 1
+  }
 
+  Note "  extracting..."
   if (Get-Command "tar.exe" -ErrorAction SilentlyContinue) {
     & tar.exe xzf $tarball -C $CleanupDir
+  } elseif (Get-Command "tar" -ErrorAction SilentlyContinue) {
+    & tar xzf $tarball -C $CleanupDir
   } else {
-    Err "error: tar.exe is required (available in Windows 10 1803+)"
+    Err "error: tar is required for extraction"
     exit 1
   }
 
   $extracted = Get-ChildItem -Path $CleanupDir -Directory | Select-Object -First 1
   if (-not $extracted -or -not (Test-Path (Join-Path $extracted.FullName "bin\rss.js"))) {
-    Err "error: download appears incomplete"
+    Err "error: download appears incomplete — bin\rss.js not found"
     exit 1
   }
+
+  Note "  installing dependencies..."
+  Push-Location $extracted.FullName
+  try {
+    & npm install --production 2>$null
+    if ($LASTEXITCODE -ne 0) { Warn "  warning: npm install failed, some features may not work" }
+  } finally { Pop-Location }
 
   $script:RssCli = Join-Path $extracted.FullName "bin\rss.js"
 }
 
+# ── Cleanup ─────────────────────────────────────────────────────────────
 function Cleanup-Temp {
   if ($Cleanup -and $CleanupDir -and (Test-Path $CleanupDir)) {
     Remove-Item -Path $CleanupDir -Recurse -Force -ErrorAction SilentlyContinue
   }
 }
 
+# ── Check Node.js ───────────────────────────────────────────────────────
+function Check-Node {
+  $node = Get-Command "node" -ErrorAction SilentlyContinue
+  if (-not $node) {
+    Err "error: Node.js is required (https://nodejs.org)"
+    Err "  Install Node.js >= 18 and re-run"
+    exit 1
+  }
+  $ver = & node -v
+  $major = [int]($ver -replace 'v', '' -replace '\..*', '')
+  if ($major -lt 18) {
+    Err "error: Node.js >= 18 required (found: $ver)"
+    exit 1
+  }
+}
+
 # ── Main ────────────────────────────────────────────────────────────────
 try {
   Say ""
-  Say "  rss uninstall v$Version"
+  Say "  rss uninstall v$InstallVersion"
   Say "  $Repo"
   Say ""
 
+  Check-Node
   Resolve-Source
 
-  $cliArgs = @($RssCli, "uninstall")
+  # Build CLI args
+  $cliArgs = @("uninstall", "--version", $InstallVersion)
   if ($DryRun) { $cliArgs += "--dry-run" }
+  if ($Purge)  { $cliArgs += "--purge" }
 
-  foreach ($tool in $Tools) {
-    Say "→ $tool"
-    $fullArgs = $cliArgs + @("--tool", $tool)
+  foreach ($t in $Tools) {
+    Say "→ $t"
+    $fullArgs = $cliArgs + @("--tool", $t)
 
-    if (Try-Run "node" $fullArgs) {
-      Ok "  ✔ $tool 卸载完成"
-    } else {
-      Warn "  ✘ $tool 卸载失败（项目目录中可能未安装 rss）"
-      Note "  请确认在目标项目的根目录运行此脚本"
-    }
-  }
-
-  # --Purge: additional cleanup
-  if ($Purge) {
-    Say "→ 清理全局残留"
-
-    # Remove global rss CLI
-    $globalRss = Get-Command "rss" -ErrorAction SilentlyContinue
-    if ($globalRss) {
-      if ($DryRun) {
-        Note "  would run: npm uninstall -g rss-engineering"
+    Write-Host "  $ node $RssCli $($fullArgs -join ' ')"
+    try {
+      & node $RssCli @fullArgs
+      if ($LASTEXITCODE -eq 0) {
+        Ok "  ✔ $t 卸载完成"
       } else {
-        Try-Run "npm" @("uninstall", "-g", "rss-engineering") | Out-Null
-        Try-Run "npm" @("uninstall", "-g", "rss") | Out-Null
-        Ok "  ✔ 全局 rss CLI 已移除"
+        Warn "  ✘ $t 卸载失败（可能未安装或 manifest 缺失）"
       }
-    }
-
-    # Remove npm link if from local clone
-    if ($RepoRoot -and (Test-Path (Join-Path $RepoRoot "package.json"))) {
-      $pkgName = & node -e "console.log(require('$([string]$RepoRoot -replace '\\', '\\\\')/package.json').name || '')" 2>$null
-      if ($pkgName) {
-        if ($DryRun) {
-          Note "  would run: npm unlink -g $pkgName"
-        } else {
-          Try-Run "npm" @("unlink", "-g", $pkgName) | Out-Null
-        }
-      }
-    }
-
-    # Remove .rss-backup directory
-    $backupDir = Join-Path (Get-Location) ".rss-backup"
-    if (Test-Path $backupDir) {
-      if ($DryRun) {
-        Note "  would remove: $backupDir"
-      } else {
-        Remove-Item -Path $backupDir -Recurse -Force -ErrorAction SilentlyContinue
-        Ok "  ✔ .rss-backup/ 已删除"
-      }
-    }
-
-    # Clean .gitignore entries
-    $gitignore = Join-Path (Get-Location) ".gitignore"
-    if (Test-Path $gitignore) {
-      if ($DryRun) {
-        Note "  would clean .gitignore rss entries"
-      } else {
-        $content = Get-Content $gitignore -Raw
-        $content = $content -replace '# rss-engineering\n', ''
-        $content = $content -replace '\.rss-backup/\n', ''
-        Set-Content -Path $gitignore -Value $content -NoNewline
-        Ok "  ✔ .gitignore rss 条目已清理"
-      }
+    } catch {
+      Warn "  ✘ $t 卸载失败: $($_.Exception.Message)"
     }
   }
 

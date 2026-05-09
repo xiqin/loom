@@ -41,10 +41,14 @@
     "node": ">=18"
   },
   "scripts": {
+    "generate": "node scripts/generate-tooling.mjs",
+    "sync-version": "node scripts/sync-version.mjs",
+    "sync-version:check": "node scripts/sync-version.mjs --check",
+    "pretest": "node scripts/generate-tooling.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepack": "npm test",
-    "prepublishOnly": "npm test"
+    "prepack": "node scripts/sync-version.mjs && npm test",
+    "prepublishOnly": "node scripts/sync-version.mjs && npm test"
   },
   "dependencies": {
     "commander": "^12.0.0"

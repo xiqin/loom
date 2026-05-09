@@ -1,26 +1,27 @@
 #!/usr/bin/env bash
-# rss — 一键安装脚本
+# rss — 安装脚本（可重现、可审计、可 dry-run）
 #
-# 使用方式：
-#   # 本地模式（从 clone 的仓库运行）
+# 本地模式：
 #   bash install.sh --tool claude-code
-#   bash install.sh --tool claude-code --tool cursor --link
+#   bash install.sh --tool claude-code --dry-run
+#   bash install.sh --tool claude-code --version 1.0.1
 #
-#   # 远程模式（curl 一键安装）
-#   curl -fsSL https://raw.githubusercontent.com/xiqin/rss/main/install.sh | bash -s -- --tool claude-code
-#
-# 支持的工具：claude-code | cursor | copilot | opencode | codex
+# Release 模式（从指定版本 tag 下载）：
+#   bash install.sh --tool claude-code --from-release
+#   bash install.sh --tool claude-code --from-release --version 1.0.0
 
 set -euo pipefail
 
 REPO="xiqin/rss"
-RAW_BASE="https://raw.githubusercontent.com/$REPO/main"
-VERSION="1.0.0"
+VERSION="1.0.1"
+# TODO: replace hardcoded list — import from config/tools.schema.json via generate-tooling.mjs
+SUPPORTED_TOOLS=("claude-code" "cursor" "copilot" "opencode" "codex")
 
 # ── Flags ──────────────────────────────────────────────────────────────
 DRY=0
 FORCE=0
-LINK=0
+FROM_RELEASE=0
+VERSION_FLAG=""
 TOOLS=()
 NO_COLOR=0
 
@@ -46,32 +47,34 @@ err()   { printf '%s%s%s\n' "$c_err" "$1" "$c_reset" >&2; }
 # ── Help ───────────────────────────────────────────────────────────────
 print_help() {
   cat <<'EOF'
-rss 一键安装脚本
+rss 安装脚本
 
 USAGE
-  install.sh [flags]
-
-  本地模式（仓库内）：
-    bash install.sh --tool claude-code
-
-  远程模式（curl 管道）：
-    curl -fsSL https://raw.githubusercontent.com/xiqin/rss/main/install.sh | bash -s -- --tool claude-code
+  install.sh --tool <target> [flags]
 
 FLAGS
-  --tool <target>   目标工具（必填，可重复）
-                    支持：claude-code | cursor | copilot | opencode | codex
-                    例：--tool claude-code --tool cursor
-  --force           覆盖已有文件（自动备份）
-  --link            将 rss CLI 注册到全局（npm link）
-  --dry-run         预览，不实际写入
-  --no-color        禁用颜色输出
-  -h, --help        显示帮助信息
+  --tool <target>     目标工具（必填，可重复）
+                      支持：claude-code | cursor | copilot | opencode | codex
+  --version <ver>     指定安装版本（默认取脚本内嵌版本）
+  --dry-run           预览安装文件，不实际写入
+  --from-release      从 GitHub release tag 下载（可重现安装）
+                      默认：本地模式（需 clone 仓库）
+  --force             覆盖已有文件（自动备份）
+  --no-color          禁用颜色输出
+  -h, --help          显示帮助信息
 
 示例
-  bash install.sh --tool claude-code                         # 安装到 Claude Code
-  bash install.sh --tool claude-code --tool cursor --link    # 安装到两个工具 + 全局 CLI
-  bash install.sh --tool opencode --force                    # 强制覆盖安装到 OpenCode
-  curl -fsSL https://raw.githubusercontent.com/xiqin/rss/main/install.sh | bash -s -- --tool cursor
+  # 本地安装（在 clone 的仓库内运行）
+  bash install.sh --tool claude-code
+
+  # 预览安装
+  bash install.sh --tool claude-code --dry-run
+
+  # 从指定版本 release 安装（远程，可重现）
+  bash install.sh --tool claude-code --from-release --version 1.0.1
+
+  # 多工具安装
+  bash install.sh --tool claude-code --tool cursor --force
 EOF
 }
 
@@ -82,11 +85,15 @@ while [ $# -gt 0 ]; do
       shift
       if [ $# -eq 0 ]; then err "error: --tool requires an argument"; exit 2; fi
       TOOLS+=("$1") ;;
-    --dry-run)    DRY=1 ;;
-    --force)      FORCE=1 ;;
-    --link)       LINK=1 ;;
-    --no-color)   NO_COLOR=1 ;;
-    -h|--help)    print_help; exit 0 ;;
+    --version)
+      shift
+      if [ $# -eq 0 ]; then err "error: --version requires an argument"; exit 2; fi
+      VERSION_FLAG="$1" ;;
+    --dry-run)       DRY=1 ;;
+    --force)         FORCE=1 ;;
+    --from-release)  FROM_RELEASE=1 ;;
+    --no-color)      NO_COLOR=1 ;;
+    -h|--help)       print_help; exit 0 ;;
     *)
       err "error: unknown flag: $1"; echo "run 'install.sh --help' for usage"; exit 2 ;;
   esac
@@ -94,7 +101,6 @@ while [ $# -gt 0 ]; do
 done
 
 # ── Validate ───────────────────────────────────────────────────────────
-SUPPORTED_TOOLS=("claude-code" "cursor" "copilot" "opencode" "codex")
 if [ ${#TOOLS[@]} -eq 0 ]; then
   err "error: --tool is required"
   echo "  Supported: ${SUPPORTED_TOOLS[*]}"
@@ -110,7 +116,10 @@ for t in "${TOOLS[@]}"; do
   fi
 done
 
-# ── Detect repo root ───────────────────────────────────────────────────
+# ── Resolve version ───────────────────────────────────────────────────
+INSTALL_VERSION="${VERSION_FLAG:-$VERSION}"
+
+# ── Detect repo root ──────────────────────────────────────────────────
 detect_repo_root() {
   local src="${BASH_SOURCE[0]:-}"
   if [ -n "$src" ] && [ -f "$src" ]; then
@@ -126,39 +135,39 @@ detect_repo_root() {
 
 REPO_ROOT="$(detect_repo_root || true)"
 
-# ── Resolve RSS source ─────────────────────────────────────────────────
+# ── Resolve RSS source ────────────────────────────────────────────────
 RSS_CLI=""
 CLEANUP_DIR=""
 
 resolve_source() {
-  if [ -n "$REPO_ROOT" ]; then
+  if [ "$FROM_RELEASE" = 0 ] && [ -n "$REPO_ROOT" ]; then
     note "  mode: local ($REPO_ROOT)"
     RSS_CLI="$REPO_ROOT/bin/rss.js"
     return 0
   fi
 
-  note "  mode: remote (curl-pipe)"
+  # Remote: download from release tag
   if ! command -v curl >/dev/null 2>&1; then
-    err "error: curl is required for remote install"
+    err "error: curl is required for --from-release"
     exit 1
   fi
   if ! command -v tar >/dev/null 2>&1; then
-    err "error: tar is required for remote install"
+    err "error: tar is required for --from-release"
     exit 1
   fi
 
+  note "  mode: release (v$INSTALL_VERSION)"
   CLEANUP_DIR="$(mktemp -d)"
   local tarball="$CLEANUP_DIR/rss.tar.gz"
 
-  say "  downloading rss from $REPO..."
-  curl -fsSL "https://github.com/$REPO/archive/main.tar.gz" -o "$tarball"
+  say "  downloading rss v$INSTALL_VERSION from $REPO..."
+  curl -fsSL "https://github.com/$REPO/archive/refs/tags/v$INSTALL_VERSION.tar.gz" -o "$tarball"
 
   note "  extracting..."
   tar xzf "$tarball" -C "$CLEANUP_DIR"
 
-  local extracted="$CLEANUP_DIR/rss-main"
+  local extracted="$CLEANUP_DIR/rss-$INSTALL_VERSION"
   if [ ! -d "$extracted" ]; then
-    # Try alternative extraction dir name (GitHub may use different formats)
     extracted=$(find "$CLEANUP_DIR" -maxdepth 1 -type d | tail -1)
   fi
 
@@ -200,7 +209,7 @@ check_node() {
 # ── Main ───────────────────────────────────────────────────────────────
 main() {
   say ""
-  say "  rss install v$VERSION"
+  say "  rss install v$INSTALL_VERSION"
   say "  ${REPO}"
   say ""
 
@@ -208,51 +217,24 @@ main() {
   resolve_source
 
   # Build common args
-  CLI_ARGS=()
+  CLI_ARGS=("--version" "$INSTALL_VERSION")
   [ "$DRY" = 1 ] && CLI_ARGS+=("--dry-run")
   [ "$FORCE" = 1 ] && CLI_ARGS+=("--force")
 
   # Run init for each tool
   for tool in "${TOOLS[@]}"; do
     say "→ $tool"
-    if [ "$DRY" = 1 ]; then
-      note "  would run: node $RSS_CLI init --tool $tool ${CLI_ARGS[*]}"
+    if node "$RSS_CLI" init --tool "$tool" "${CLI_ARGS[@]}"; then
+      ok "  ✔ $tool 安装完成"
     else
-      if node "$RSS_CLI" init --tool "$tool" "${CLI_ARGS[@]}"; then
-        ok "  ✔ $tool 安装完成"
-      else
-        warn "  ✘ $tool 安装失败"
-      fi
+      warn "  ✘ $tool 安装失败"
     fi
   done
-
-  # Optional: npm link for global CLI
-  if [ "$LINK" = 1 ]; then
-    if [ -n "$REPO_ROOT" ]; then
-      note "  registering rss CLI globally (npm link)..."
-      if [ "$DRY" = 1 ]; then
-        note "  would run: npm link in $REPO_ROOT"
-      else
-        if (cd "$REPO_ROOT" && npm link 2>/dev/null); then
-          ok "  ✔ rss CLI 已注册到全局，运行 'rss --help' 验证"
-        else
-          warn "  ✘ npm link 失败，手动运行: cd $REPO_ROOT && npm link"
-        fi
-      fi
-    else
-      warn "  --link 仅在本地模式有效（远程模式下载到临时目录）"
-      warn "  安装后手动进入项目目录运行 'npm link'"
-    fi
-  fi
 
   say ""
   say "  done"
   note "  可用命令: rss doctor, rss list, rss update"
-  if [ "$LINK" = 0 ]; then
-    note "  要在项目中使用 rss CLI，运行: node $RSS_CLI <command>"
-    note "  或通过 --link 注册到全局"
-  fi
-  note "  卸载: bash $(dirname "$RSS_CLI")/../uninstall.sh --tool <target>"
+  note "  卸载: bash uninstall.sh --tool <target>"
   say ""
 }
 

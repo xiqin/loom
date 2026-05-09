@@ -8,7 +8,7 @@
     {
       "name": "rss",
       "description": "5 步流水线、项目宪章、5 维审查、进度追踪",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "source": "./"
     }
   ]

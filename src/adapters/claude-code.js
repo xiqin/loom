@@ -16,6 +16,7 @@ export class ClaudeCodeAdapter extends BaseAdapter {
     return [
       join(projectRoot, 'CLAUDE.md'),
       join(projectRoot, '.claude-plugin', 'plugin.json'),
+      join(projectRoot, '.claude-plugin', 'marketplace.json'),
       join(projectRoot, 'skills'),
       join(projectRoot, 'commands'),
       join(projectRoot, '.rss', 'skills'),
