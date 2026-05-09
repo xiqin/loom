@@ -1,0 +1,76 @@
+{
+  "name": "rss-execute-plan",
+  "description": "执行实现计划。创建隔离分支，派发 subagent 编码，运行测试，更新索引。",
+  "skill": "subagent-driven-development",
+  "inputs": [
+    {
+      "name": "feature-name",
+      "type": "string",
+      "required": true,
+      "description": "功能名称，对应 specs/<date+feature>/ 目录"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "specs/<date+feature>/progress.md",
+      "description": "更新流水线进度",
+      "modified": true
+    },
+    {
+      "path": "源码文件（由 plan.md 中的 task 定义）",
+      "description": "实现代码和测试代码",
+      "created": true,
+      "modified": true
+    },
+    {
+      "path": "ENGINEERING-INDEX.md",
+      "description": "工程索引（新增/删除模块、路由、控制器时更新）",
+      "modified": true
+    },
+    {
+      "path": ".rss/memory/MEMORY.md",
+      "description": "记忆文件（踩坑、偏好、状态更新）",
+      "modified": true
+    }
+  ],
+  "sideEffects": {
+    "filesystem": [
+      "创建 git worktree（隔离工作空间）",
+      "创建 feature 分支",
+      "创建/修改源码文件",
+      "创建/修改测试文件",
+      "更新 ENGINEERING-INDEX.md",
+      "更新 .rss/memory/MEMORY.md"
+    ],
+    "git": [
+      "创建 feature/<date>-<name> 分支",
+      "多次 git commit（每个 task 完成后）",
+      "worktree 目录在 .gitignore 中"
+    ],
+    "process": [
+      "运行测试套件（多次）",
+      "运行编译检查",
+      "派发多个 subagent（implementer + reviewer）"
+    ],
+    "reads": [
+      "specs/<date+feature>/plan.md",
+      "specs/<date+feature>/spec.md",
+      ".rss/templates/subagent-context.md",
+      ".rss/memory/constitution.md",
+      ".rss/rules/project-structure.md"
+    ],
+    "interactive": [
+      "reviewer 审查检查点（spec 合规 + 代码质量）",
+      "BLOCKED/NEEDS_CONTEXT 时等待用户决策",
+      "测试 WARN 时等待用户选择"
+    ]
+  },
+  "rollbackStrategy": "删除 git worktree 和 feature 分支（git worktree remove + git branch -D）",
+  "idempotent": false,
+  "interactive": true,
+  "relatedTemplates": [],
+  "prerequisites": [
+    "specs/<date+feature>/plan.md 必须存在（由 rss-write-plan 生成）"
+  ],
+  "nextCommand": null
+}

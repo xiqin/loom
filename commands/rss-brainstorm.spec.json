@@ -1,0 +1,47 @@
+{
+  "name": "rss-brainstorm",
+  "description": "需求头脑风暴。探索 2-3 种实现方案及 trade-off，输出 spec.md。",
+  "skill": "brainstorming",
+  "inputs": [
+    {
+      "name": "requirement",
+      "type": "string",
+      "required": true,
+      "description": "需求描述、功能描述或 PRD 内容"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "specs/<date+feature>/spec.md",
+      "description": "结构化需求规格文档",
+      "created": true
+    },
+    {
+      "path": "specs/<date+feature>/progress.md",
+      "description": "流水线进度追踪文件",
+      "created": true
+    }
+  ],
+  "sideEffects": {
+    "filesystem": [
+      "创建 specs/<date+feature>/ 目录",
+      "写入 spec.md 和 progress.md"
+    ],
+    "reads": [
+      ".rss/memory/constitution.md",
+      ".rss/rules/project-structure.md",
+      "现有源码（修改类需求时）"
+    ],
+    "interactive": [
+      "展示 2-3 种方案供用户选择",
+      "需求澄清问答（多轮）",
+      "Spec 自审后等待用户批准"
+    ]
+  },
+  "rollbackStrategy": "删除 specs/<date+feature>/ 目录",
+  "idempotent": false,
+  "interactive": true,
+  "relatedTemplates": [],
+  "prerequisites": [],
+  "nextCommand": "rss-write-plan"
+}

@@ -28,8 +28,8 @@
    - 自定义 skills
 
 3. 合并到 rss 框架：
-   - 更新 `constitution.md`
-   - 更新 `project-structure.md`
+   - 更新 `.rss/memory/constitution.md`
+   - 更新 `.rss/rules/project-structure.md`
    - 提示用户确认合并结果
 
 ## 适用场景

@@ -1,0 +1,49 @@
+{
+  "name": "rss-write-plan",
+  "description": "拆解实现计划。将 spec.md 拆分为可执行的 task 列表，输出 plan.md。",
+  "skill": "writing-plans",
+  "inputs": [
+    {
+      "name": "feature-name",
+      "type": "string",
+      "required": true,
+      "description": "功能名称，对应 specs/<date+feature>/ 目录"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "specs/<date+feature>/plan.md",
+      "description": "实现计划，包含 task 列表、依赖关系、TDD 步骤",
+      "created": true
+    },
+    {
+      "path": "specs/<date+feature>/progress.md",
+      "description": "更新流水线进度",
+      "modified": true
+    }
+  ],
+  "sideEffects": {
+    "filesystem": [
+      "写入 plan.md",
+      "更新 progress.md"
+    ],
+    "reads": [
+      "specs/<date+feature>/spec.md",
+      ".rss/memory/constitution.md",
+      ".rss/rules/project-structure.md",
+      ".rss/templates/subagent-context.md（如存在）"
+    ],
+    "interactive": [
+      "展示计划供用户确认",
+      "用户确认后触发 git-worktree"
+    ]
+  },
+  "rollbackStrategy": "删除 specs/<date+feature>/plan.md",
+  "idempotent": false,
+  "interactive": true,
+  "relatedTemplates": [],
+  "prerequisites": [
+    "specs/<date+feature>/spec.md 必须存在（由 rss-brainstorm 生成）"
+  ],
+  "nextCommand": "rss-execute-plan"
+}

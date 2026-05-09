@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": 1,
+  "description": "rss template schema — defines templates, their variables, and rendering rules",
+  "variableSyntax": "{{VAR_NAME}}",
+  "templates": [
+    {
+      "id": "constitution",
+      "sourceFile": "templates/constitution.md",
+      "outputPath": ".rss/memory/constitution.md",
+      "description": "项目宪章 — 编码准则、核心原则、技术栈、编码红线",
+      "requiredVariables": [
+        "ARCH_PRINCIPLE",
+        "ARCH_DESC",
+        "DI_PRINCIPLE",
+        "DI_DESC",
+        "CONFIG_PRINCIPLE",
+        "CONFIG_DESC",
+        "ERROR_PRINCIPLE",
+        "ERROR_DESC",
+        "CODEGEN_PRINCIPLE",
+        "CODEGEN_DESC",
+        "LANGUAGE",
+        "LANGUAGE_VERSION",
+        "WEB_FRAMEWORK",
+        "FRAMEWORK_VERSION",
+        "ORM",
+        "ORM_VERSION",
+        "DATABASE",
+        "DATABASE_VERSION",
+        "CACHE",
+        "CACHE_VERSION",
+        "LOGGING",
+        "LOGGING_VERSION",
+        "DI",
+        "DI_VERSION",
+        "CODING_REDLINES",
+        "BUILD_CMD",
+        "VET_CMD",
+        "TEST_CMD",
+        "ENTRY_FILE"
+      ],
+      "optionalVariables": []
+    },
+    {
+      "id": "project-structure",
+      "sourceFile": "templates/project-structure.md",
+      "outputPath": ".rss/rules/project-structure.md",
+      "description": "工程结构约束 — 目录结构、架构模式、编码红线",
+      "requiredVariables": [
+        "DIRECTORY_TREE",
+        "ARCH_PATTERN",
+        "CODING_REDLINES",
+        "LANGUAGE",
+        "LANGUAGE_VERSION",
+        "WEB_FRAMEWORK",
+        "FRAMEWORK_VERSION",
+        "ORM",
+        "ORM_VERSION",
+        "DATABASE",
+        "DATABASE_VERSION",
+        "CACHE",
+        "CACHE_VERSION",
+        "LOGGING",
+        "LOGGING_VERSION",
+        "DI",
+        "DI_VERSION"
+      ],
+      "optionalVariables": []
+    },
+    {
+      "id": "rss",
+      "sourceFile": "templates/rss.md",
+      "outputPath": "rss.md",
+      "description": "RSS 入口文档 — 项目名称、描述、入口、快速命令",
+      "requiredVariables": [
+        "PROJECT_NAME",
+        "PROJECT_DESC",
+        "ENTRY_POINTS",
+        "BUILD_CMD",
+        "TEST_CMD",
+        "VET_CMD",
+        "ENTRY_FILE"
+      ],
+      "optionalVariables": []
+    },
+    {
+      "id": "memory",
+      "sourceFile": "templates/memory.md",
+      "outputPath": ".rss/memory/MEMORY.md",
+      "description": "记忆文件 — 踩坑、偏好、状态、变更记录",
+      "requiredVariables": [
+        "TECH_STACK_SUMMARY"
+      ],
+      "optionalVariables": []
+    }
+  ]
+}
