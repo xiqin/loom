@@ -12,7 +12,11 @@ export class BaseAdapter {
     throw new Error('must implement get name()');
   }
 
-  getAssetsDir() {
+  get entryFilename() {
+    throw new Error('must implement get entryFilename()');
+  }
+
+  _getAssetsDir() {
     return ASSETS_DIR;
   }
 

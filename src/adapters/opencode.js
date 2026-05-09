@@ -31,7 +31,7 @@ export class OpenCodeAdapter extends BaseAdapter {
   }
 
   async generate(projectRoot, version, options = {}) {
-    const assetsDir = this.getAssetsDir();
+    const assetsDir = this._getAssetsDir();
 
     // Copy directories: skills, commands, hooks, templates, core to .rss/
     const dirs = ['skills', 'commands', 'hooks', 'templates', 'core'];

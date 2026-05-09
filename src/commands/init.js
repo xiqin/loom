@@ -13,46 +13,37 @@ const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'),
  * Register plugin via Claude Code CLI (marketplace add + install + enable).
  */
 function registerPluginClaude(projectRoot) {
+  if (process.env.CI) return false;
   try {
-    // Check if already installed
+    // Check if already installed and healthy
     const list = execSync('claude plugin list', { cwd: projectRoot, stdio: ['pipe', 'pipe', 'pipe'] }).toString();
     if (list.includes('rss@')) {
-      // Already installed, ensure enabled
-      try {
-        execSync('claude plugin enable rss@rss --scope project', { cwd: projectRoot, stdio: 'pipe' });
-      } catch { /* ignore */ }
+      if (list.includes('✔ enabled')) {
+        return false;
+      }
+      // Plugin exists but is broken — uninstall first
+      execSync('claude plugin uninstall rss@rss --scope project', { cwd: projectRoot, stdio: 'pipe' });
+    }
+  } catch { /* claude CLI not available or list failed */ }
+
+  // Remove stale marketplace registration, then re-register
+  try { execSync('claude plugin marketplace remove rss', { cwd: projectRoot, stdio: 'pipe' }); } catch {}
+
+  const run = (cmd, opts = {}) => {
+    try { execSync(cmd, { cwd: projectRoot, stdio: 'pipe' }); return true; }
+    catch (e) {
+      const msg = e.stderr?.toString() || e.message || '';
+      const silent = opts.silent || [];
+      if (!silent.some(s => msg.includes(s))) {
+        console.log(`  Warning: ${opts.label || cmd}: ${msg.trim()}`);
+      }
       return false;
     }
-  } catch { /* continue */ }
+  };
 
-  try {
-    execSync(`claude plugin marketplace add "${projectRoot}"`, { cwd: projectRoot, stdio: 'pipe' });
-  } catch (e) {
-    const msg = e.stderr?.toString() || e.message || '';
-    if (!msg.includes('already') && !msg.includes('exist')) {
-      console.log(`  Warning: marketplace add failed: ${msg.trim()}`);
-    }
-  }
-
-  try {
-    execSync('claude plugin install rss@rss --scope project', { cwd: projectRoot, stdio: 'pipe' });
-  } catch (e) {
-    const msg = e.stderr?.toString() || e.message || '';
-    if (!msg.includes('already') && !msg.includes('exist')) {
-      console.log(`  Warning: plugin install failed: ${msg.trim()}`);
-      return false;
-    }
-  }
-
-  // Enable the plugin (installed plugins are disabled by default)
-  try {
-    execSync('claude plugin enable rss@rss --scope project', { cwd: projectRoot, stdio: 'pipe' });
-  } catch (e) {
-    const msg = e.stderr?.toString() || e.message || '';
-    if (!msg.includes('already')) {
-      console.log(`  Warning: plugin enable failed: ${msg.trim()}`);
-    }
-  }
+  run(`claude plugin marketplace add "${projectRoot}"`, { label: 'marketplace add', silent: ['already', 'exist'] });
+  run('claude plugin install rss@rss --scope project', { label: 'plugin install', silent: ['already', 'exist'] });
+  run('claude plugin enable rss@rss --scope project', { label: 'plugin enable', silent: ['already'] });
 
   return true;
 }
@@ -125,5 +116,5 @@ export default async function init(options) {
     }
   }
 
-  console.log(`  Done! Run 'rss doctor' to verify installation.\n`);
+  console.log(`  Done.\n`);
 }

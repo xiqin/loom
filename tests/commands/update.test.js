@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const { version: CURRENT_VERSION } = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf-8'));
 const TEST_DIR = join(import.meta.dirname, '__test_update__');
 
 beforeEach(() => {
@@ -25,7 +28,7 @@ describe('update command', () => {
   });
 
   it('reports up to date when version matches', async () => {
-    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), '<!-- rss:version=1.0.0 -->\ncontent');
+    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), `<!-- rss:version=${CURRENT_VERSION} -->\ncontent`);
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { default: update } = await import('../../src/commands/update.js');
     await update({ tool: 'claude-code' });
@@ -39,7 +42,7 @@ describe('update command', () => {
     const { default: update } = await import('../../src/commands/update.js');
     await update({ tool: 'claude-code' });
     const content = readFileSync(join(TEST_DIR, 'CLAUDE.md'), 'utf-8');
-    expect(content).toContain('rss:version=1.0.0');
+    expect(content).toContain(`rss:version=${CURRENT_VERSION}`);
   });
 
   it('preserves USER CUSTOM section in cursorrules', async () => {

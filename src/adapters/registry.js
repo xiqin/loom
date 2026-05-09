@@ -18,6 +18,10 @@ export function getAdapter(tool) {
   return adapter;
 }
 
+export function getEntryFilename(tool) {
+  return getAdapter(tool).entryFilename;
+}
+
 export function listAdapters() {
   return Object.keys(adapters);
 }

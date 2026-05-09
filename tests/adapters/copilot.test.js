@@ -20,6 +20,10 @@ describe('CopilotAdapter', () => {
     expect(adapter.name).toBe('copilot');
   });
 
+  it('has entryFilename .github/copilot-instructions.md', () => {
+    expect(adapter.entryFilename).toBe('.github/copilot-instructions.md');
+  });
+
   it('getTargetFiles returns copilot-instructions.md path', () => {
     const files = adapter.getTargetFiles(TEST_DIR);
     expect(files).toEqual([join(TEST_DIR, '.github', 'copilot-instructions.md')]);

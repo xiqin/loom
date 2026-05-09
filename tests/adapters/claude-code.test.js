@@ -20,6 +20,10 @@ describe('ClaudeCodeAdapter', () => {
     expect(adapter.name).toBe('claude-code');
   });
 
+  it('has entryFilename CLAUDE.md', () => {
+    expect(adapter.entryFilename).toBe('CLAUDE.md');
+  });
+
   it('getTargetFiles returns expected paths', () => {
     const files = adapter.getTargetFiles(TEST_DIR);
     expect(files).toContainEqual(expect.stringContaining('.rss'));

@@ -11,10 +11,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf-8'));
 
 function registerPluginClaude(projectRoot) {
+  if (process.env.CI) return;
   try {
     execSync('claude plugin update rss', { cwd: projectRoot, stdio: 'pipe' });
   } catch {
     // Plugin may not be installed yet, try install
+    try {
+      execSync('claude plugin marketplace remove rss', { cwd: projectRoot, stdio: 'pipe' });
+    } catch { /* not registered */ }
     try {
       execSync(`claude plugin marketplace add "${projectRoot}"`, { cwd: projectRoot, stdio: 'pipe' });
     } catch { /* ignore */ }

@@ -12,15 +12,13 @@ describe('BaseAdapter', () => {
     expect(() => adapter.getTargetFiles('/tmp')).toThrow('must implement getTargetFiles()');
   });
 
-  it('provides getAssetsDir()', () => {
+  it('throws on unimplemented entryFilename', () => {
     const adapter = new BaseAdapter();
-    const dir = adapter.getAssetsDir();
-    expect(dir).toBeTruthy();
+    expect(() => adapter.entryFilename).toThrow('must implement get entryFilename()');
   });
 
   it('provides readAsset()', () => {
     const adapter = new BaseAdapter();
-    // pipeline.md should exist in assets
     const content = adapter.readAsset('core/pipeline.md');
     expect(content).toContain('流水线');
   });

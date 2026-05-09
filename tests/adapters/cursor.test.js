@@ -20,6 +20,10 @@ describe('CursorAdapter', () => {
     expect(adapter.name).toBe('cursor');
   });
 
+  it('has entryFilename .cursorrules', () => {
+    expect(adapter.entryFilename).toBe('.cursorrules');
+  });
+
   it('getTargetFiles returns .cursorrules path', () => {
     const files = adapter.getTargetFiles(TEST_DIR);
     expect(files).toEqual([join(TEST_DIR, '.cursorrules')]);
