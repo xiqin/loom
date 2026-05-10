@@ -72,14 +72,18 @@ export class BaseAdapter {
       const content = readFileSync(skillMd, 'utf-8');
       const frontMatter = this._extractYamlFrontMatter(content);
       const name = frontMatter.name || entry.name;
+      const description = frontMatter.description || '';
 
+      const skillDir = join(destDir, entry.name);
+      mkdirSync(skillDir, { recursive: true });
       const wrapper = `---
 name: ${name}
+description: ${description}
 ---
 
 Full definition: @.loom/skills/${entry.name}/SKILL.md
 `;
-      writeFileSync(join(destDir, `${entry.name}.md`), wrapper);
+      writeFileSync(join(skillDir, 'SKILL.md'), wrapper);
     }
   }
 
@@ -101,15 +105,26 @@ See @.loom/commands/${entry.name} for the full command definition.
 
   _extractYamlFrontMatter(content) {
     const result = {};
-    const match = content.match(/^---\n([\s\S]*?)\n---/);
+    const match = content.match(/---\n([\s\S]*?)\n---/);
     if (!match) return result;
     const lines = match[1].split('\n');
+    let foldedKey = null;
     for (const line of lines) {
-      const kv = line.match(/^(\w+):\s*(.+)/);
+      if (foldedKey) {
+        const cont = line.match(/^(\s+)(.*)/);
+        if (cont && cont[1].length > 0) {
+          result[foldedKey] += (result[foldedKey] ? ' ' : '') + cont[2].trim();
+          continue;
+        } else {
+          foldedKey = null;
+        }
+      }
+      const kv = line.match(/^(\w+):\s*(.*)/);
       if (kv) {
         const val = kv[2].trim();
-        if (val.startsWith('>')) {
-          result[kv[1]] = val.replace(/^>\s*/, '').trim();
+        if (val === '>' || val === '>-') {
+          foldedKey = kv[1];
+          result[foldedKey] = '';
         } else {
           result[kv[1]] = val;
         }

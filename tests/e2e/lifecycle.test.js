@@ -107,7 +107,7 @@ describe('e2e lifecycle: claude-code with .claude/ wrappers', () => {
 
     // Verify .claude/ structure (no root-level files, no .claude-plugin/)
     expect(existsSync(join(TEST_DIR, '.claude', 'CLAUDE.md'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.claude', 'skills', 'brainstorming.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.claude', 'skills', 'brainstorming', 'SKILL.md'))).toBe(true);
     expect(existsSync(join(TEST_DIR, '.claude', 'commands', 'loom-init-project.md'))).toBe(true);
     expect(existsSync(join(TEST_DIR, 'CLAUDE.md'))).toBe(false);
     expect(existsSync(join(TEST_DIR, '.claude-plugin'))).toBe(false);

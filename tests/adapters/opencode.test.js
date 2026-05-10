@@ -77,11 +77,12 @@ describe('OpenCodeAdapter', () => {
     await adapter.generate(TEST_DIR, '1.0.0');
     expect(existsSync(join(TEST_DIR, '.opencode', 'skills'))).toBe(true);
     expect(existsSync(join(TEST_DIR, '.opencode', 'agents'))).toBe(false);
-    const wrapperPath = join(TEST_DIR, '.opencode', 'skills', 'brainstorming.md');
+    const wrapperPath = join(TEST_DIR, '.opencode', 'skills', 'brainstorming', 'SKILL.md');
     expect(existsSync(wrapperPath)).toBe(true);
     const wrapper = readFileSync(wrapperPath, 'utf-8');
     expect(wrapper).toContain('@.loom/skills/brainstorming/SKILL.md');
     expect(wrapper).toContain('name: brainstorming');
+    expect(wrapper).toContain('description: 需求头脑风暴');
   });
 
   it('generate creates command wrappers in .opencode/commands/', async () => {
@@ -101,7 +102,7 @@ describe('OpenCodeAdapter', () => {
 
   it('generateWrappers resyncs .opencode/ from existing .loom/', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
-    expect(existsSync(join(TEST_DIR, '.opencode', 'skills', 'brainstorming.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.opencode', 'skills', 'brainstorming', 'SKILL.md'))).toBe(true);
 
     adapter.generateWrappers(TEST_DIR, '2.0.0');
     const opencodeMd = readFileSync(join(TEST_DIR, 'AGENTS.md'), 'utf-8');

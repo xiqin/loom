@@ -52,11 +52,12 @@ describe('ClaudeCodeAdapter', () => {
 
   it('generate creates skill wrappers in .claude/skills/', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
-    const wrapperPath = join(TEST_DIR, '.claude', 'skills', 'brainstorming.md');
+    const wrapperPath = join(TEST_DIR, '.claude', 'skills', 'brainstorming', 'SKILL.md');
     expect(existsSync(wrapperPath)).toBe(true);
     const wrapper = readFileSync(wrapperPath, 'utf-8');
     expect(wrapper).toContain('@.loom/skills/brainstorming/SKILL.md');
     expect(wrapper).toContain('name: brainstorming');
+    expect(wrapper).toContain('description: 需求头脑风暴');
   });
 
   it('generate creates command wrappers in .claude/commands/', async () => {
@@ -80,7 +81,7 @@ describe('ClaudeCodeAdapter', () => {
 
   it('generateWrappers resyncs .claude/ from existing .loom/', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
-    expect(existsSync(join(TEST_DIR, '.claude', 'skills', 'brainstorming.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.claude', 'skills', 'brainstorming', 'SKILL.md'))).toBe(true);
 
     adapter.generateWrappers(TEST_DIR, '2.0.0');
     const claudeMd = readFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'utf-8');
