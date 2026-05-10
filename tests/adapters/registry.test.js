@@ -27,7 +27,7 @@ describe('adapter registry', () => {
   });
 
   it('getEntryFilename returns correct entry file per tool', () => {
-    expect(getEntryFilename('claude-code')).toBe('CLAUDE.md');
+    expect(getEntryFilename('claude-code')).toBe('.claude/CLAUDE.md');
     expect(getEntryFilename('cursor')).toBe('.cursorrules');
     expect(getEntryFilename('copilot')).toBe('.github/copilot-instructions.md');
     expect(getEntryFilename('opencode')).toBe('AGENTS.md');

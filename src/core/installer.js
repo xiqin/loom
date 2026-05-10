@@ -1,7 +1,6 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execSync } from 'node:child_process';
 import { getAdapter, listAdapters } from '../adapters/registry.js';
 import { detectConflicts, ensureGitignore } from '../utils/conflict.js';
 import { createBackup, cleanupBackups } from '../utils/backup.js';
@@ -44,38 +43,6 @@ function diffSnapshots(before, after) {
     }
   }
   return { created, updated };
-}
-
-/**
- * Register plugin via Claude Code CLI.
- */
-function registerPluginClaude(projectRoot) {
-  if (process.env.CI) return false;
-  try {
-    const list = execSync('claude plugin list', { cwd: projectRoot, stdio: ['pipe', 'pipe', 'pipe'] }).toString();
-    if (list.includes('loom@')) {
-      if (list.includes('✔ enabled')) return false;
-      execSync('claude plugin uninstall loom@loom --scope project', { cwd: projectRoot, stdio: 'pipe' });
-    }
-  } catch { /* claude CLI not available */ }
-
-  try { execSync('claude plugin marketplace remove loom', { cwd: projectRoot, stdio: 'pipe' }); } catch {}
-
-  const run = (cmd, opts = {}) => {
-    try { execSync(cmd, { cwd: projectRoot, stdio: 'pipe' }); return true; }
-    catch (e) {
-      const msg = e.stderr?.toString() || e.message || '';
-      if (!(opts.silent || []).some(s => msg.includes(s))) {
-        console.log(`  Warning: ${opts.label || cmd}: ${msg.trim()}`);
-      }
-      return false;
-    }
-  };
-
-  run(`claude plugin marketplace add "${projectRoot}"`, { label: 'marketplace add', silent: ['already', 'exist'] });
-  run('claude plugin install loom@loom --scope project', { label: 'plugin install', silent: ['already', 'exist'] });
-  run('claude plugin enable loom@loom --scope project', { label: 'plugin enable', silent: ['already'] });
-  return true;
 }
 
 /**
@@ -139,7 +106,6 @@ export async function install(options) {
   if (!update && loomManaged.length > 0) {
     const current = loomManaged[0];
     if (current.version === version && !force) {
-      if (tool === 'claude-code') registerPluginClaude(projectRoot);
       console.log(`  Already installed (v${current.version}). Use 'loom update' to update.\n`);
       return null;
     }
@@ -164,8 +130,7 @@ export async function install(options) {
       console.log(`\n  Would backup ${hasConflicts.length} conflicting file(s):`);
       for (const c of hasConflicts) console.log(`    ${c.file}`);
     }
-    if (tool === 'claude-code') console.log('\n  Would register Claude Code plugin.');
-    console.log(`\n  Would write manifest to .loom/install-manifest.json`);
+    console.log(`\n  Would write manifest to .loom/install-manifest-${tool}.json`);
     console.log('');
     return null;
   }
@@ -194,13 +159,6 @@ export async function install(options) {
   // ── Gitignore ──────────────────────────────────────────────────────
   ensureGitignore(projectRoot);
 
-  // ── Plugin registration ────────────────────────────────────────────
-  let hooksInstalled = false;
-  if (tool === 'claude-code') {
-    hooksInstalled = registerPluginClaude(projectRoot);
-    if (hooksInstalled) console.log('  Registered as Claude Code plugin.');
-  }
-
   // ── Compute checksums for created + updated files ───────────────────
   const allChanged = [...created, ...updatedFiles];
   const checksums = buildChecksumMap(projectRoot, allChanged);
@@ -212,7 +170,6 @@ export async function install(options) {
     filesCreated: created,
     filesUpdated: updatedFiles,
     backups: backedUp,
-    hooksInstalled,
     fileChecksums: checksums,
   });
   writeManifest(projectRoot, manifest);
@@ -220,7 +177,7 @@ export async function install(options) {
   // ── Summary ────────────────────────────────────────────────────────
   console.log(`\n  Installed v${version} (${tool}).`);
   console.log(`    created: ${created.length}  updated: ${updatedFiles.length}  backed-up: ${backedUp.length}`);
-  console.log(`    manifest: .loom/install-manifest.json\n`);
+    console.log(`    manifest: .loom/install-manifest-${tool}.json\n`);
 
   return manifest;
 }

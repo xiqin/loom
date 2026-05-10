@@ -43,7 +43,8 @@ describe('tool auto-detect and conflict', () => {
   });
 
   it('non-loom entry file is not detected', () => {
-    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), '# Not loom managed');
+    mkdirSync(join(TEST_DIR, '.claude'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), '# Not loom managed');
     expect(detectInstalledTool(TEST_DIR)).toBeNull();
   });
 
@@ -53,16 +54,17 @@ describe('tool auto-detect and conflict', () => {
 
     // Force install claude-code over cursor
     await install({ tool: 'claude-code', force: true });
-    expect(existsSync(join(TEST_DIR, 'CLAUDE.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.claude', 'CLAUDE.md'))).toBe(true);
   });
 
   it('init without force on existing different entry file detects conflict', async () => {
-    // Write a non-loom CLAUDE.md
-    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), '# My custom CLAUDE.md');
+    // Write a non-loom .claude/CLAUDE.md
+    mkdirSync(join(TEST_DIR, '.claude'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), '# My custom CLAUDE.md');
     // init should detect conflict and return null (no force)
     const result = await install({ tool: 'claude-code' });
     expect(result).toBeNull();
     // Original content preserved
-    expect(readFileSync(join(TEST_DIR, 'CLAUDE.md'), 'utf-8')).toBe('# My custom CLAUDE.md');
+    expect(readFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'utf-8')).toBe('# My custom CLAUDE.md');
   });
 });

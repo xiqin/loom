@@ -13,7 +13,7 @@ export const TOOLS = [
     supportLevel: "full",
     platforms: ["linux","macos","windows"],
     hooksSupport: true,
-    pluginMeta: {"type":"claude-code","dir":".claude-plugin"},
+    pluginMeta: {"type":"claude-code","dir":".claude"},
     entryFilename: "CLAUDE.md",
     description: "Anthropic Claude Code — 支持 skills、hooks、plugin 注册",
   },

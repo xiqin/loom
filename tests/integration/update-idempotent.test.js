@@ -47,11 +47,11 @@ describe('update idempotency', () => {
 
   it('manifest version updates correctly', async () => {
     await install({ tool: 'cursor', version: '0.9.0' });
-    const m1 = readManifest(TEST_DIR);
+    const m1 = readManifest(TEST_DIR, 'cursor');
     expect(m1.version).toBe('0.9.0');
 
     await install({ tool: 'cursor', update: true, version: '2.0.0' });
-    const m2 = readManifest(TEST_DIR);
+    const m2 = readManifest(TEST_DIR, 'cursor');
     expect(m2.version).toBe('2.0.0');
   });
 });

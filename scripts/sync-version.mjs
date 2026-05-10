@@ -23,14 +23,6 @@ const V = pkg.version;
 
 const JSON_TARGETS = [
   {
-    path: 'plugin-meta/claude-plugin.json',
-    update(json) { json.version = V; },
-  },
-  {
-    path: 'plugin-meta/claude-marketplace.json',
-    update(json) { json.plugins[0].version = V; },
-  },
-  {
     path: 'plugin-meta/opencode-plugin.json',
     update(json) { json.version = V; },
   },

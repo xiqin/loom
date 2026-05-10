@@ -59,6 +59,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 │   │   └── subagent-context.md  # 子 agent 上下文
 │   └── core/                    # 核心框架定义
 ├── CLAUDE.md                    # 项目入口文档（Claude Code）
+├── AGENTS.md                    # 项目入口文档（OpenCode）
 ├── ENGINEERING-INDEX.md         # 工程索引
 └── specs/
     └── <date+feature>/
@@ -71,7 +72,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 ## 会话流程
 
 1. 用户打开 AI 编程工具
-2. 加载入口文档（`CLAUDE.md` / `AGENTS.md`）
+2. 加载入口文档（`CLAUDE.md` 或 `AGENTS.md`）
 3. 执行 `hooks/session-start`
 4. 检查项目是否已初始化
 5. 如果未初始化，提示运行 `/loom-init-project`

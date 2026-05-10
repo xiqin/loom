@@ -1,8 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, unlinkSync, existsSync, readdirSync, rmdirSync, rmSync, statSync } from 'node:fs';
 import { join, relative, dirname } from 'node:path';
-import { readManifest } from './manifest.js';
-import { execSync } from 'node:child_process';
+import { readManifest, getManifestPath } from './manifest.js';
 
 /**
  * Compute SHA-256 hex digest of a file.
@@ -137,22 +136,6 @@ function cleanupEmptyDirs(projectRoot, filePath) {
 }
 
 /**
- * Unregister Claude Code plugin.
- */
-function unregisterPluginClaude(projectRoot) {
-  const run = (cmd) => {
-    try {
-      execSync(cmd, { cwd: projectRoot, stdio: ['pipe', 'pipe', 'pipe'] });
-      return true;
-    } catch {
-      return false;
-    }
-  };
-  run('claude plugin uninstall loom@loom --scope project');
-  run(`claude plugin marketplace remove "${projectRoot}"`);
-}
-
-/**
  * Core uninstall logic.
  *
  * @param {object} options
@@ -166,9 +149,9 @@ export async function uninstall(options) {
   const projectRoot = process.cwd();
 
   // Read manifest
-  const manifest = readManifest(projectRoot);
+  const manifest = readManifest(projectRoot, tool);
   if (!manifest) {
-    console.log('\n  No manifest found (.loom/install-manifest.json).');
+    console.log(`\n  No manifest found for "${tool}" (.loom/install-manifest-${tool}.json).`);
     console.log('  Cannot safely uninstall without manifest.\n');
     return null;
   }
@@ -202,15 +185,12 @@ export async function uninstall(options) {
       console.log(`\n  Already gone (${missing.length} file(s)):`);
       for (const f of missing) console.log(`    · ${f}`);
     }
-    if (tool === 'claude-code') {
-      console.log('\n  Would unregister Claude Code plugin.');
-    }
     if (purge) {
       console.log('\n  [purge] Would also remove:');
       console.log('    - .loom-backup/ (if exists)');
       console.log('    - .gitignore loom entries (if exists)');
     }
-    console.log('\n  Would remove .loom/install-manifest.json');
+    console.log(`\n  Would remove .loom/install-manifest-${tool}.json`);
     console.log('');
     return null;
   }
@@ -232,7 +212,7 @@ export async function uninstall(options) {
   }
 
   // Remove manifest
-  const manifestPath = join(projectRoot, '.loom', 'install-manifest.json');
+  const manifestPath = getManifestPath(projectRoot, tool);
   try {
     if (existsSync(manifestPath)) {
       unlinkSync(manifestPath);
@@ -264,14 +244,6 @@ export async function uninstall(options) {
       }
     }
   } catch { /* ignore */ }
-
-  // Unregister plugin
-  let hooksRemoved = false;
-  if (tool === 'claude-code') {
-    unregisterPluginClaude(projectRoot);
-    hooksRemoved = true;
-    console.log('  Unregistered Claude Code plugin.');
-  }
 
   // ── Purge ───────────────────────────────────────────────────────────
   let purgedBackup = false;
@@ -319,7 +291,6 @@ export async function uninstall(options) {
     deleted,
     skipped,
     missing: missing.length,
-    hooksRemoved,
     purgedBackup,
     purgedGitignore,
   };

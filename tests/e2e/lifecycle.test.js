@@ -31,7 +31,7 @@ describe('e2e lifecycle: install → update → uninstall', () => {
         expect(m1.tool).toBe(tool);
 
         // Verify manifest exists
-        const manifest1 = readManifest(TEST_DIR);
+        const manifest1 = readManifest(TEST_DIR, tool);
         expect(manifest1).not.toBeNull();
         expect(manifest1.fileChecksums).toBeDefined();
         expect(Object.keys(manifest1.fileChecksums).length).toBeGreaterThan(0);
@@ -46,7 +46,7 @@ describe('e2e lifecycle: install → update → uninstall', () => {
         expect(m2.version).toBe('2.0.0');
 
         // Verify manifest updated
-        const manifest2 = readManifest(TEST_DIR);
+        const manifest2 = readManifest(TEST_DIR, tool);
         expect(manifest2.version).toBe('2.0.0');
 
         // ── Idempotent update ──
@@ -83,9 +83,11 @@ describe('e2e lifecycle: install → update → uninstall', () => {
 
   it('lifecycle with force reinstall and backup', async () => {
     const tool = 'claude-code';
-    await install({ tool, version: '1.0.0' });
 
-    // Force reinstall — creates backup because CLAUDE.md already exists
+    // Write a non-loom conflicting file, then force install creates backup
+    const entryDir = join(TEST_DIR, '.claude');
+    mkdirSync(entryDir, { recursive: true });
+    writeFileSync(join(entryDir, 'CLAUDE.md'), 'non-loom content');
     const m2 = await install({ tool, version: '1.0.0', force: true });
     expect(m2).not.toBeNull();
     expect(existsSync(join(TEST_DIR, '.loom-backup'))).toBe(true);
@@ -97,35 +99,40 @@ describe('e2e lifecycle: install → update → uninstall', () => {
   });
 });
 
-describe('e2e lifecycle: claude-code with plugins', () => {
+describe('e2e lifecycle: claude-code with .claude/ wrappers', () => {
   it('install and uninstall claude-code', async () => {
     const tool = 'claude-code';
     const m = await install({ tool });
     expect(m).not.toBeNull();
 
-    // Verify Claude Code specific files
-    expect(existsSync(join(TEST_DIR, 'CLAUDE.md'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.claude-plugin', 'plugin.json'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, 'skills'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, 'commands'))).toBe(true);
+    // Verify .claude/ structure (no root-level files, no .claude-plugin/)
+    expect(existsSync(join(TEST_DIR, '.claude', 'CLAUDE.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.claude', 'skills', 'brainstorming.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.claude', 'commands', 'loom-init-project.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, 'CLAUDE.md'))).toBe(false);
+    expect(existsSync(join(TEST_DIR, '.claude-plugin'))).toBe(false);
+    expect(existsSync(join(TEST_DIR, 'skills'))).toBe(false);
+    expect(existsSync(join(TEST_DIR, 'commands'))).toBe(false);
 
     const result = await uninstall({ tool });
     expect(result).not.toBeNull();
-    expect(existsSync(join(TEST_DIR, 'CLAUDE.md'))).toBe(false);
+    expect(existsSync(join(TEST_DIR, '.claude', 'CLAUDE.md'))).toBe(false);
   });
 });
 
-describe('e2e lifecycle: opencode with dual paths', () => {
+describe('e2e lifecycle: opencode with wrapper paths', () => {
   it('install and uninstall opencode', async () => {
     const tool = 'opencode';
     const m = await install({ tool });
     expect(m).not.toBeNull();
 
-    // Verify dual path structure
+    // Verify structure: .loom/ is single source of truth, .opencode/ has thin wrappers
     expect(existsSync(join(TEST_DIR, 'AGENTS.md'))).toBe(true);
     expect(existsSync(join(TEST_DIR, '.loom', 'skills'))).toBe(true);
     expect(existsSync(join(TEST_DIR, '.opencode', 'skills'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.opencode', 'plugin.json'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.opencode', 'commands'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.opencode', 'agents'))).toBe(false);
+    expect(existsSync(join(TEST_DIR, '.claude'))).toBe(false);
 
     const result = await uninstall({ tool });
     expect(result).not.toBeNull();

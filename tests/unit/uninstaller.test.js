@@ -72,28 +72,28 @@ describe('buildChecksumMap', () => {
 describe('classifyFiles', () => {
   it('classifies safe files (hash matches)', () => {
     const content = 'original';
-    writeFileSync(join(TEST_DIR, 'entry.md'), content);
+    writeFileSync(join(TEST_DIR, 'loom.md'), content);
     const manifest = {
-      filesCreated: ['entry.md'],
+      filesCreated: ['loom.md'],
       filesUpdated: [],
-      fileChecksums: { 'entry.md': sha256(content) },
+      fileChecksums: { 'loom.md': sha256(content) },
     };
     const result = classifyFiles(TEST_DIR, manifest);
-    expect(result.safe).toEqual(['entry.md']);
+    expect(result.safe).toEqual(['loom.md']);
     expect(result.modified).toEqual([]);
     expect(result.missing).toEqual([]);
   });
 
   it('classifies modified files (hash differs)', () => {
-    writeFileSync(join(TEST_DIR, 'entry.md'), 'changed');
+    writeFileSync(join(TEST_DIR, 'loom.md'), 'changed');
     const manifest = {
-      filesCreated: ['entry.md'],
+      filesCreated: ['loom.md'],
       filesUpdated: [],
-      fileChecksums: { 'entry.md': sha256('original') },
+      fileChecksums: { 'loom.md': sha256('original') },
     };
     const result = classifyFiles(TEST_DIR, manifest);
     expect(result.safe).toEqual([]);
-    expect(result.modified).toEqual(['entry.md']);
+    expect(result.modified).toEqual(['loom.md']);
   });
 
   it('classifies missing files', () => {

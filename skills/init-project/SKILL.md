@@ -54,7 +54,7 @@ description: >
   hooks/                           ← Hooks
   core/                            ← 核心框架定义
 
-CLAUDE.md                          ← Claude Code 入口（自动分发）
+.claude/CLAUDE.md                  ← Claude Code 入口（自动分发，wrapper 引用 .loom/）
 AGENTS.md                          ← OpenCode 入口（自动分发）
 
 .cursor/                           ← Cursor 适配（自动分发）
@@ -202,11 +202,11 @@ pkg/          → 公共工具包
 {{DEV_FLOW}}
 ```
 
-**4.3 `.loom/memory.md`**（记忆文件）
+**4.3 `.loom/memory/MEMORY.md`**（记忆文件）
 
 从 `templates/memory.md` 渲染，初始化为空模板。
 
-**4.4 `.loom/subagent-context.md`**（子 agent 上下文）
+**4.4 `.loom/templates/subagent-context.md`**（子 agent 上下文模板）
 
 根据分析结果生成精简版项目约束。
 
@@ -216,7 +216,7 @@ pkg/          → 公共工具包
 
 | 检测目标                                  | 分发条件                  |
 | ----------------------------------------- | ------------------------- |
-| `CLAUDE.md` 文件 / `.claude-plugin/` 目录 | 项目使用 Claude Code      |
+| `.claude/` 目录或 `.loom/` 已有 claude 适配 | 项目使用 Claude Code      |
 | `.opencode/` 目录                         | 项目使用 OpenCode         |
 | `.cursor/` 目录                           | 项目使用 Cursor           |
 | `AGENTS.md` 文件                          | 项目需要通用 agent 上下文 |
@@ -235,6 +235,8 @@ pkg/          → 公共工具包
 | `project-structure.md` | `.loom/rules/project-structure.md`    | `.loom/rules/project-structure.md`    | `.cursor/rules/project-structure.mdc` |
 | `memory.md`            | `.loom/memory/MEMORY.md`              | `.loom/memory/MEMORY.md`              | —                                     |
 | `subagent-context.md`  | `.loom/templates/subagent-context.md` | `.loom/templates/subagent-context.md` | —                                     |
+
+Claude Code 的目标路径均为 `.loom/` 下的真实文件。`.claude/` wrapper 由 `loom init` / `loom update` 自动维护，不从 init-project skill 直接写入。
 
 **5.3 分发格式适配**
 
@@ -334,7 +336,7 @@ pkg/          → 公共工具包
 
 ## 约束
 
-- `.loom/` 是唯一维护点，工具目录中的副本不得独立修改
+- `.loom/` 是唯一维护点，`.claude/` wrapper 文件由 `loom init` / `loom update` 自动生成，工具目录中的副本不得独立修改
 - 已有配置文件时，必须提示用户确认是否覆盖
 - 检测到不明确的信息时，使用 `[TODO]` 标记
 - 生成的文件必须是完整可用的，不包含未渲染的模板变量

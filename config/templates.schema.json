@@ -71,7 +71,7 @@
     {
       "id": "loom",
       "sourceFile": "templates/loom.md",
-      "outputPath": "loom.md",
+      "outputPath": ".loom/loom.md",
       "description": "Loom 入口文档 — 项目名称、描述、入口、快速命令",
       "requiredVariables": [
         "PROJECT_NAME",

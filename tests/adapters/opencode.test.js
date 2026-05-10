@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { OpenCodeAdapter } from '../../src/adapters/opencode.js';
 
@@ -10,7 +10,6 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  // Windows may lock files briefly during coverage instrumentation
   for (let i = 0; i < 3; i++) {
     try {
       rmSync(TEST_DIR, { recursive: true, force: true });
@@ -19,7 +18,6 @@ afterEach(async () => {
       if (e.code === 'EBUSY' && i < 2) {
         await new Promise(r => setTimeout(r, 100));
       } else if (i === 2) {
-        // Last attempt — ignore
       } else {
         throw e;
       }
@@ -38,11 +36,18 @@ describe('OpenCodeAdapter', () => {
     expect(adapter.entryFilename).toBe('AGENTS.md');
   });
 
-  it('getTargetFiles includes dual paths', () => {
+  it('getTargetFiles returns .opencode/skills/ not .opencode/agents/', () => {
     const files = adapter.getTargetFiles(TEST_DIR);
     expect(files).toContainEqual(expect.stringContaining('.loom'));
     expect(files).toContainEqual(expect.stringContaining('.opencode'));
     expect(files).toContainEqual(expect.stringContaining('AGENTS.md'));
+    expect(files.some(f => f.includes('.opencode') && f.includes('skills'))).toBe(true);
+    expect(files.some(f => f.includes('.opencode') && f.includes('agents'))).toBe(false);
+  });
+
+  it('getTargetFiles does NOT include .claude/ paths', () => {
+    const files = adapter.getTargetFiles(TEST_DIR);
+    expect(files.some(f => f.includes('.claude'))).toBe(false);
   });
 
   it('generate creates AGENTS.md with version marker', async () => {
@@ -52,23 +57,39 @@ describe('OpenCodeAdapter', () => {
     expect(content).toContain('loom — AI 工程化框架');
   });
 
-  it('generate copies skills to both .loom/ and .opencode/', async () => {
+  it('generate does NOT create root-level skills/ or commands/', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
-    // .loom/skills should exist
+    expect(existsSync(join(TEST_DIR, 'skills'))).toBe(false);
+    expect(existsSync(join(TEST_DIR, 'commands'))).toBe(false);
+  });
+
+  it('generate does NOT create .claude/', async () => {
+    await adapter.generate(TEST_DIR, '1.0.0');
+    expect(existsSync(join(TEST_DIR, '.claude'))).toBe(false);
+  });
+
+  it('generate copies skills to .loom/', async () => {
+    await adapter.generate(TEST_DIR, '1.0.0');
     expect(existsSync(join(TEST_DIR, '.loom', 'skills'))).toBe(true);
-    // .opencode/skills should exist
+  });
+
+  it('generate creates skill wrappers in .opencode/skills/ (not agents/)', async () => {
+    await adapter.generate(TEST_DIR, '1.0.0');
     expect(existsSync(join(TEST_DIR, '.opencode', 'skills'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.opencode', 'agents'))).toBe(false);
+    const wrapperPath = join(TEST_DIR, '.opencode', 'skills', 'brainstorming.md');
+    expect(existsSync(wrapperPath)).toBe(true);
+    const wrapper = readFileSync(wrapperPath, 'utf-8');
+    expect(wrapper).toContain('@.loom/skills/brainstorming/SKILL.md');
+    expect(wrapper).toContain('name: brainstorming');
   });
 
-  it('generate copies commands to both .loom/ and .opencode/', async () => {
+  it('generate creates command wrappers in .opencode/commands/', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
-    expect(existsSync(join(TEST_DIR, '.loom', 'commands'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.opencode', 'commands'))).toBe(true);
-  });
-
-  it('generate creates .opencode/plugin.json', async () => {
-    await adapter.generate(TEST_DIR, '1.0.0');
-    expect(existsSync(join(TEST_DIR, '.opencode', 'plugin.json'))).toBe(true);
+    const wrapperPath = join(TEST_DIR, '.opencode', 'commands', 'loom-init-project.md');
+    expect(existsSync(wrapperPath)).toBe(true);
+    const wrapper = readFileSync(wrapperPath, 'utf-8');
+    expect(wrapper).toContain('@.loom/commands/loom-init-project.md');
   });
 
   it('generate copies hooks, templates, core to .loom/', async () => {
@@ -76,5 +97,14 @@ describe('OpenCodeAdapter', () => {
     expect(existsSync(join(TEST_DIR, '.loom', 'hooks'))).toBe(true);
     expect(existsSync(join(TEST_DIR, '.loom', 'templates'))).toBe(true);
     expect(existsSync(join(TEST_DIR, '.loom', 'core'))).toBe(true);
+  });
+
+  it('generateWrappers resyncs .opencode/ from existing .loom/', async () => {
+    await adapter.generate(TEST_DIR, '1.0.0');
+    expect(existsSync(join(TEST_DIR, '.opencode', 'skills', 'brainstorming.md'))).toBe(true);
+
+    adapter.generateWrappers(TEST_DIR, '2.0.0');
+    const opencodeMd = readFileSync(join(TEST_DIR, 'AGENTS.md'), 'utf-8');
+    expect(opencodeMd).toContain('<!-- loom:version=2.0.0 -->');
   });
 });

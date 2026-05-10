@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ClaudeCodeAdapter } from '../../src/adapters/claude-code.js';
 
@@ -20,33 +20,70 @@ describe('ClaudeCodeAdapter', () => {
     expect(adapter.name).toBe('claude-code');
   });
 
-  it('has entryFilename CLAUDE.md', () => {
-    expect(adapter.entryFilename).toBe('CLAUDE.md');
+  it('has entryFilename .claude/CLAUDE.md', () => {
+    expect(adapter.entryFilename).toBe('.claude/CLAUDE.md');
   });
 
-  it('getTargetFiles returns expected paths', () => {
+  it('getTargetFiles returns .claude/ and .loom/ paths', () => {
     const files = adapter.getTargetFiles(TEST_DIR);
     expect(files).toContainEqual(expect.stringContaining('.loom'));
-    expect(files).toContainEqual(expect.stringContaining('CLAUDE.md'));
-    expect(files).toContainEqual(expect.stringContaining('.claude-plugin'));
+    expect(files).toContainEqual(expect.stringContaining('.claude'));
+    expect(files).not.toContainEqual(expect.stringContaining('.claude-plugin'));
   });
 
-  it('generate creates directory structure', async () => {
+  it('generate creates .claude/CLAUDE.md instead of root CLAUDE.md', async () => {
+    await adapter.generate(TEST_DIR, '1.0.0');
+    expect(existsSync(join(TEST_DIR, '.claude', 'CLAUDE.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, 'CLAUDE.md'))).toBe(false);
+  });
+
+  it('generate does NOT create root-level skills/ or commands/', async () => {
+    await adapter.generate(TEST_DIR, '1.0.0');
+    expect(existsSync(join(TEST_DIR, 'skills'))).toBe(false);
+    expect(existsSync(join(TEST_DIR, 'commands'))).toBe(false);
+  });
+
+  it('generate copies skills to .loom/', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
     expect(existsSync(join(TEST_DIR, '.loom', 'skills'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, 'CLAUDE.md'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.claude-plugin', 'plugin.json'))).toBe(true);
+    const skills = readFileSync(join(TEST_DIR, '.loom', 'skills', 'brainstorming', 'SKILL.md'), 'utf-8');
+    expect(skills).toContain('头脑风暴');
   });
 
-  it('generate injects version markers', async () => {
+  it('generate creates skill wrappers in .claude/skills/', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
-    const claudeMd = readFileSync(join(TEST_DIR, 'CLAUDE.md'), 'utf-8');
+    const wrapperPath = join(TEST_DIR, '.claude', 'skills', 'brainstorming.md');
+    expect(existsSync(wrapperPath)).toBe(true);
+    const wrapper = readFileSync(wrapperPath, 'utf-8');
+    expect(wrapper).toContain('@.loom/skills/brainstorming/SKILL.md');
+    expect(wrapper).toContain('name: brainstorming');
+  });
+
+  it('generate creates command wrappers in .claude/commands/', async () => {
+    await adapter.generate(TEST_DIR, '1.0.0');
+    const wrapperPath = join(TEST_DIR, '.claude', 'commands', 'loom-init-project.md');
+    expect(existsSync(wrapperPath)).toBe(true);
+    const wrapper = readFileSync(wrapperPath, 'utf-8');
+    expect(wrapper).toContain('@.loom/commands/loom-init-project.md');
+  });
+
+  it('generate does NOT create .claude-plugin/', async () => {
+    await adapter.generate(TEST_DIR, '1.0.0');
+    expect(existsSync(join(TEST_DIR, '.claude-plugin'))).toBe(false);
+  });
+
+  it('generate injects version markers in .claude/CLAUDE.md', async () => {
+    await adapter.generate(TEST_DIR, '1.0.0');
+    const claudeMd = readFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'utf-8');
     expect(claudeMd).toContain('<!-- loom:version=1.0.0 -->');
   });
 
-  it('generate copies skills', async () => {
+  it('generateWrappers resyncs .claude/ from existing .loom/', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
-    const skills = readFileSync(join(TEST_DIR, '.loom', 'skills', 'brainstorming', 'SKILL.md'), 'utf-8');
-    expect(skills).toContain('头脑风暴');
+    expect(existsSync(join(TEST_DIR, '.claude', 'skills', 'brainstorming.md'))).toBe(true);
+
+    adapter.generateWrappers(TEST_DIR, '2.0.0');
+    const claudeMd = readFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'utf-8');
+    expect(claudeMd).toContain('<!-- loom:version=2.0.0 -->');
   });
 });

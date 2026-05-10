@@ -23,12 +23,13 @@ describe('update command', () => {
     const { default: update } = await import('../../src/commands/update.js');
     await update({ tool: 'claude-code' });
     const output = consoleSpy.mock.calls.map(c => c[0]).join('\n');
-    expect(output).toContain('not installed');
+    expect(output).toContain('Not installed');
     consoleSpy.mockRestore();
   });
 
   it('reports up to date when version matches', async () => {
-    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), `<!-- loom:version=${CURRENT_VERSION} -->\ncontent`);
+    mkdirSync(join(TEST_DIR, '.claude'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), `<!-- loom:version=${CURRENT_VERSION} -->\ncontent`);
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { default: update } = await import('../../src/commands/update.js');
     await update({ tool: 'claude-code' });
@@ -38,10 +39,11 @@ describe('update command', () => {
   });
 
   it('updates when version differs', async () => {
-    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), '<!-- loom:version=0.9.0 -->\nold content');
+    mkdirSync(join(TEST_DIR, '.claude'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), '<!-- loom:version=0.9.0 -->\nold content');
     const { default: update } = await import('../../src/commands/update.js');
     await update({ tool: 'claude-code' });
-    const content = readFileSync(join(TEST_DIR, 'CLAUDE.md'), 'utf-8');
+    const content = readFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'utf-8');
     expect(content).toContain(`loom:version=${CURRENT_VERSION}`);
   });
 

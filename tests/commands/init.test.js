@@ -15,11 +15,12 @@ afterEach(() => {
 });
 
 describe('init command', () => {
-  it('creates CLAUDE.md for claude-code tool', async () => {
+  it('creates .claude/CLAUDE.md for claude-code tool', async () => {
     const sp = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { default: init } = await import('../../src/commands/init.js');
     await init({ tool: 'claude-code' });
-    expect(existsSync(join(TEST_DIR, 'CLAUDE.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.claude', 'CLAUDE.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, 'CLAUDE.md'))).toBe(false);
     sp.mockRestore();
   });
 
@@ -41,20 +42,22 @@ describe('init command', () => {
 
   it('detects conflicts without --force', async () => {
     const sp = vi.spyOn(console, 'log').mockImplementation(() => {});
-    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), 'existing');
+    mkdirSync(join(TEST_DIR, '.claude'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'existing');
     const { default: init } = await import('../../src/commands/init.js');
     await init({ tool: 'claude-code' });
-    const content = readFileSync(join(TEST_DIR, 'CLAUDE.md'), 'utf-8');
+    const content = readFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'utf-8');
     expect(content).toBe('existing');
     sp.mockRestore();
   });
 
   it('overwrites with --force and creates backup', async () => {
     const sp = vi.spyOn(console, 'log').mockImplementation(() => {});
-    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), 'existing');
+    mkdirSync(join(TEST_DIR, '.claude'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'existing');
     const { default: init } = await import('../../src/commands/init.js');
     await init({ tool: 'claude-code', force: true });
-    const content = readFileSync(join(TEST_DIR, 'CLAUDE.md'), 'utf-8');
+    const content = readFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'utf-8');
     expect(content).toContain('loom:version');
     expect(existsSync(join(TEST_DIR, '.loom-backup'))).toBe(true);
     sp.mockRestore();

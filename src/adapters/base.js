@@ -28,6 +28,9 @@ export class BaseAdapter {
     throw new Error('must implement generate()');
   }
 
+  generateWrappers(projectRoot, version) {
+  }
+
   getTargetFiles(projectRoot) {
     throw new Error('must implement getTargetFiles()');
   }

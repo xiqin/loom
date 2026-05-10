@@ -24,7 +24,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 
 ## Skills 清单
 
-所有 skills 通过 `/` 命令或 Skill 工具调用。详见 `skills/` 目录。
+所有 skills 通过 `/` 命令或 Skill 工具调用。详见 `.loom/skills/` 目录（完整定义），通过 `.claude/skills/` 中的包装器发现。
 
 **融合说明：** loom 继承 superpowers 并融合两者优点，包含流程图、自检清单、反模式、常见误区等增强特性。
 
@@ -79,7 +79,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 
 1. `ENGINEERING-INDEX.md` — 新增/删除了模块、路由、控制器、服务
 2. `.loom/memory/MEMORY.md` — 踩坑、用户偏好、变更要点
-3. `LOOM.md` — 引入了新的约定或命令
+3. `.claude/CLAUDE.md` — 引入了新的约定或命令
 
 ## 记忆
 

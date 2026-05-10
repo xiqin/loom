@@ -90,7 +90,7 @@ Cannot safely uninstall without manifest.
 6. 清理空目录（向上递归直到项目根目录）
 7. 删除 .loom/install-manifest.json
 8. 删除 .loom/ 空子目录
-9. 如果是 Claude Code：注销插件
+9. 如果是 Claude Code：删除 `.claude/` wrapper 目录（如空）
 10. 如果 --purge：
     a. 删除 .loom-backup/ 目录
     b. 清理 .gitignore 中的 loom 条目
@@ -156,11 +156,10 @@ rm .cursorrules           # Cursor
 rm -rf .github/copilot-instructions.md  # Copilot
 
 # 删除插件元数据
-rm -rf .claude-plugin/    # Claude Code
 rm -rf .opencode/         # OpenCode
 
-# 删除 Claude Code 发现路径
-rm -rf skills/ commands/
+# 删除 Claude Code wrapper 目录
+rm -rf .claude/
 
 # 清理 .gitignore
 # 手动编辑 .gitignore，移除 loom 相关行
@@ -207,4 +206,4 @@ A: 卸载器拒绝执行。需要手动删除或重新安装后再卸载。
 
 ### Q: 如何完全清理 loom 痕迹？
 
-A: 使用 `--purge` 模式卸载，然后手动删除 `/loom-init-project` 生成的文件（constitution.md、MEMORY.md、project-structure.md、loom.md）。
+A: 使用 `--purge` 模式卸载，然后手动删除 `/loom-init-project` 生成的文件（constitution.md、MEMORY.md、project-structure.md、.loom/loom.md）。

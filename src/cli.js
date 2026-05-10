@@ -16,7 +16,7 @@ program
 
 program
   .command('init')
-  .description('Install loom to your project')
+  .description('Install loom: assets to .loom/, wrappers to tool-specific dir')
   .requiredOption('--tool <target>', `Target tool: ${TOOL_IDS.join(' | ')}`)
   .option('--version <ver>', 'Version to install (default: package.json version)')
   .option('--dry-run', 'Show files to be generated without writing')
@@ -28,22 +28,13 @@ program
 
 program
   .command('update')
-  .description('Update installed loom files')
+  .description('Resync .loom/ assets and tool wrappers from latest version')
   .option('--tool <target>', 'Target tool (auto-detect if omitted)')
   .option('--version <ver>', 'Version to install (default: package.json version)')
   .option('--dry-run', 'Show diff without applying')
   .action(async (options) => {
-    const { install, detectInstalledTool } = await import('./core/installer.js');
-    if (!options.tool) {
-      const detected = detectInstalledTool(process.cwd());
-      if (!detected) {
-        console.log('\n  No loom installation detected. Run "loom init --tool <target>" first.\n');
-        return;
-      }
-      options.tool = detected;
-      console.log(`\n  Detected: ${detected}\n`);
-    }
-    await install({ ...options, update: true });
+    const { default: updateCommand } = await import('./commands/update.js');
+    await updateCommand(options);
   });
 
 program
@@ -57,7 +48,7 @@ program
 
 program
   .command('uninstall')
-  .description('Uninstall loom from your project')
+  .description('Remove manifest-tracked generated files')
   .requiredOption('--tool <target>', `Target tool: ${TOOL_IDS.join(' | ')}`)
   .option('--dry-run', 'Preview files to be deleted without removing')
   .option('--purge', 'Also remove backups and .gitignore entries')

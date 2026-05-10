@@ -24,7 +24,7 @@ describe('init idempotency', () => {
     expect(m1.version).toBeDefined();
     expect(m1.tool).toBe('cursor');
     expect(existsSync(join(TEST_DIR, '.cursorrules'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.loom', 'install-manifest.json'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom', 'install-manifest-cursor.json'))).toBe(true);
   });
 
   it('second install with same version is no-op (returns null)', async () => {
@@ -35,10 +35,10 @@ describe('init idempotency', () => {
 
   it('manifest does not change on second install', async () => {
     await install({ tool: 'cursor' });
-    const manifest1 = readManifest(TEST_DIR);
+    const manifest1 = readManifest(TEST_DIR, 'cursor');
 
     await install({ tool: 'cursor', force: true });
-    const manifest2 = readManifest(TEST_DIR);
+    const manifest2 = readManifest(TEST_DIR, 'cursor');
 
     expect(manifest2.version).toBe(manifest1.version);
     expect(manifest2.tool).toBe(manifest1.tool);
@@ -46,10 +46,10 @@ describe('init idempotency', () => {
 
   it('entry file content is stable across installs', async () => {
     await install({ tool: 'claude-code' });
-    const content1 = readFileSync(join(TEST_DIR, 'CLAUDE.md'), 'utf-8');
+    const content1 = readFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'utf-8');
 
     await install({ tool: 'claude-code', force: true });
-    const content2 = readFileSync(join(TEST_DIR, 'CLAUDE.md'), 'utf-8');
+    const content2 = readFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'utf-8');
 
     expect(content2).toBe(content1);
   });

@@ -61,7 +61,7 @@ describe('uninstall safe delete', () => {
     await install({ tool: 'claude-code' });
     // claude-code creates .loom/skills/ which is tracked in manifest
     // Delete a file that's in the manifest checksums
-    const manifest = readFileSync(join(TEST_DIR, '.loom', 'install-manifest.json'), 'utf-8');
+    const manifest = readFileSync(join(TEST_DIR, '.loom', 'install-manifest-claude-code.json'), 'utf-8');
     const manifestData = JSON.parse(manifest);
     const checksumFiles = Object.keys(manifestData.fileChecksums);
     expect(checksumFiles.length).toBeGreaterThan(0);

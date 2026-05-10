@@ -20,7 +20,8 @@ afterEach(() => {
 describe('purge no collateral damage', () => {
   it('purge removes backup directory', async () => {
     // Create a conflicting file, then force install (creates backup)
-    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), 'old content');
+    mkdirSync(join(TEST_DIR, '.claude'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'old content');
     await install({ tool: 'claude-code', force: true });
     expect(existsSync(join(TEST_DIR, '.loom-backup'))).toBe(true);
 
@@ -78,7 +79,8 @@ describe('purge no collateral damage', () => {
   });
 
   it('normal uninstall keeps .loom-backup/', async () => {
-    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), 'old');
+    mkdirSync(join(TEST_DIR, '.claude'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'old');
     await install({ tool: 'claude-code', force: true });
     expect(existsSync(join(TEST_DIR, '.loom-backup'))).toBe(true);
 

@@ -15,7 +15,6 @@ export class OpenCodeAdapter extends BaseAdapter {
   getTargetFiles(projectRoot) {
     return [
       join(projectRoot, 'AGENTS.md'),
-      join(projectRoot, '.opencode', 'plugin.json'),
       join(projectRoot, '.opencode', 'skills'),
       join(projectRoot, '.opencode', 'commands'),
       join(projectRoot, '.loom', 'skills'),
@@ -28,13 +27,17 @@ export class OpenCodeAdapter extends BaseAdapter {
   }
 
   _transformContent(content) {
-    return content.replace(/\{\{ENTRY_FILE\}\}/g, this.entryFilename);
+    return content
+      .replace(/\{\{ENTRY_FILE\}\}/g, this.entryFilename)
+      .replace(/\{\{TOOL_NAME\}\}/g, 'opencode')
+      .replace(/\{\{SUBTITLE\}\}/g, '\n')
+      .replace(/\{\{SKILLS_SECTION\}\}/g, '## Skills 和 Commands\n\n所有 skills 定义在 `.opencode/skills/`，所有 commands 定义在 `.opencode/commands/` 目录中（均为指向 `.loom/` 源文件的包装器）。');
   }
 
   async generate(projectRoot, version, options = {}) {
     const assetsDir = this._getAssetsDir();
 
-    // Copy directories: skills, commands, hooks, templates, core to .loom/
+    // Copy directories to .loom/ (single source of truth)
     const dirs = ['skills', 'commands', 'hooks', 'templates', 'core'];
     for (const dir of dirs) {
       const src = join(assetsDir, dir);
@@ -42,80 +45,103 @@ export class OpenCodeAdapter extends BaseAdapter {
       this._copyDirRecursive(src, dest, version);
     }
 
-    // Copy skills and commands to .opencode/ for OpenCode discovery
-    for (const dir of ['skills', 'commands']) {
-      const src = join(assetsDir, dir);
-      const dest = join(projectRoot, '.opencode', dir);
-      this._copyDirRecursive(src, dest, version);
+    // Copy schema to .loom/schema/
+    const schemaPath = join(assetsDir, 'config', 'templates.schema.json');
+    if (existsSync(schemaPath)) {
+      const schemaDest = join(projectRoot, '.loom', 'schema', 'templates.schema.json');
+      mkdirSync(join(projectRoot, '.loom', 'schema'), { recursive: true });
+      const schemaContent = readFileSync(schemaPath, 'utf-8');
+      writeFileSync(schemaDest, schemaContent);
     }
 
-    // Copy plugin.json
-    const pluginDir = join(projectRoot, '.opencode');
-    mkdirSync(pluginDir, { recursive: true });
-    const pluginContent = readFileSync(join(assetsDir, 'plugin-meta', 'opencode-plugin.json'), 'utf-8');
-    writeFileSync(join(pluginDir, 'plugin.json'), pluginContent);
+    // Generate .opencode/ wrappers
+    this._generateWrappers(projectRoot, version);
+  }
 
-    // Generate AGENTS.md
+  generateWrappers(projectRoot, version) {
+    this._generateWrappers(projectRoot, version);
+  }
+
+  _generateWrappers(projectRoot, version) {
+    const opencodeDir = join(projectRoot, '.opencode');
+
+    // --- Skill wrappers (from .loom/skills/) ---
+    const loomSkills = join(projectRoot, '.loom', 'skills');
+    if (existsSync(loomSkills)) {
+      this._generateSkillWrappers(loomSkills, join(opencodeDir, 'skills'));
+    }
+
+    // --- Command wrappers ---
+    const loomCommands = join(projectRoot, '.loom', 'commands');
+    if (existsSync(loomCommands)) {
+      this._generateCommandWrappers(loomCommands, join(opencodeDir, 'commands'));
+    }
+
+    // --- Generate AGENTS.md ---
     const entryContent = this._generateEntryMd();
-    writeFileSync(join(projectRoot, this.entryFilename), injectVersion(entryContent, version));
+    mkdirSync(opencodeDir, { recursive: true });
+    writeFileSync(join(projectRoot, 'AGENTS.md'), injectVersion(entryContent, version));
+  }
+
+  _generateCommandWrappers(srcDir, destDir) {
+    mkdirSync(destDir, { recursive: true });
+    const entries = readdirSync(srcDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+      const name = entry.name.replace(/\.md$/, '');
+      const cmdName = name.replace(/^loom-/, '/');
+
+      const wrapper = `# ${cmdName}
+
+See @.loom/commands/${entry.name} for the full command definition.
+`;
+      writeFileSync(join(destDir, entry.name), wrapper);
+    }
+  }
+
+  _generateSkillWrappers(srcDir, destDir) {
+    mkdirSync(destDir, { recursive: true });
+    const entries = readdirSync(srcDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const skillMd = join(srcDir, entry.name, 'SKILL.md');
+      if (!existsSync(skillMd)) continue;
+
+      const content = readFileSync(skillMd, 'utf-8');
+      const frontMatter = this._extractYamlFrontMatter(content);
+      const name = frontMatter.name || entry.name;
+      const description = frontMatter.description || '';
+
+      const wrapper = `---
+name: ${name}
+---
+
+Full definition: @.loom/skills/${entry.name}/SKILL.md
+`;
+      writeFileSync(join(destDir, `${entry.name}.md`), wrapper);
+    }
+  }
+
+  _extractYamlFrontMatter(content) {
+    const result = {};
+    const match = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!match) return result;
+    const lines = match[1].split('\n');
+    for (const line of lines) {
+      const kv = line.match(/^(\w+):\s*(.+)/);
+      if (kv) {
+        const val = kv[2].trim();
+        if (val.startsWith('>')) {
+          result[kv[1]] = val.replace(/^>\s*/, '').trim();
+        } else {
+          result[kv[1]] = val;
+        }
+      }
+    }
+    return result;
   }
 
   _generateEntryMd() {
-    const fn = this.entryFilename;
-    return `# loom — AI 工程化框架
-
-> AI 工程化框架，基于 superpowers 增强。
-
-## 核心流水线
-
-\`\`\`
-brainstorming → writing-plans → git-worktree → subagent-dev → index-update
-\`\`\`
-
-## 项目规则
-
-- **宪章**：\`.loom/memory/constitution.md\`（由 \`/loom-init-project\` 自动生成）
-- **工程约束**：\`.loom/rules/project-structure.md\`（由 \`/loom-init-project\` 自动生成）
-
-**所有开发活动必须遵守以上两份文件。**
-
-## 快速开始
-
-1. 安装 loom 框架（运行 \`loom init --tool opencode\`）
-2. 首次使用请运行初始化命令扫描项目并生成配置
-3. 开始需求头脑风暴，生成 \`specs/<date+feature>/spec.md\`
-4. 拆解实现计划，生成 \`plan.md\`
-5. 派发 subagent 执行编码
-6. 编码完成后自动触发 index-update 同步工程索引
-
-## Skills 清单
-
-所有 skills 位于 \`.opencode/skills/\` 目录。
-
-## 流水线状态横幅
-
-每个阶段输出状态横幅：
-
-\`\`\`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- pipeline [■■■□□] Step 3/5 — git-worktree
- 功能:    feature-name
- status:  ▶ 开始执行
- 下一步:  → Step 4: subagent-dev
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\`\`\`
-
-## 完成工作后更新
-
-代码变更后同步更新：
-
-1. \`ENGINEERING-INDEX.md\` — 新增/删除了模块、路由、控制器、服务
-2. \`.loom/memory/MEMORY.md\` — 踩坑、用户偏好、变更要点
-3. \`${fn}\` — 引入了新的约定或命令
-
-## 记忆
-
-持久化记录在 \`.loom/memory/MEMORY.md\`，新会话时先读此文件。
-`;
+    return this._transformContent(this.readAsset('templates/loom.md'));
   }
 }

@@ -17,3 +17,6 @@ coverage/
 
 # User-generated specs
 specs/
+
+# loom-engineering
+.loom-backup/

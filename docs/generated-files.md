@@ -56,22 +56,31 @@ Hook 系统文件。当前只有一个 hook（session-start），在 Claude Code
 
 核心框架文档：`pipeline.md`、`review-framework.md`、`progress-tracker.md`、`subagent-context.md`。
 
+### OpenCode 发现路径
+
+OpenCode 通过 `.opencode/` 目录发现 skills 和 commands。loom 会在 `.opencode/` 下生成 wrapper 文件，通过 `@` 引用指向 `.loom/` 中的真实定义：
+
+- `.opencode/skills/<name>.md` — 包含 `@.loom/skills/<name>/SKILL.md` 引用
+- `.opencode/commands/<name>.md` — 包含 `@.loom/commands/<name>.md` 引用
+- `AGENTS.md` — 入口文档，引用 `.loom/` 下的核心框架文档
+
+`.loom/` 是唯一维护点，`.opencode/` 仅为 OpenCode 的发现层。
+
 ### 插件元数据
 
-| 文件                              | 工具        | 用途     |
-| --------------------------------- | ----------- | -------- |
-| `.claude-plugin/plugin.json`      | Claude Code | 插件注册 |
-| `.claude-plugin/marketplace.json` | Claude Code | 插件市场 |
-| `.opencode/plugin.json`           | OpenCode    | 插件注册 |
+| 文件                    | 工具     | 用途     |
+| ----------------------- | -------- | -------- |
+| `.opencode/plugin.json` | OpenCode | 插件注册 |
 
 ### Claude Code 发现路径
 
-Claude Code 需要 `skills/` 和 `commands/` 在项目根目录才能发现。loom 会将这两个目录同时复制到：
+Claude Code 通过 `.claude/` 目录发现 skills 和 commands。loom 会在 `.claude/` 下生成 wrapper 文件，通过 `@` 引用指向 `.loom/` 中的真实定义：
 
-- `.loom/skills/` + `.loom/commands/`（loom 管理的副本）
-- `skills/` + `commands/`（项目根目录的副本）
+- `.claude/skills/<name>.md` — 包含 `@.loom/skills/<name>/SKILL.md` 引用
+- `.claude/commands/<name>.md` — 包含 `@.loom/commands/<name>.md` 引用
+- `.claude/CLAUDE.md` — 入口文档，引用 `.loom/` 下的核心框架文档
 
-两个副本内容相同。
+`.loom/` 是唯一维护点，`.claude/` 仅为 Claude Code 的发现层。
 
 ## 初始化阶段生成（`/loom-init-project`）
 
@@ -82,7 +91,7 @@ Claude Code 需要 `skills/` 和 `commands/` 在项目根目录才能发现。lo
 | `.loom/memory/constitution.md`     | 项目宪章（编码准则、技术栈、红线） | ✅ 重新运行 `/loom-init-project` |
 | `.loom/rules/project-structure.md` | 工程结构约束                       | ✅ 重新运行 `/loom-init-project` |
 | `.loom/memory/MEMORY.md`           | 记忆文件（踩坑、偏好、状态）       | ✅ 重新运行 `/loom-init-project` |
-| `loom.md`                          | 项目入口文档                       | ✅ 重新运行 `/loom-init-project` |
+| `.loom/loom.md`                    | 项目入口文档                       | ✅ 重新运行 `/loom-init-project` |
 
 ### constitution.md
 
@@ -176,4 +185,4 @@ title: 某文件
 | `.loom/memory/MEMORY.md`             | 用户   | ✅ 完全可编辑         |
 | `.loom/rules/project-structure.md`   | 用户   | ✅ 完全可编辑         |
 | `specs/`                             | 用户   | ✅ 完全可编辑         |
-| `loom.md`                            | 用户   | ✅ 完全可编辑         |
+| `.loom/loom.md`                      | 用户   | ✅ 完全可编辑         |

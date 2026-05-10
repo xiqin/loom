@@ -19,9 +19,14 @@ afterEach(() => {
 });
 
 describe('getManifestPath', () => {
-  it('returns .loom/install-manifest.json path', () => {
+  it('returns .loom/install-manifest.json path without tool', () => {
     const p = getManifestPath(TEST_DIR);
     expect(p).toBe(join(TEST_DIR, '.loom', 'install-manifest.json'));
+  });
+
+  it('returns per-tool path when tool is given', () => {
+    const p = getManifestPath(TEST_DIR, 'claude-code');
+    expect(p).toBe(join(TEST_DIR, '.loom', 'install-manifest-claude-code.json'));
   });
 });
 
@@ -30,17 +35,16 @@ describe('createManifest', () => {
     const m = createManifest({
       version: '1.0.0',
       tool: 'claude-code',
-      filesCreated: ['CLAUDE.md'],
+      filesCreated: ['.claude/CLAUDE.md'],
       filesUpdated: [],
       backups: [],
-      hooksInstalled: false,
-      fileChecksums: { 'CLAUDE.md': 'abc123' },
+      fileChecksums: { '.claude/CLAUDE.md': 'abc123' },
     });
     expect(m.version).toBe('1.0.0');
     expect(m.tool).toBe('claude-code');
-    expect(m.filesCreated).toEqual(['CLAUDE.md']);
+    expect(m.filesCreated).toEqual(['.claude/CLAUDE.md']);
     expect(m.filesUpdated).toEqual([]);
-    expect(m.fileChecksums).toEqual({ 'CLAUDE.md': 'abc123' });
+    expect(m.fileChecksums).toEqual({ '.claude/CLAUDE.md': 'abc123' });
     expect(m.installedAt).toBeDefined();
   });
 
@@ -49,7 +53,6 @@ describe('createManifest', () => {
     expect(m.filesCreated).toEqual([]);
     expect(m.filesUpdated).toEqual([]);
     expect(m.backups).toEqual([]);
-    expect(m.hooksInstalled).toBe(false);
     expect(m.fileChecksums).toEqual({});
   });
 });
@@ -63,7 +66,7 @@ describe('writeManifest + readManifest', () => {
       fileChecksums: { '.github/copilot-instructions.md': 'def456' },
     });
     writeManifest(TEST_DIR, data);
-    const loaded = readManifest(TEST_DIR);
+    const loaded = readManifest(TEST_DIR, data.tool);
     expect(loaded.version).toBe('1.0.1');
     expect(loaded.tool).toBe('copilot');
     expect(loaded.fileChecksums['.github/copilot-instructions.md']).toBe('def456');
@@ -72,7 +75,7 @@ describe('writeManifest + readManifest', () => {
   it('creates .loom directory if missing', () => {
     const data = createManifest({ version: '1.0.0', tool: 'cursor' });
     writeManifest(TEST_DIR, data);
-    expect(existsSync(join(TEST_DIR, '.loom', 'install-manifest.json'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom', 'install-manifest-cursor.json'))).toBe(true);
   });
 });
 

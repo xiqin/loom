@@ -1,19 +1,13 @@
-# {{PROJECT_NAME}}
+# loom — Weave Specs into Execution
 
-{{PROJECT_DESC}}
-
-> 本项目使用 **loom** — AI 工程化框架。
+AI 工程化框架。从需求描述出发，经过头脑风暴、计划拆解、隔离开发、代码审查，最终交付。
 
 ## 宪法（最高优先级）
 
-- **项目章程**：`.loom/memory/constitution.md` — 核心原则
+- **项目章程**：`.loom/memory/constitution.md` — 核心原则，开发前必读
 - **工程约束**：`.loom/rules/project-structure.md` — 目录结构、编码红线
 
-**所有开发活动必须遵守以上两份文件。**
-
-## 入口
-
-{{ENTRY_POINTS}}
+**所有开发活动必须遵守以上两份文件。与之冲突以这两份文件为准。**
 
 ## 开发流程
 
@@ -21,30 +15,11 @@
 brainstorming → writing-plans → git-worktree → subagent-dev → index-update
 ```
 
-| Step | 阶段 | 说明 |
-|------|------|------|
-| 1 | brainstorming | 需求头脑风暴，产出 `spec.md` |
-| 2 | writing-plans | 按分层拆 task，产出 `plan.md` |
-| 3 | git-worktree | 创建隔离分支 |
-| 4 | subagent-dev | Subagent 隔离派发 + 双审查 |
-| 5 | index-update | 同步工程索引 |
-
-## 快速命令
-
-```bash
-# 编译
-{{BUILD_CMD}}
-
-# 测试
-{{TEST_CMD}}
-
-# 静态检查
-{{VET_CMD}}
-```
+{{SKILLS_SECTION}}
 
 ## 工程索引
 
-`ENGINEERING-INDEX.md` 是项目索引，包含路由表、控制器/服务/模型层的方法签名、依赖关系。
+`ENGINEERING-INDEX.md` 是项目索引，包含路由表、控制器/服务/模型层的方法签名、依赖关系和调用链。
 
 ## 完成工作后更新
 

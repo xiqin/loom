@@ -17,7 +17,8 @@ afterEach(() => {
 describe('doctor command', () => {
   it('reports installation status when files exist', async () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), '<!-- loom:version=1.0.0 -->\ncontent');
+    mkdirSync(join(TEST_DIR, '.claude'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), '<!-- loom:version=1.0.0 -->\ncontent');
     mkdirSync(join(TEST_DIR, '.loom', 'skills'), { recursive: true });
     writeFileSync(join(TEST_DIR, '.gitignore'), '.loom-backup/\n');
 

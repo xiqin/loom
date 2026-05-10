@@ -1,35 +1,15 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getAdapter, listAdapters } from '../adapters/registry.js';
 import { parseVersion, needsUpdate } from '../utils/version.js';
 import { createBackup, cleanupBackups } from '../utils/backup.js';
 import { detectConflicts } from '../utils/conflict.js';
+import { readManifest, writeManifest, createManifest } from '../core/manifest.js';
+import { buildChecksumMap } from '../core/uninstaller.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf-8'));
-
-function registerPluginClaude(projectRoot) {
-  if (process.env.CI) return;
-  try {
-    execSync('claude plugin update loom', { cwd: projectRoot, stdio: 'pipe' });
-  } catch {
-    // Plugin may not be installed yet, try install
-    try {
-      execSync('claude plugin marketplace remove loom', { cwd: projectRoot, stdio: 'pipe' });
-    } catch { /* not registered */ }
-    try {
-      execSync(`claude plugin marketplace add "${projectRoot}"`, { cwd: projectRoot, stdio: 'pipe' });
-    } catch { /* ignore */ }
-    try {
-      execSync('claude plugin install loom@loom --scope project', { cwd: projectRoot, stdio: 'pipe' });
-    } catch { /* ignore */ }
-  }
-  try {
-    execSync('claude plugin enable loom@loom --scope project', { cwd: projectRoot, stdio: 'pipe' });
-  } catch { /* ignore */ }
-}
 
 export default async function update(options) {
   const projectRoot = process.cwd();
@@ -57,7 +37,7 @@ export default async function update(options) {
   if (loomManaged.length === 0) {
     const anyExist = conflicts.length > 0;
     if (!anyExist) {
-      console.log('  not installed. Run "loom init --tool <target>" first.\n');
+      console.log('  Not installed. Run "loom init --tool <target>" first.\n');
       return;
     }
     console.log('  Files exist but have no loom version marker. Use "loom init --force" to overwrite.\n');
@@ -74,9 +54,11 @@ export default async function update(options) {
   console.log(`  Updating v${installedVersion} → v${pkg.version}...`);
 
   if (options.dryRun) {
-    console.log('  Dry run — would update the following files:');
+    console.log('  Dry run — would update the following:');
+    console.log('    - .loom/ assets (skills, commands, hooks, templates, core)');
+    console.log('    - Tool wrappers (.claude/ or equivalent)');
     for (const f of targetFiles) {
-      console.log(`    - ${f}`);
+      console.log(`    ${f}`);
     }
     console.log('');
     return;
@@ -86,16 +68,21 @@ export default async function update(options) {
   const existingFiles = loomManaged.map(c => c.file);
   const userCustoms = {};
   for (const file of existingFiles) {
-    const content = readFileSync(file, 'utf-8');
-    const custom = extractUserCustom(content);
-    if (custom) userCustoms[file] = custom;
+    try {
+      const content = readFileSync(file, 'utf-8');
+      const custom = extractUserCustom(content);
+      if (custom) userCustoms[file] = custom;
+    } catch { /* file may not exist yet */ }
   }
   const backupPath = createBackup(projectRoot, existingFiles);
   console.log(`  Backup: ${backupPath}`);
   cleanupBackups(projectRoot);
 
-  // Re-generate
+  // Re-generate .loom/ assets (single source of truth)
   await adapter.generate(projectRoot, pkg.version);
+
+  // Resync tool wrappers from .loom/ sources
+  adapter.generateWrappers(projectRoot, pkg.version);
 
   // Restore USER CUSTOM sections
   for (const file of existingFiles) {
@@ -108,13 +95,20 @@ export default async function update(options) {
     } catch (e) { console.warn(`  Warning: failed to restore user custom in ${file}:`, e.message); }
   }
 
+  // Update manifest
+  const checksums = buildChecksumMap(projectRoot, targetFiles);
+  const manifest = createManifest({
+    version: pkg.version,
+    tool,
+    filesCreated: existingFiles.filter(f => {
+      try { readFileSync(f); return true; } catch { return false; }
+    }),
+    filesUpdated: [],
+    fileChecksums: checksums,
+  });
+  writeManifest(projectRoot, manifest);
+
   console.log(`  Updated to v${pkg.version}.`);
-
-  // Re-register plugin for Claude Code
-  if (tool === 'claude-code') {
-    registerPluginClaude(projectRoot);
-  }
-
   console.log('');
 }
 
@@ -126,7 +120,7 @@ function detectInstalledTool(projectRoot) {
       try {
         const content = readFileSync(file, 'utf-8');
         if (parseVersion(content)) return tool;
-      } catch (e) { console.warn(`  Warning: could not read ${file}:`, e.message); }
+      } catch { /* ignore unreadable files */ }
     }
   }
   return null;
