@@ -3,8 +3,6 @@ title: 自定义指南
 description: loom 框架多级自定义说明
 ---
 
-<!-- loom:version=1.0.0 -->
-
 # 自定义指南
 
 ## 概述

@@ -3,8 +3,6 @@ title: 安装指南
 description: loom 框架安装与配置
 ---
 
-<!-- loom:version=1.0.0 -->
-
 # 安装指南
 
 ## 方式一（推荐）：一键安装脚本
@@ -33,12 +31,12 @@ irm https://raw.githubusercontent.com/xiqin/loom/main/install.ps1 | iex -Tool cl
 
 ### 安装选项
 
-| Flag | 作用 |
-|------|------|
+| Flag              | 作用                                                                  |
+| ----------------- | --------------------------------------------------------------------- |
 | `--tool <target>` | 目标工具：`claude-code` / `cursor` / `copilot` / `opencode`（可重复） |
-| `--force` | 覆盖已有文件（自动备份到 `.loom-backup/`） |
-| `--link` | 注册 `loom` CLI 到全局（`npm link`），安装后可直接使用 `loom` 命令 |
-| `--dry-run` | 预览，不实际写入 |
+| `--force`         | 覆盖已有文件（自动备份到 `.loom-backup/`）                            |
+| `--link`          | 注册 `loom` CLI 到全局（`npm link`），安装后可直接使用 `loom` 命令    |
+| `--dry-run`       | 预览，不实际写入                                                      |
 
 示例：
 

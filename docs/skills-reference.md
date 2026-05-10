@@ -3,8 +3,6 @@ title: Skills 参考
 description: loom 全部技能快速参考
 ---
 
-<!-- loom:version=1.0.0 -->
-
 # Skills 参考
 
 > **本文件由各 SKILL.md 自动汇总，内容可能滞后于实际 skills。最新定义请直接参考 `skills/` 目录中各 SKILL.md。**
@@ -125,11 +123,14 @@ description: >
 # <Skill 标题>
 
 ## 触发条件
+
 ...
 
 ## 执行流程
+
 ...
 
 ## 完成条件与下一步
+
 ...
 ```

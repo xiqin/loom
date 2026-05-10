@@ -3,8 +3,6 @@ title: 工具适配公共内容
 description: loom 框架在各工具中的公共配置和使用说明
 ---
 
-<!-- loom:version=1.0.0 -->
-
 # 工具适配公共内容
 
 本文档包含 loom 框架在各工具中的公共配置和使用说明，各工具适配文档应引用此文件而非重复内容。
@@ -15,13 +13,13 @@ description: loom 框架在各工具中的公共配置和使用说明
 brainstorming → writing-plans → git-worktree → subagent-dev → index-update
 ```
 
-| Step | 阶段 | 说明 | 输出 |
-|------|------|------|------|
-| 1 | brainstorming | 需求头脑风暴，探索 2-3 种实现方案 | `specs/<date+feature>/spec.md` |
-| 2 | writing-plans | 按项目架构分层拆解 task | `specs/<date+feature>/plan.md` |
-| 3 | git-worktree | 创建隔离分支 | feature 分支 |
-| 4 | subagent-driven-development | Subagent 隔离派发 + 双审查 | 源码 + 测试报告 |
-| 5 | index-update | 工程索引同步 | ENGINEERING-INDEX.md |
+| Step | 阶段                        | 说明                              | 输出                           |
+| ---- | --------------------------- | --------------------------------- | ------------------------------ |
+| 1    | brainstorming               | 需求头脑风暴，探索 2-3 种实现方案 | `specs/<date+feature>/spec.md` |
+| 2    | writing-plans               | 按项目架构分层拆解 task           | `specs/<date+feature>/plan.md` |
+| 3    | git-worktree                | 创建隔离分支                      | feature 分支                   |
+| 4    | subagent-driven-development | Subagent 隔离派发 + 双审查        | 源码 + 测试报告                |
+| 5    | index-update                | 工程索引同步                      | ENGINEERING-INDEX.md           |
 
 ## 项目规则
 
@@ -119,14 +117,17 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 ### 常见问题
 
 **Skill 未触发**
+
 - 检查 SKILL.md 的 description 中是否包含正确的关键词
 - 确认文件路径正确
 
 **Hooks 未执行**
+
 - 检查 hooks 配置文件格式
 - 确认脚本有执行权限
 
 **命令未识别**
+
 - 检查命令文件是否在 `commands/` 目录
 - 确认文件名与命令名匹配
 
