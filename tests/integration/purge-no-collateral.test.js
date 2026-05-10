@@ -60,22 +60,39 @@ describe('purge no collateral damage', () => {
     expect(existsSync(join(TEST_DIR, 'src', 'main.js'))).toBe(true);
   });
 
-  it('purge does NOT delete user-modified loom files', async () => {
+  it('purge preserves non-manifest .loom/ content (memory/, rules/)', async () => {
     await install({ tool: 'claude-code' });
 
-    // Modify a skill file tracked in manifest
-    const skillFile = join(TEST_DIR, '.loom', 'skills', 'brainstorming', 'SKILL.md');
-    expect(existsSync(skillFile)).toBe(true);
-    const original = readFileSync(skillFile, 'utf-8');
-    writeFileSync(skillFile, original + '\n# user added comment');
+    // Create non-manifest content under .loom/
+    mkdirSync(join(TEST_DIR, '.loom', 'memory'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.loom', 'memory', 'constitution.md'), '# Constitution');
+    mkdirSync(join(TEST_DIR, '.loom', 'rules'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.loom', 'rules', 'project-structure.md'), '# Rules');
+    // Also create some other user file under .loom/ not in manifest
+    mkdirSync(join(TEST_DIR, '.loom', 'notes'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.loom', 'notes', 'devlog.md'), '# Dev log');
 
     await uninstall({ tool: 'claude-code', purge: true });
 
-    // Modified skill file is in .loom/ which gets purged,
-    // but classifyFiles marks it as modified (hash mismatch)
-    // purge rmSync(.loom/) removes it anyway since it's recursive
-    // This is expected behavior — purge removes entire .loom/
-    // The safety is in non-purge mode where modified files are kept
+    // .loom/memory/ and .loom/rules/ must survive purge
+    expect(existsSync(join(TEST_DIR, '.loom', 'memory', 'constitution.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom', 'rules', 'project-structure.md'))).toBe(true);
+    // Other user-created content under .loom/ also survives
+    expect(existsSync(join(TEST_DIR, '.loom', 'notes', 'devlog.md'))).toBe(true);
+  });
+
+  it('normal uninstall also preserves non-manifest .loom/ content', async () => {
+    await install({ tool: 'claude-code' });
+
+    mkdirSync(join(TEST_DIR, '.loom', 'memory'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.loom', 'memory', 'constitution.md'), '# Constitution');
+    mkdirSync(join(TEST_DIR, '.loom', 'rules'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.loom', 'rules', 'project-structure.md'), '# Rules');
+
+    await uninstall({ tool: 'claude-code' }); // no purge
+
+    expect(existsSync(join(TEST_DIR, '.loom', 'memory', 'constitution.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom', 'rules', 'project-structure.md'))).toBe(true);
   });
 
   it('normal uninstall keeps .loom-backup/', async () => {

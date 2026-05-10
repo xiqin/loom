@@ -54,7 +54,7 @@ describe('OpenCodeAdapter', () => {
     await adapter.generate(TEST_DIR, '1.0.0');
     const content = readFileSync(join(TEST_DIR, 'AGENTS.md'), 'utf-8');
     expect(content).toContain('<!-- loom:version=1.0.0 -->');
-    expect(content).toContain('loom — AI 工程化框架');
+    expect(content).toContain('loom — Weave Specs into Execution');
   });
 
   it('generate does NOT create root-level skills/ or commands/', async () => {

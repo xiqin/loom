@@ -28,14 +28,14 @@ describe('uninstall safe delete', () => {
     expect(existsSync(join(TEST_DIR, '.cursorrules'))).toBe(false);
   });
 
-  it('skips modified files', async () => {
+  it('skips modified files in non-interactive mode', async () => {
     await install({ tool: 'cursor' });
     // Modify entry file
     writeFileSync(join(TEST_DIR, '.cursorrules'), 'user modified content');
 
     const result = await uninstall({ tool: 'cursor' });
     expect(result.skipped).toBeGreaterThan(0);
-    // Modified file should still exist
+    // Modified file should still exist (prompt defaults to no in non-TTY)
     expect(existsSync(join(TEST_DIR, '.cursorrules'))).toBe(true);
     expect(readFileSync(join(TEST_DIR, '.cursorrules'), 'utf-8')).toBe('user modified content');
   });

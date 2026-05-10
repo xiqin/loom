@@ -1,7 +1,25 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, unlinkSync, existsSync, readdirSync, rmdirSync, rmSync, statSync } from 'node:fs';
 import { join, relative, dirname } from 'node:path';
+import { createInterface } from 'node:readline';
+import { stdin, stdout } from 'node:process';
 import { readManifest, getManifestPath } from './manifest.js';
+
+/**
+ * Prompt user for yes/no confirmation.
+ * Returns true if user answered y/yes, false otherwise.
+ * In non-TTY environments (e.g., tests), defaults to false (skip).
+ */
+function promptYesNo(question) {
+  if (!stdin.isTTY) return Promise.resolve(false);
+  const rl = createInterface({ input: stdin, output: stdout });
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
+    });
+  });
+}
 
 /**
  * Compute SHA-256 hex digest of a file.
@@ -168,6 +186,20 @@ export async function uninstall(options) {
   // Collect all known files for directory cleanup
   const allKnown = new Set([...safe, ...modified, ...missing]);
 
+  // ── Ask user about modified files ───────────────────────────────────
+  if (modified.length > 0 && !dryRun) {
+    console.log(`\n  ${modified.length} file(s) have been modified since installation:`);
+    for (const f of modified) console.log(`    ! ${f}`);
+    const answer = await promptYesNo('\n  Delete these modified files anyway? [y/N] ');
+    if (answer) {
+      safe.push(...modified);
+      modified.length = 0;
+      console.log('  Will delete modified files.');
+    } else {
+      console.log('  Skipping modified files.');
+    }
+  }
+
   // ── Dry run ─────────────────────────────────────────────────────────
   if (dryRun) {
     console.log(`\n  [dry-run] loom uninstall — ${tool} v${manifest.version}`);
@@ -178,7 +210,7 @@ export async function uninstall(options) {
       for (const f of safe) console.log(`    - ${f}`);
     }
     if (modified.length > 0) {
-      console.log(`\n  Skipped — user modified (${modified.length} file(s)):`);
+      console.log(`\n  Modified — will ask for confirmation (${modified.length} file(s)):`);
       for (const f of modified) console.log(`    ! ${f}`);
     }
     if (missing.length > 0) {
@@ -222,26 +254,21 @@ export async function uninstall(options) {
     console.log(`  Warning: could not delete manifest: ${e.message}`);
   }
 
-  // Remove .loom/ — purge: recursive (all ours), normal: only if empty
+  // Remove .loom/ — only remove empty dirs; never nuke non-manifest content
   const loomDir = join(projectRoot, '.loom');
   try {
     if (existsSync(loomDir)) {
-      if (purge) {
-        rmSync(loomDir, { recursive: true, force: true });
-      } else {
-        // Remove empty subdirs then try .loom itself
-        const tryRmEmpty = (dir) => {
-          try {
-            const entries = readdirSync(dir);
-            for (const e of entries) {
-              const child = join(dir, e);
-              if (statSync(child).isDirectory()) tryRmEmpty(child);
-            }
-            if (readdirSync(dir).length === 0) rmdirSync(dir);
-          } catch { /* ignore */ }
-        };
-        tryRmEmpty(loomDir);
-      }
+      const tryRmEmpty = (dir) => {
+        try {
+          const entries = readdirSync(dir);
+          for (const e of entries) {
+            const child = join(dir, e);
+            if (statSync(child).isDirectory()) tryRmEmpty(child);
+          }
+          if (readdirSync(dir).length === 0) rmdirSync(dir);
+        } catch { /* ignore */ }
+      };
+      tryRmEmpty(loomDir);
     }
   } catch { /* ignore */ }
 

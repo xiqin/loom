@@ -24,9 +24,11 @@ describe('CopilotAdapter', () => {
     expect(adapter.entryFilename).toBe('.github/copilot-instructions.md');
   });
 
-  it('getTargetFiles returns copilot-instructions.md path', () => {
+  it('getTargetFiles returns copilot-instructions.md and .loom/ paths', () => {
     const files = adapter.getTargetFiles(TEST_DIR);
-    expect(files).toEqual([join(TEST_DIR, '.github', 'copilot-instructions.md')]);
+    expect(files).toContain(join(TEST_DIR, '.github', 'copilot-instructions.md'));
+    expect(files).toContain(join(TEST_DIR, '.loom', 'skills'));
+    expect(files).toContain(join(TEST_DIR, '.loom', 'core'));
   });
 
   it('generate creates .github/copilot-instructions.md', async () => {
@@ -37,7 +39,7 @@ describe('CopilotAdapter', () => {
   it('generated file contains version marker', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
     const content = readFileSync(join(TEST_DIR, '.github', 'copilot-instructions.md'), 'utf-8');
-    expect(content).toContain('# loom:version=1.0.0');
+    expect(content).toContain('<!-- loom:version=1.0.0 -->');
   });
 
   it('generated file contains pipeline steps', async () => {
@@ -48,9 +50,9 @@ describe('CopilotAdapter', () => {
     expect(content).toContain('subagent-dev');
   });
 
-  it('generated file contains USER CUSTOM section', async () => {
+  it('generated file contains Skills section', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
     const content = readFileSync(join(TEST_DIR, '.github', 'copilot-instructions.md'), 'utf-8');
-    expect(content).toContain('USER CUSTOM');
+    expect(content).toContain('Skills 清单');
   });
 });

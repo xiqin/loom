@@ -1,4 +1,4 @@
-import { mkdirSync, cpSync, writeFileSync, readdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, cpSync, writeFileSync, readdirSync, readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { injectVersion, parseVersion } from '../utils/version.js';
@@ -37,6 +37,85 @@ export class BaseAdapter {
 
   _transformContent(content) {
     return content;
+  }
+
+  _generateLoomDirs(projectRoot, version) {
+    const assetsDir = this._getAssetsDir();
+    const dirs = ['skills', 'commands', 'hooks', 'templates', 'core'];
+    for (const dir of dirs) {
+      const src = join(assetsDir, dir);
+      const dest = join(projectRoot, '.loom', dir);
+      this._copyDirRecursive(src, dest, version);
+    }
+
+    const schemaPath = join(assetsDir, 'config', 'templates.schema.json');
+    if (existsSync(schemaPath)) {
+      const schemaDest = join(projectRoot, '.loom', 'schema', 'templates.schema.json');
+      mkdirSync(join(projectRoot, '.loom', 'schema'), { recursive: true });
+      const schemaContent = readFileSync(schemaPath, 'utf-8');
+      writeFileSync(schemaDest, schemaContent);
+    }
+  }
+
+  _generateEntryMd() {
+    return this._transformContent(this.readAsset('templates/loom.md'));
+  }
+
+  _generateSkillWrappers(srcDir, destDir) {
+    mkdirSync(destDir, { recursive: true });
+    const entries = readdirSync(srcDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const skillMd = join(srcDir, entry.name, 'SKILL.md');
+      if (!existsSync(skillMd)) continue;
+
+      const content = readFileSync(skillMd, 'utf-8');
+      const frontMatter = this._extractYamlFrontMatter(content);
+      const name = frontMatter.name || entry.name;
+
+      const wrapper = `---
+name: ${name}
+---
+
+Full definition: @.loom/skills/${entry.name}/SKILL.md
+`;
+      writeFileSync(join(destDir, `${entry.name}.md`), wrapper);
+    }
+  }
+
+  _generateCommandWrappers(srcDir, destDir) {
+    mkdirSync(destDir, { recursive: true });
+    const entries = readdirSync(srcDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+      const name = entry.name.replace(/\.md$/, '');
+      const cmdName = name.replace(/^loom-/, '/');
+
+      const wrapper = `# ${cmdName}
+
+See @.loom/commands/${entry.name} for the full command definition.
+`;
+      writeFileSync(join(destDir, entry.name), wrapper);
+    }
+  }
+
+  _extractYamlFrontMatter(content) {
+    const result = {};
+    const match = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!match) return result;
+    const lines = match[1].split('\n');
+    for (const line of lines) {
+      const kv = line.match(/^(\w+):\s*(.+)/);
+      if (kv) {
+        const val = kv[2].trim();
+        if (val.startsWith('>')) {
+          result[kv[1]] = val.replace(/^>\s*/, '').trim();
+        } else {
+          result[kv[1]] = val;
+        }
+      }
+    }
+    return result;
   }
 
   _copyDirRecursive(src, dest, version) {
