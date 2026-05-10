@@ -12,7 +12,7 @@
 set -euo pipefail
 
 REPO="xiqin/loom"
-VERSION="1.1.0"
+VERSION="1.2.1"
 
 # ── Flags ──────────────────────────────────────────────────────────────
 DRY=0
