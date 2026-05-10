@@ -15,18 +15,18 @@ function run() {
   const cwd = process.cwd();
 
   if (!isProjectRoot(cwd)) {
-    console.debug('[rss:session-start] No project root detected, skipping');
+    console.debug('[loom:session-start] No project root detected, skipping');
     return;
   }
 
-  const constitution = join(cwd, '.rss', 'memory', 'constitution.md');
+  const constitution = join(cwd, '.loom', 'memory', 'constitution.md');
   if (!existsSync(constitution)) {
     console.log('');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(' rss: 项目未初始化');
+    console.log(' loom: 项目未初始化');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('');
-    console.log(' 建议运行 /rss-init-project 扫描项目并生成配置');
+    console.log(' 建议运行 /loom-init-project 扫描项目并生成配置');
     console.log('');
   }
 }

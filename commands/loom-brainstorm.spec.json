@@ -1,5 +1,5 @@
 {
-  "name": "rss-brainstorm",
+  "name": "loom-brainstorm",
   "description": "需求头脑风暴。探索 2-3 种实现方案及 trade-off，输出 spec.md。",
   "skill": "brainstorming",
   "inputs": [
@@ -28,8 +28,8 @@
       "写入 spec.md 和 progress.md"
     ],
     "reads": [
-      ".rss/memory/constitution.md",
-      ".rss/rules/project-structure.md",
+      ".loom/memory/constitution.md",
+      ".loom/rules/project-structure.md",
       "现有源码（修改类需求时）"
     ],
     "interactive": [
@@ -43,5 +43,5 @@
   "interactive": true,
   "relatedTemplates": [],
   "prerequisites": [],
-  "nextCommand": "rss-write-plan"
+  "nextCommand": "loom-write-plan"
 }

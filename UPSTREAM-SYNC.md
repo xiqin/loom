@@ -2,7 +2,7 @@
 
 ## 概述
 
-rss 基于 superpowers 增强，需要定期同步上游更新。
+loom 基于 superpowers 增强，需要定期同步上游更新。
 
 ## 方案 1：Git Subtree（推荐）
 
@@ -22,12 +22,12 @@ diff -rq upstream/superpowers/skills/ skills/
 ### 目录结构
 
 ```
-rss/
+loom/
 ├── upstream/
 │   └── superpowers/          # 上游 superpowers 原始文件
 │       ├── skills/
 │       └── ...
-├── skills/                   # rss 增强版 skills
+├── skills/                   # loom 增强版 skills
 │   ├── brainstorming/
 │   └── ...
 ├── SYNC-LOG.md               # 同步日志
@@ -48,12 +48,12 @@ git subtree pull --prefix=upstream/superpowers https://github.com/superpowers/su
    ```
 
 3. **评估变更**
-   - 新增功能 → 是否需要集成到 rss
-   - 修复 bug → 是否影响 rss 的定制版本
+   - 新增功能 → 是否需要集成到 loom
+   - 修复 bug → 是否影响 loom 的定制版本
    - 接口变更 → 是否需要适配
 
 4. **合并更新**
-   - 手动合并有价值的变更到 rss skills
+   - 手动合并有价值的变更到 loom skills
    - 记录到 SYNC-LOG.md
 
 ## 方案 2：手动追踪
@@ -94,7 +94,7 @@ git diff HEAD superpowers/main -- skills/
 - systematic-debugging: 修复了 xxx 问题
 
 **处理方式**:
-- brainstorming: 已合并到 rss 版本
+- brainstorming: 已合并到 loom 版本
 - systematic-debugging: 已同步
 
 **待处理**:
@@ -103,13 +103,13 @@ git diff HEAD superpowers/main -- skills/
 
 ## 版本对照表
 
-| superpowers 版本 | rss 版本 | 同步日期 | 变更摘要 |
+| superpowers 版本 | loom 版本 | 同步日期 | 变更摘要 |
 |-----------------|---------|---------|---------|
-| v1.0.0 | rss 1.0.0 | 2026-04-26 | 初始版本 |
+| v1.0.0 | loom 1.0.0 | 2026-04-26 | 初始版本 |
 
 ## 建议
 
 1. **使用方案 1（Git Subtree）**：自动追踪上游，便于 diff
 2. **建立定期同步习惯**：每月或每个 superpowers release 后同步
 3. **记录同步日志**：便于追溯变更历史
-4. **保持 rss 定制清晰**：明确哪些是 rss 增强，哪些是 superpowers 原始
+4. **保持 loom 定制清晰**：明确哪些是 loom 增强，哪些是 superpowers 原始

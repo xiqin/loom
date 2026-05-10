@@ -37,7 +37,7 @@ describe('CopilotAdapter', () => {
   it('generated file contains version marker', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
     const content = readFileSync(join(TEST_DIR, '.github', 'copilot-instructions.md'), 'utf-8');
-    expect(content).toContain('# rss:version=1.0.0');
+    expect(content).toContain('# loom:version=1.0.0');
   });
 
   it('generated file contains pipeline steps', async () => {

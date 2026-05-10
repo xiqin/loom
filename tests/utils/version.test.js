@@ -5,22 +5,22 @@ describe('version', () => {
   it('injectVersion adds version comment to markdown content', () => {
     const content = '# Hello\nSome text';
     const result = injectVersion(content, '1.0.0', 'markdown');
-    expect(result).toBe('<!-- rss:version=1.0.0 -->\n# Hello\nSome text');
+    expect(result).toBe('<!-- loom:version=1.0.0 -->\n# Hello\nSome text');
   });
 
   it('injectVersion adds version comment to plain text', () => {
     const content = 'some config line';
     const result = injectVersion(content, '1.0.0', 'text');
-    expect(result).toBe('# rss:version=1.0.0\nsome config line');
+    expect(result).toBe('# loom:version=1.0.0\nsome config line');
   });
 
   it('parseVersion extracts version from markdown', () => {
-    const content = '<!-- rss:version=1.2.3 -->\n# Hello';
+    const content = '<!-- loom:version=1.2.3 -->\n# Hello';
     expect(parseVersion(content)).toBe('1.2.3');
   });
 
   it('parseVersion extracts version from text', () => {
-    const content = '# rss:version=0.9.0\nsome text';
+    const content = '# loom:version=0.9.0\nsome text';
     expect(parseVersion(content)).toBe('0.9.0');
   });
 

@@ -1,11 +1,11 @@
-# /rss-execute-plan
+# /loom-execute-plan
 
 执行实现计划。
 
 ## 用法
 
 ```
-/rss-execute-plan [feature-name]
+/loom-execute-plan [feature-name]
 ```
 
 ## 功能
@@ -29,5 +29,5 @@
 ## 示例
 
 ```
-/rss-execute-plan passport-list
+/loom-execute-plan passport-list
 ```

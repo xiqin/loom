@@ -1,13 +1,13 @@
 ---
 title: 工具适配公共内容
-description: rss 框架在各工具中的公共配置和使用说明
+description: loom 框架在各工具中的公共配置和使用说明
 ---
 
-<!-- rss:version=1.0.0 -->
+<!-- loom:version=1.0.0 -->
 
 # 工具适配公共内容
 
-本文档包含 rss 框架在各工具中的公共配置和使用说明，各工具适配文档应引用此文件而非重复内容。
+本文档包含 loom 框架在各工具中的公共配置和使用说明，各工具适配文档应引用此文件而非重复内容。
 
 ## 核心流水线
 
@@ -25,8 +25,8 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 
 ## 项目规则
 
-- **宪章**：`.rss/memory/constitution.md`（由 `/rss-init-project` 自动生成）
-- **工程约束**：`.rss/rules/project-structure.md`（由 `/rss-init-project` 自动生成）
+- **宪章**：`.loom/memory/constitution.md`（由 `/loom-init-project` 自动生成）
+- **工程约束**：`.loom/rules/project-structure.md`（由 `/loom-init-project` 自动生成）
 
 所有开发活动必须遵守以上两份文件。
 
@@ -42,7 +42,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 
 ```
 项目根目录/
-├── .rss/
+├── .loom/
 │   ├── memory/
 │   │   ├── constitution.md      # 项目宪章
 │   │   └── MEMORY.md            # 记忆文件
@@ -74,28 +74,28 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 2. 加载入口文档（`CLAUDE.md` / `AGENTS.md`）
 3. 执行 `hooks/session-start`
 4. 检查项目是否已初始化
-5. 如果未初始化，提示运行 `/rss-init-project`
+5. 如果未初始化，提示运行 `/loom-init-project`
 
 ## 自定义
 
 ### 项目级 Skills
 
-在 `.rss/skills/` 中创建项目专属 skill：
+在 `.loom/skills/` 中创建项目专属 skill：
 
 ```
-.rss/skills/
+.loom/skills/
   my-project-skill/
     SKILL.md
 ```
 
-### 覆盖 rss Skills
+### 覆盖 loom Skills
 
-在 `.rss/skills/` 中创建同名 skill 目录覆盖 rss 默认：
+在 `.loom/skills/` 中创建同名 skill 目录覆盖 loom 默认：
 
 ```
-.rss/skills/
+.loom/skills/
   writing-plans/
-    SKILL.md        # 覆盖 rss 默认的 writing-plans
+    SKILL.md        # 覆盖 loom 默认的 writing-plans
 ```
 
 ### 自定义 Hooks
@@ -131,9 +131,9 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 
 ## 使用前检查清单
 
-- [ ] 项目已运行 `/rss-init-project` 初始化？
-- [ ] 宪章（`.rss/memory/constitution.md`）中的技术栈和红线已确认？
-- [ ] 工程约束（`.rss/rules/project-structure.md`）已审核？
+- [ ] 项目已运行 `/loom-init-project` 初始化？
+- [ ] 宪章（`.loom/memory/constitution.md`）中的技术栈和红线已确认？
+- [ ] 工程约束（`.loom/rules/project-structure.md`）已审核？
 - [ ] `common.md` 中的流水线定义与项目实际需求一致？
 
 ## 最佳实践

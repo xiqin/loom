@@ -28,7 +28,7 @@ export class CopilotAdapter extends BaseAdapter {
   _buildContent() {
     return `# Copilot Instructions
 
-本项目使用 rss（Requirement-Driven Software Engineering）AI 工程化框架。
+ 本项目使用 loom（Loom AI 工程化框架）。
 
 ## 开发流程
 
@@ -55,11 +55,11 @@ export class CopilotAdapter extends BaseAdapter {
 
 ## 项目规则
 
-- **宪章**：.rss/memory/constitution.md
-- **工程约束**：.rss/rules/project-structure.md
+- **宪章**：.loom/memory/constitution.md
+- **工程约束**：.loom/rules/project-structure.md
 
 ## --- USER CUSTOM ---
-# 在此添加项目自定义规则，rss update 时不覆盖此区域
+# 在此添加项目自定义规则，loom update 时不覆盖此区域
 `;
   }
 }

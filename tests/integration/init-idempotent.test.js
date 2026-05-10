@@ -24,7 +24,7 @@ describe('init idempotency', () => {
     expect(m1.version).toBeDefined();
     expect(m1.tool).toBe('cursor');
     expect(existsSync(join(TEST_DIR, '.cursorrules'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.rss', 'install-manifest.json'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom', 'install-manifest.json'))).toBe(true);
   });
 
   it('second install with same version is no-op (returns null)', async () => {
@@ -57,7 +57,7 @@ describe('init idempotency', () => {
   it('skills directory is stable across installs (claude-code)', async () => {
     await install({ tool: 'claude-code' });
     const { readdirSync } = await import('node:fs');
-    const skillsDir = join(TEST_DIR, '.rss', 'skills');
+    const skillsDir = join(TEST_DIR, '.loom', 'skills');
     expect(existsSync(skillsDir)).toBe(true);
     const skills1 = readdirSync(skillsDir, { recursive: true }).sort();
 

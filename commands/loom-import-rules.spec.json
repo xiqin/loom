@@ -1,16 +1,16 @@
 {
-  "name": "rss-import-rules",
-  "description": "导入项目自定义规则。扫描已有规则文件，合并到 rss 框架配置中。",
+  "name": "loom-import-rules",
+  "description": "导入项目自定义规则。扫描已有规则文件，合并到 loom 框架配置中。",
   "skill": null,
   "inputs": [],
   "outputs": [
     {
-      "path": ".rss/memory/constitution.md",
+      "path": ".loom/memory/constitution.md",
       "description": "合并后的项目宪章",
       "modified": true
     },
     {
-      "path": ".rss/rules/project-structure.md",
+      "path": ".loom/rules/project-structure.md",
       "description": "合并后的工程结构约束",
       "modified": true
     }
@@ -21,9 +21,9 @@
       "更新 project-structure.md（合并导入的规则）"
     ],
     "reads": [
-      ".rss/memory/constitution.md",
-      ".rss/rules/*.md",
-      ".rss/skills/*/SKILL.md",
+      ".loom/memory/constitution.md",
+      ".loom/rules/*.md",
+      ".loom/skills/*/SKILL.md",
       "CLAUDE.md / AGENTS.md",
       ".cursorrules",
       ".github/copilot-instructions.md",
@@ -34,7 +34,7 @@
       "展示合并结果供用户确认"
     ]
   },
-  "rollbackStrategy": "从 .rss-backup/ 恢复原始文件（需安装时 --backup 生效）",
+  "rollbackStrategy": "从 .loom-backup/ 恢复原始文件（需安装时 --backup 生效）",
   "idempotent": false,
   "interactive": true,
   "relatedTemplates": [
@@ -42,7 +42,7 @@
     "project-structure"
   ],
   "prerequisites": [
-    ".rss/memory/constitution.md 必须存在（由 rss-init-project 生成）"
+    ".loom/memory/constitution.md 必须存在（由 loom-init-project 生成）"
   ],
   "nextCommand": null,
   "status": "not-implemented"

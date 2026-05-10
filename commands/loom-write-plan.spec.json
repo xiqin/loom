@@ -1,5 +1,5 @@
 {
-  "name": "rss-write-plan",
+  "name": "loom-write-plan",
   "description": "拆解实现计划。将 spec.md 拆分为可执行的 task 列表，输出 plan.md。",
   "skill": "writing-plans",
   "inputs": [
@@ -29,9 +29,9 @@
     ],
     "reads": [
       "specs/<date+feature>/spec.md",
-      ".rss/memory/constitution.md",
-      ".rss/rules/project-structure.md",
-      ".rss/templates/subagent-context.md（如存在）"
+      ".loom/memory/constitution.md",
+      ".loom/rules/project-structure.md",
+      ".loom/templates/subagent-context.md（如存在）"
     ],
     "interactive": [
       "展示计划供用户确认",
@@ -43,7 +43,7 @@
   "interactive": true,
   "relatedTemplates": [],
   "prerequisites": [
-    "specs/<date+feature>/spec.md 必须存在（由 rss-brainstorm 生成）"
+    "specs/<date+feature>/spec.md 必须存在（由 loom-brainstorm 生成）"
   ],
-  "nextCommand": "rss-execute-plan"
+  "nextCommand": "loom-execute-plan"
 }

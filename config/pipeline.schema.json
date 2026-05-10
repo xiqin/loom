@@ -1,14 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/xiqin/rss/config/pipeline.schema.json",
-  "title": "rss Pipeline State Machine",
+  "$id": "https://github.com/xiqin/loom/config/pipeline.schema.json",
+  "title": "loom Pipeline State Machine",
   "description": "功能级流水线状态定义。每个 specs/<date+feature>/ 目录对应一个功能实例，独立跟踪状态。",
   "version": 1,
   "states": {
     "brainstorming": {
       "step": 1,
       "skill": "brainstorming",
-      "command": "rss-brainstorm",
+      "command": "loom-brainstorm",
       "description": "需求头脑风暴，探索 2-3 种实现方案",
       "allowedTransitions": ["planning", "failed"],
       "preconditions": [
@@ -19,8 +19,8 @@
         { "path": "specs/<date+feature>/progress.md", "action": "created" }
       ],
       "reads": [
-        ".rss/memory/constitution.md",
-        ".rss/rules/project-structure.md"
+        ".loom/memory/constitution.md",
+        ".loom/rules/project-structure.md"
       ],
       "interactive": true,
       "autoTransition": false,
@@ -30,7 +30,7 @@
     "planning": {
       "step": 2,
       "skill": "writing-plans",
-      "command": "rss-write-plan",
+      "command": "loom-write-plan",
       "description": "按项目架构分层拆解 task",
       "allowedTransitions": ["approved", "failed"],
       "preconditions": [
@@ -42,8 +42,8 @@
       ],
       "reads": [
         "specs/<date+feature>/spec.md",
-        ".rss/memory/constitution.md",
-        ".rss/rules/project-structure.md"
+        ".loom/memory/constitution.md",
+        ".loom/rules/project-structure.md"
       ],
       "interactive": true,
       "autoTransition": false,
@@ -64,13 +64,13 @@
       "reads": [],
       "interactive": false,
       "autoTransition": false,
-      "nextOnSuccess": "用户触发 rss-execute-plan 后转 executing",
+      "nextOnSuccess": "用户触发 loom-execute-plan 后转 executing",
       "banner": null
     },
     "executing": {
       "step": "3-4",
       "skill": "subagent-driven-development",
-      "command": "rss-execute-plan",
+      "command": "loom-execute-plan",
       "description": "创建隔离分支，派发 subagent 编码，运行测试",
       "allowedTransitions": ["reviewing", "failed"],
       "preconditions": [
@@ -86,9 +86,9 @@
       "reads": [
         "specs/<date+feature>/plan.md",
         "specs/<date+feature>/spec.md",
-        ".rss/templates/subagent-context.md",
-        ".rss/memory/constitution.md",
-        ".rss/rules/project-structure.md"
+        ".loom/templates/subagent-context.md",
+        ".loom/memory/constitution.md",
+        ".loom/rules/project-structure.md"
       ],
       "interactive": true,
       "autoTransition": false,
@@ -121,8 +121,8 @@
       "reads": [
         "specs/<date+feature>/spec.md",
         "specs/<date+feature>/plan.md",
-        ".rss/memory/constitution.md",
-        ".rss/rules/project-structure.md",
+        ".loom/memory/constitution.md",
+        ".loom/rules/project-structure.md",
         "源码文件"
       ],
       "interactive": true,
@@ -146,12 +146,12 @@
       ],
       "outputs": [
         { "path": "ENGINEERING-INDEX.md", "action": "modified" },
-        { "path": ".rss/memory/MEMORY.md", "action": "modified" },
+        { "path": ".loom/memory/MEMORY.md", "action": "modified" },
         { "path": "specs/<date+feature>/progress.md", "action": "modified" }
       ],
       "reads": [
         "ENGINEERING-INDEX.md",
-        ".rss/memory/MEMORY.md",
+        ".loom/memory/MEMORY.md",
         "源码文件"
       ],
       "interactive": false,
@@ -175,9 +175,9 @@
       "nextOnSuccess": null,
       "banner": null,
       "recovery": {
-        "fromBrainstorming": "重新执行 rss-brainstorm",
-        "fromPlanning": "重新执行 rss-write-plan",
-        "fromExecuting": "修复问题后重新执行 rss-execute-plan",
+        "fromBrainstorming": "重新执行 loom-brainstorm",
+        "fromPlanning": "重新执行 loom-write-plan",
+        "fromExecuting": "修复问题后重新执行 loom-execute-plan",
         "fromReviewing": "修复 BLOCKER 后重新进入 reviewing"
       }
     }
@@ -187,7 +187,7 @@
     { "from": "brainstorming", "to": "failed", "trigger": "error", "description": "brainstorming 失败" },
     { "from": "planning", "to": "approved", "trigger": "user_confirms_plan", "description": "用户确认 plan.md" },
     { "from": "planning", "to": "failed", "trigger": "error", "description": "planning 失败" },
-    { "from": "approved", "to": "executing", "trigger": "user_triggers_execute", "description": "用户执行 rss-execute-plan" },
+    { "from": "approved", "to": "executing", "trigger": "user_triggers_execute", "description": "用户执行 loom-execute-plan" },
     { "from": "approved", "to": "failed", "trigger": "error", "description": "执行前检查失败" },
     { "from": "executing", "to": "reviewing", "trigger": "all_tasks_done", "description": "所有 task 完成，进入审查" },
     { "from": "executing", "to": "failed", "trigger": "test_failure|blocker", "description": "测试失败或 BLOCKED 状态" },

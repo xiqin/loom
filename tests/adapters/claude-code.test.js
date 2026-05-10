@@ -26,14 +26,14 @@ describe('ClaudeCodeAdapter', () => {
 
   it('getTargetFiles returns expected paths', () => {
     const files = adapter.getTargetFiles(TEST_DIR);
-    expect(files).toContainEqual(expect.stringContaining('.rss'));
+    expect(files).toContainEqual(expect.stringContaining('.loom'));
     expect(files).toContainEqual(expect.stringContaining('CLAUDE.md'));
     expect(files).toContainEqual(expect.stringContaining('.claude-plugin'));
   });
 
   it('generate creates directory structure', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
-    expect(existsSync(join(TEST_DIR, '.rss', 'skills'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom', 'skills'))).toBe(true);
     expect(existsSync(join(TEST_DIR, 'CLAUDE.md'))).toBe(true);
     expect(existsSync(join(TEST_DIR, '.claude-plugin', 'plugin.json'))).toBe(true);
   });
@@ -41,12 +41,12 @@ describe('ClaudeCodeAdapter', () => {
   it('generate injects version markers', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
     const claudeMd = readFileSync(join(TEST_DIR, 'CLAUDE.md'), 'utf-8');
-    expect(claudeMd).toContain('<!-- rss:version=1.0.0 -->');
+    expect(claudeMd).toContain('<!-- loom:version=1.0.0 -->');
   });
 
   it('generate copies skills', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
-    const skills = readFileSync(join(TEST_DIR, '.rss', 'skills', 'brainstorming', 'SKILL.md'), 'utf-8');
+    const skills = readFileSync(join(TEST_DIR, '.loom', 'skills', 'brainstorming', 'SKILL.md'), 'utf-8');
     expect(skills).toContain('头脑风暴');
   });
 });

@@ -25,7 +25,7 @@ export class CursorAdapter extends BaseAdapter {
   _buildContent() {
     const pipeline = this.readAsset('core/pipeline.md');
 
-    return `.cursorrules (由 rss-engineering 自动生成)
+    return `.cursorrules (由 loom-engineering 自动生成)
 
 # ===== 核心流水线 =====
 
@@ -60,7 +60,7 @@ ${this._extractSection(pipeline, '5 步流水线')}
 4. 目标驱动 — 将模糊任务转化为可验证的成功标准
 
 ## --- USER CUSTOM ---
-# 在此添加项目自定义规则，rss update 时不覆盖此区域
+# 在此添加项目自定义规则，loom update 时不覆盖此区域
 `;
   }
 

@@ -1,24 +1,24 @@
 # 生成文件说明
 
-rss 在安装和初始化过程中会生成多种文件。本文档说明每个文件的来源、用途和安全删除策略。
+loom 在安装和初始化过程中会生成多种文件。本文档说明每个文件的来源、用途和安全删除策略。
 
-## 安装阶段生成（`rss init`）
+## 安装阶段生成（`loom init`）
 
 ### 入口文件
 
-| 文件 | 工具 | 用途 |
-|------|------|------|
-| `CLAUDE.md` | Claude Code | AI 工具入口文档，包含流水线说明、快速开始、skills 清单 |
-| `AGENTS.md` | OpenCode | 同上 |
-| `.cursorrules` | Cursor | Cursor 专用入口文件 |
-| `.github/copilot-instructions.md` | Copilot | Copilot 专用入口文件 |
+| 文件                              | 工具        | 用途                                                   |
+| --------------------------------- | ----------- | ------------------------------------------------------ |
+| `CLAUDE.md`                       | Claude Code | AI 工具入口文档，包含流水线说明、快速开始、skills 清单 |
+| `AGENTS.md`                       | OpenCode    | 同上                                                   |
+| `.cursorrules`                    | Cursor      | Cursor 专用入口文件                                    |
+| `.github/copilot-instructions.md` | Copilot     | Copilot 专用入口文件                                   |
 
-入口文件包含 `rss:version=x.y.z` 标记，用于版本检测。删除入口文件后 AI 工具无法识别 rss。
+入口文件包含 `loom:version=x.y.z` 标记，用于版本检测。删除入口文件后 AI 工具无法识别 loom。
 
-### .rss/ 目录
+### .loom/ 目录
 
 ```
-.rss/
+.loom/
 ├── install-manifest.json     # 安装清单
 ├── skills/                   # Skills 定义（16 个）
 ├── commands/                 # Commands 定义（5 个）
@@ -50,7 +50,7 @@ Hook 系统文件。当前只有一个 hook（session-start），在 Claude Code
 
 #### templates/
 
-4 个模板文件：`constitution.md`、`project-structure.md`、`rss.md`、`memory.md`。由 `/rss-init-project` 使用。
+4 个模板文件：`constitution.md`、`project-structure.md`、`loom.md`、`memory.md`。由 `/loom-init-project` 使用。
 
 #### core/
 
@@ -58,31 +58,31 @@ Hook 系统文件。当前只有一个 hook（session-start），在 Claude Code
 
 ### 插件元数据
 
-| 文件 | 工具 | 用途 |
-|------|------|------|
-| `.claude-plugin/plugin.json` | Claude Code | 插件注册 |
+| 文件                              | 工具        | 用途     |
+| --------------------------------- | ----------- | -------- |
+| `.claude-plugin/plugin.json`      | Claude Code | 插件注册 |
 | `.claude-plugin/marketplace.json` | Claude Code | 插件市场 |
-| `.opencode/plugin.json` | OpenCode | 插件注册 |
+| `.opencode/plugin.json`           | OpenCode    | 插件注册 |
 
 ### Claude Code 发现路径
 
-Claude Code 需要 `skills/` 和 `commands/` 在项目根目录才能发现。rss 会将这两个目录同时复制到：
+Claude Code 需要 `skills/` 和 `commands/` 在项目根目录才能发现。loom 会将这两个目录同时复制到：
 
-- `.rss/skills/` + `.rss/commands/`（rss 管理的副本）
+- `.loom/skills/` + `.loom/commands/`（loom 管理的副本）
 - `skills/` + `commands/`（项目根目录的副本）
 
 两个副本内容相同。
 
-## 初始化阶段生成（`/rss-init-project`）
+## 初始化阶段生成（`/loom-init-project`）
 
-运行 `/rss-init-project` 后生成：
+运行 `/loom-init-project` 后生成：
 
-| 文件 | 用途 | 可重新生成 |
-|------|------|------------|
-| `.rss/memory/constitution.md` | 项目宪章（编码准则、技术栈、红线） | ✅ 重新运行 `/rss-init-project` |
-| `.rss/rules/project-structure.md` | 工程结构约束 | ✅ 重新运行 `/rss-init-project` |
-| `.rss/memory/MEMORY.md` | 记忆文件（踩坑、偏好、状态） | ✅ 重新运行 `/rss-init-project` |
-| `rss.md` | 项目入口文档 | ✅ 重新运行 `/rss-init-project` |
+| 文件                               | 用途                               | 可重新生成                       |
+| ---------------------------------- | ---------------------------------- | -------------------------------- |
+| `.loom/memory/constitution.md`     | 项目宪章（编码准则、技术栈、红线） | ✅ 重新运行 `/loom-init-project` |
+| `.loom/rules/project-structure.md` | 工程结构约束                       | ✅ 重新运行 `/loom-init-project` |
+| `.loom/memory/MEMORY.md`           | 记忆文件（踩坑、偏好、状态）       | ✅ 重新运行 `/loom-init-project` |
+| `loom.md`                          | 项目入口文档                       | ✅ 重新运行 `/loom-init-project` |
 
 ### constitution.md
 
@@ -110,7 +110,7 @@ Claude Code 需要 `skills/` 和 `commands/` 在项目根目录才能发现。rs
 - 用户偏好
 - 变更要点
 
-### rss.md
+### loom.md
 
 项目入口文档，包含：
 
@@ -122,18 +122,18 @@ Claude Code 需要 `skills/` 和 `commands/` 在项目根目录才能发现。rs
 
 运行流水线时生成：
 
-| 文件 | 生成时机 | 用途 |
-|------|----------|------|
-| `specs/<date+feature>/spec.md` | brainstorming | 需求规格 |
-| `specs/<date+feature>/plan.md` | writing-plans | 实现计划 |
+| 文件                               | 生成时机      | 用途     |
+| ---------------------------------- | ------------- | -------- |
+| `specs/<date+feature>/spec.md`     | brainstorming | 需求规格 |
+| `specs/<date+feature>/plan.md`     | writing-plans | 实现计划 |
 | `specs/<date+feature>/progress.md` | brainstorming | 进度追踪 |
-| `ENGINEERING-INDEX.md` | index-update | 工程索引 |
+| `ENGINEERING-INDEX.md`             | index-update  | 工程索引 |
 
 ## 备份文件
 
-| 文件 | 生成时机 | 用途 |
-|------|----------|------|
-| `.rss-backup/<timestamp>/` | `--force` 安装 | 冲突文件备份 |
+| 文件                        | 生成时机       | 用途         |
+| --------------------------- | -------------- | ------------ |
+| `.loom-backup/<timestamp>/` | `--force` 安装 | 冲突文件备份 |
 
 备份目录自动保留最近 3 份，自动加入 `.gitignore`。
 
@@ -142,7 +142,7 @@ Claude Code 需要 `skills/` 和 `commands/` 在项目根目录才能发现。rs
 每个生成的文本文件（非 JSON）包含版本标记：
 
 ```
-<!-- rss:version=1.0.1 -->
+<!-- loom:version=当前版本号 -->
 ```
 
 或在 Markdown frontmatter 中：
@@ -151,29 +151,29 @@ Claude Code 需要 `skills/` 和 `commands/` 在项目根目录才能发现。rs
 ---
 title: 某文件
 ---
-<!-- rss:version=1.0.1 -->
+<!-- loom:version=当前版本号 -->
 ```
 
 版本标记用于：
 
-- `rss doctor` 检测已安装版本
-- `rss update` 比较版本号
+- `loom doctor` 检测已安装版本
+- `loom update` 比较版本号
 - `detectInstalledTool()` 检测已安装的工具
 - 卸载器的 manifest 工具验证
 
 ## 文件所有权
 
-| 文件 | 所有者 | 用户可编辑 |
-|------|--------|-----------|
-| `CLAUDE.md` / `AGENTS.md` 等入口文件 | rss | ✅ 但卸载时会检测修改 |
-| `.rss/skills/` | rss | ✅ 但更新时会覆盖 |
-| `.rss/commands/` | rss | ✅ 但更新时会覆盖 |
-| `.rss/hooks/` | rss | ✅ 但更新时会覆盖 |
-| `.rss/templates/` | rss | ✅ 但更新时会覆盖 |
-| `.rss/core/` | rss | ✅ 但更新时会覆盖 |
-| `.rss/install-manifest.json` | rss | ✗ 不要手动编辑 |
-| `.rss/memory/constitution.md` | 用户 | ✅ 完全可编辑 |
-| `.rss/memory/MEMORY.md` | 用户 | ✅ 完全可编辑 |
-| `.rss/rules/project-structure.md` | 用户 | ✅ 完全可编辑 |
-| `specs/` | 用户 | ✅ 完全可编辑 |
-| `rss.md` | 用户 | ✅ 完全可编辑 |
+| 文件                                 | 所有者 | 用户可编辑            |
+| ------------------------------------ | ------ | --------------------- |
+| `CLAUDE.md` / `AGENTS.md` 等入口文件 | loom   | ✅ 但卸载时会检测修改 |
+| `.loom/skills/`                      | loom   | ✅ 但更新时会覆盖     |
+| `.loom/commands/`                    | loom   | ✅ 但更新时会覆盖     |
+| `.loom/hooks/`                       | loom   | ✅ 但更新时会覆盖     |
+| `.loom/templates/`                   | loom   | ✅ 但更新时会覆盖     |
+| `.loom/core/`                        | loom   | ✅ 但更新时会覆盖     |
+| `.loom/install-manifest.json`        | loom   | ✗ 不要手动编辑        |
+| `.loom/memory/constitution.md`       | 用户   | ✅ 完全可编辑         |
+| `.loom/memory/MEMORY.md`             | 用户   | ✅ 完全可编辑         |
+| `.loom/rules/project-structure.md`   | 用户   | ✅ 完全可编辑         |
+| `specs/`                             | 用户   | ✅ 完全可编辑         |
+| `loom.md`                            | 用户   | ✅ 完全可编辑         |

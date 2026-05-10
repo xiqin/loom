@@ -1,11 +1,11 @@
-# /rss-write-plan
+# /loom-write-plan
 
 拆解实现计划。
 
 ## 用法
 
 ```
-/rss-write-plan [feature-name]
+/loom-write-plan [feature-name]
 ```
 
 ## 功能
@@ -24,5 +24,5 @@
 ## 示例
 
 ```
-/rss-write-plan passport-list
+/loom-write-plan passport-list
 ```

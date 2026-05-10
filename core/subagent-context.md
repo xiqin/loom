@@ -1,6 +1,6 @@
 # Subagent 上下文模板（core/subagent-context.md）
 
-> ⚠️ 此文件为模板定义，不直接用于 subagent。实际使用时由 /rss-init-project 渲染后生成 `.rss/templates/subagent-context.md`
+> ⚠️ 此文件为模板定义，不直接用于 subagent。实际使用时由 /loom-init-project 渲染后生成 `.loom/templates/subagent-context.md`
 
 ## 用途
 
@@ -59,15 +59,15 @@ flowchart LR
 
 ## 使用方式
 
-1. `/rss-init-project` 生成 `.rss/templates/subagent-context.md`
+1. `/loom-init-project` 生成 `.loom/templates/subagent-context.md`
 2. subagent-driven-development 派发时读取此文件注入 subagent prompt
-3. 项目可手动编辑 `.rss/templates/subagent-context.md` 添加项目特有约束
+3. 项目可手动编辑 `.loom/templates/subagent-context.md` 添加项目特有约束
 
 ## 生成逻辑
 
-`/rss-init-project` 时：
+`/loom-init-project` 时：
 
 1. 扫描项目获取技术栈信息
 2. 源码分析提取错误处理/响应/日志模式
 3. 读取宪章中的编码红线
-4. 渲染模板 → `.rss/templates/subagent-context.md`
+4. 渲染模板 → `.loom/templates/subagent-context.md`

@@ -22,13 +22,13 @@ describe('purge no collateral damage', () => {
     // Create a conflicting file, then force install (creates backup)
     writeFileSync(join(TEST_DIR, 'CLAUDE.md'), 'old content');
     await install({ tool: 'claude-code', force: true });
-    expect(existsSync(join(TEST_DIR, '.rss-backup'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom-backup'))).toBe(true);
 
     await uninstall({ tool: 'claude-code', purge: true });
-    expect(existsSync(join(TEST_DIR, '.rss-backup'))).toBe(false);
+    expect(existsSync(join(TEST_DIR, '.loom-backup'))).toBe(false);
   });
 
-  it('purge cleans .gitignore rss entries', async () => {
+  it('purge cleans .gitignore loom entries', async () => {
     await install({ tool: 'cursor' });
     const gitignorePath = join(TEST_DIR, '.gitignore');
     expect(existsSync(gitignorePath)).toBe(true);
@@ -40,7 +40,7 @@ describe('purge no collateral damage', () => {
     await uninstall({ tool: 'cursor', purge: true });
 
     const after = readFileSync(gitignorePath, 'utf-8');
-    expect(after).not.toContain('.rss-backup/');
+    expect(after).not.toContain('.loom-backup/');
     expect(after).toContain('node_modules/'); // user content preserved
   });
 
@@ -59,31 +59,31 @@ describe('purge no collateral damage', () => {
     expect(existsSync(join(TEST_DIR, 'src', 'main.js'))).toBe(true);
   });
 
-  it('purge does NOT delete user-modified rss files', async () => {
+  it('purge does NOT delete user-modified loom files', async () => {
     await install({ tool: 'claude-code' });
 
     // Modify a skill file tracked in manifest
-    const skillFile = join(TEST_DIR, '.rss', 'skills', 'brainstorming', 'SKILL.md');
+    const skillFile = join(TEST_DIR, '.loom', 'skills', 'brainstorming', 'SKILL.md');
     expect(existsSync(skillFile)).toBe(true);
     const original = readFileSync(skillFile, 'utf-8');
     writeFileSync(skillFile, original + '\n# user added comment');
 
     await uninstall({ tool: 'claude-code', purge: true });
 
-    // Modified skill file is in .rss/ which gets purged,
+    // Modified skill file is in .loom/ which gets purged,
     // but classifyFiles marks it as modified (hash mismatch)
-    // purge rmSync(.rss/) removes it anyway since it's recursive
-    // This is expected behavior — purge removes entire .rss/
+    // purge rmSync(.loom/) removes it anyway since it's recursive
+    // This is expected behavior — purge removes entire .loom/
     // The safety is in non-purge mode where modified files are kept
   });
 
-  it('normal uninstall keeps .rss-backup/', async () => {
+  it('normal uninstall keeps .loom-backup/', async () => {
     writeFileSync(join(TEST_DIR, 'CLAUDE.md'), 'old');
     await install({ tool: 'claude-code', force: true });
-    expect(existsSync(join(TEST_DIR, '.rss-backup'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom-backup'))).toBe(true);
 
     await uninstall({ tool: 'claude-code' }); // no purge
-    expect(existsSync(join(TEST_DIR, '.rss-backup'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom-backup'))).toBe(true);
   });
 
   it('purge without backup directory does not error', async () => {

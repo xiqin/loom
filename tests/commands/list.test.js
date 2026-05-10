@@ -16,7 +16,7 @@ describe('list command', () => {
     const { default: list } = await import('../../src/commands/list.js');
     await list({ type: 'commands' });
     const output = consoleSpy.mock.calls.map(c => c[0]).join('\n');
-    expect(output).toContain('rss-brainstorm');
+    expect(output).toContain('loom-brainstorm');
     consoleSpy.mockRestore();
   });
 

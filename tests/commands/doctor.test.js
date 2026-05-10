@@ -17,14 +17,14 @@ afterEach(() => {
 describe('doctor command', () => {
   it('reports installation status when files exist', async () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), '<!-- rss:version=1.0.0 -->\ncontent');
-    mkdirSync(join(TEST_DIR, '.rss', 'skills'), { recursive: true });
-    writeFileSync(join(TEST_DIR, '.gitignore'), '.rss-backup/\n');
+    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), '<!-- loom:version=1.0.0 -->\ncontent');
+    mkdirSync(join(TEST_DIR, '.loom', 'skills'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.gitignore'), '.loom-backup/\n');
 
     const { default: doctor } = await import('../../src/commands/doctor.js');
     await doctor({ tool: 'claude-code' });
     const output = consoleSpy.mock.calls.map(c => c[0]).join('\n');
-    expect(output).toContain('rss doctor');
+    expect(output).toContain('loom doctor');
     expect(output).toContain('.gitignore');
     consoleSpy.mockRestore();
   });
@@ -34,7 +34,7 @@ describe('doctor command', () => {
     const { default: doctor } = await import('../../src/commands/doctor.js');
     await doctor({ tool: 'claude-code' });
     const output = consoleSpy.mock.calls.map(c => c[0]).join('\n');
-    expect(output).toContain('No rss installation detected');
+    expect(output).toContain('No loom installation detected');
     consoleSpy.mockRestore();
   });
 });

@@ -1,10 +1,10 @@
-const MARKDOWN_RE = /<!-- rss:version=([\d.]+) -->/;
-const TEXT_RE = /^# rss:version=([\d.]+)/m;
+const MARKDOWN_RE = /<!-- loom:version=([\d.]+) -->/;
+const TEXT_RE = /^# loom:version=([\d.]+)/m;
 
 export function injectVersion(content, version, format = 'markdown') {
   const tag = format === 'markdown'
-    ? `<!-- rss:version=${version} -->`
-    : `# rss:version=${version}`;
+    ? `<!-- loom:version=${version} -->`
+    : `# loom:version=${version}`;
   return `${tag}\n${content}`;
 }
 

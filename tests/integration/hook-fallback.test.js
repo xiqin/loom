@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { runHook } from '../../hooks/run-hook.js';
 
 function makeTempDir() {
-  return mkdtempSync(join(tmpdir(), 'rss-hook-fallback-'));
+  return mkdtempSync(join(tmpdir(), 'loom-hook-fallback-'));
 }
 
 describe('hook fallback handling (integration)', () => {

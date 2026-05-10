@@ -1,8 +1,8 @@
 ---
 name: writing-plans
 description: >
-   拆解实现计划。当有 spec 设计文档后，拆分为可执行的 task 列表。
-   Use when: a spec design document exists and needs to be broken into bite-sized implementation tasks.
+  拆解实现计划。当有 spec 设计文档后，拆分为可执行的 task 列表。
+  Use when: a spec design document exists and needs to be broken into bite-sized implementation tasks.
 ---
 
 # 实现计划拆解
@@ -57,9 +57,9 @@ description: >
 
 ### Step 2：读取项目约束
 
-1. 读取 `.rss/constitution.md`（宪章）
-2. 读取 `.rss/project-structure.md`（工程结构）
-3. 如果存在 `.rss/subagent-context.md`，读取它用于后续 task 上下文
+1. 读取 `.loom/memory/constitution.md`（宪章）
+2. 读取 `.loom/project-structure.md`（工程结构）
+3. 如果存在 `.loom/subagent-context.md`，读取它用于后续 task 上下文
 
 ### Step 3：文件结构
 
@@ -74,16 +74,18 @@ description: >
 
 ### Step 4：按依赖顺序拆分 task（Bite-Sized 粒度）
 
-**读取 `.rss/project-structure.md` 中定义的架构分层，按项目的实际依赖顺序拆分 task。**
+**读取 `.loom/project-structure.md` 中定义的架构分层，按项目的实际依赖顺序拆分 task。**
 
 不同项目架构不同（MVC、分层、六边形、Clean Architecture、前端组件树等）。不要硬编码层级名称，而是从 project-structure.md 中提取项目的实际分层，按依赖顺序（底层→上层）排列。
 
 **通用依赖顺序原则：**
+
 - 数据/模型定义 → 业务逻辑 → 接口/UI → 路由/配置 → 集成/胶水
 - 没有依赖的 task 先做
 - 有循环依赖的 task 拆开或合并
 
 **每个步骤是一个动作（2-5 分钟）：**
+
 - "写失败的测试" - 步骤
 - "运行它确保失败" - 步骤
 - "实现最小代码让测试通过" - 步骤
@@ -112,7 +114,7 @@ description: >
 
 **Task 结构：**
 
-```markdown
+````markdown
 ### Task N: <功能点名称>
 
 - **层级**: 从 project-structure.md 中提取的项目分层名称
@@ -130,6 +132,7 @@ def test_specific_behavior():
     result = function(input)
     assert result == expected
 ```
+````
 
 - [ ] **步骤 2：运行测试验证失败**
 
@@ -154,7 +157,8 @@ def function(input):
 git add tests/path/test.py src/path/file.py
 git commit -m "feat: add specific feature"
 ```
-```
+
+````
 
 ### Step 6：检查清单（No Placeholders）
 
@@ -193,7 +197,7 @@ git commit -m "feat: add specific feature"
 
 ## 编码红线（task 中绝对禁止）
 
-**读取 `.rss/constitution.md` 中的编码红线，以下为通用红线（项目宪章有额外条目时以宪章为准）：**
+**读取 `.loom/memory/constitution.md` 中的编码红线，以下为通用红线（项目宪章有额外条目时以宪章为准）：**
 
 1. 跨层写逻辑（如在展示层写业务逻辑、在数据层写展示逻辑）
 2. 使用语言默认的调试打印——必须用项目日志组件
@@ -231,7 +235,7 @@ digraph writing_plans {
     "执行交接" -> "subagent-driven-development" [label="推荐"];
     "执行交接" -> "executing-plans" [label="备选"];
 }
-```
+````
 
 ## 完成条件与下一步
 
@@ -252,9 +256,11 @@ plan.md 保存并自检完毕后，同时更新 `specs/<date+feature>/progress.m
 **选择哪种方式？"**
 
 **如果选择 Subagent-Driven：**
+
 - **必需子技能：** 使用 subagent-driven-development
 - 每个 task 一个 fresh subagent + 两阶段审查
 
 **如果选择 Inline Execution：**
+
 - **必需子技能：** 使用 executing-plans
 - 带检查点的批处理执行

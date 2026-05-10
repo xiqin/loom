@@ -18,12 +18,12 @@ export class OpenCodeAdapter extends BaseAdapter {
       join(projectRoot, '.opencode', 'plugin.json'),
       join(projectRoot, '.opencode', 'skills'),
       join(projectRoot, '.opencode', 'commands'),
-      join(projectRoot, '.rss', 'skills'),
-      join(projectRoot, '.rss', 'commands'),
-      join(projectRoot, '.rss', 'hooks'),
-      join(projectRoot, '.rss', 'hooks', 'handlers'),
-      join(projectRoot, '.rss', 'templates'),
-      join(projectRoot, '.rss', 'core'),
+      join(projectRoot, '.loom', 'skills'),
+      join(projectRoot, '.loom', 'commands'),
+      join(projectRoot, '.loom', 'hooks'),
+      join(projectRoot, '.loom', 'hooks', 'handlers'),
+      join(projectRoot, '.loom', 'templates'),
+      join(projectRoot, '.loom', 'core'),
     ];
   }
 
@@ -34,11 +34,11 @@ export class OpenCodeAdapter extends BaseAdapter {
   async generate(projectRoot, version, options = {}) {
     const assetsDir = this._getAssetsDir();
 
-    // Copy directories: skills, commands, hooks, templates, core to .rss/
+    // Copy directories: skills, commands, hooks, templates, core to .loom/
     const dirs = ['skills', 'commands', 'hooks', 'templates', 'core'];
     for (const dir of dirs) {
       const src = join(assetsDir, dir);
-      const dest = join(projectRoot, '.rss', dir);
+      const dest = join(projectRoot, '.loom', dir);
       this._copyDirRecursive(src, dest, version);
     }
 
@@ -62,7 +62,7 @@ export class OpenCodeAdapter extends BaseAdapter {
 
   _generateEntryMd() {
     const fn = this.entryFilename;
-    return `# rss — Requirement-Driven Software Engineering
+    return `# loom — AI 工程化框架
 
 > AI 工程化框架，基于 superpowers 增强。
 
@@ -74,14 +74,14 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 
 ## 项目规则
 
-- **宪章**：\`.rss/memory/constitution.md\`（由 \`/rss-init-project\` 自动生成）
-- **工程约束**：\`.rss/rules/project-structure.md\`（由 \`/rss-init-project\` 自动生成）
+- **宪章**：\`.loom/memory/constitution.md\`（由 \`/loom-init-project\` 自动生成）
+- **工程约束**：\`.loom/rules/project-structure.md\`（由 \`/loom-init-project\` 自动生成）
 
 **所有开发活动必须遵守以上两份文件。**
 
 ## 快速开始
 
-1. 安装 rss 框架（运行 \`rss init --tool opencode\`）
+1. 安装 loom 框架（运行 \`loom init --tool opencode\`）
 2. 首次使用请运行初始化命令扫描项目并生成配置
 3. 开始需求头脑风暴，生成 \`specs/<date+feature>/spec.md\`
 4. 拆解实现计划，生成 \`plan.md\`
@@ -110,12 +110,12 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 代码变更后同步更新：
 
 1. \`ENGINEERING-INDEX.md\` — 新增/删除了模块、路由、控制器、服务
-2. \`.rss/memory/MEMORY.md\` — 踩坑、用户偏好、变更要点
+2. \`.loom/memory/MEMORY.md\` — 踩坑、用户偏好、变更要点
 3. \`${fn}\` — 引入了新的约定或命令
 
 ## 记忆
 
-持久化记录在 \`.rss/memory/MEMORY.md\`，新会话时先读此文件。
+持久化记录在 \`.loom/memory/MEMORY.md\`，新会话时先读此文件。
 `;
   }
 }

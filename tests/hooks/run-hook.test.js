@@ -12,7 +12,7 @@ import {
 } from '../../hooks/run-hook.js';
 
 function makeTempDir() {
-  return mkdtempSync(join(tmpdir(), 'rss-hook-test-'));
+  return mkdtempSync(join(tmpdir(), 'loom-hook-test-'));
 }
 
 function writeHandler(dir, code) {

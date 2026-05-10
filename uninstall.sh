@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# rss — 卸载脚本（安全、可审计、可 dry-run）
+# loom — 卸载脚本（安全、可审计、可 dry-run）
 #
 # 本地模式：
 #   bash uninstall.sh --tool claude-code
@@ -7,12 +7,12 @@
 #
 # Release 模式（从指定版本 tag 下载）：
 #   bash uninstall.sh --tool claude-code --from-release
-#   bash uninstall.sh --tool claude-code --from-release --version 1.0.1
+#   bash uninstall.sh --tool claude-code --from-release --version 版本号
 
 set -euo pipefail
 
-REPO="xiqin/rss"
-VERSION="1.0.1"
+REPO="xiqin/loom"
+VERSION="1.1.0"
 
 # ── Flags ──────────────────────────────────────────────────────────────
 DRY=0
@@ -44,7 +44,7 @@ err()   { printf '%s%s%s\n' "$c_err" "$1" "$c_reset" >&2; }
 # ── Help ───────────────────────────────────────────────────────────────
 print_help() {
   cat <<'EOF'
-rss 卸载脚本
+loom 卸载脚本
 
 USAGE
   uninstall.sh --tool <target> [flags]
@@ -69,7 +69,7 @@ FLAGS
   bash uninstall.sh --tool claude-code
   bash uninstall.sh --tool claude-code --dry-run
   bash uninstall.sh --tool claude-code --purge
-  bash uninstall.sh --tool claude-code --from-release --version 1.0.1
+  bash uninstall.sh --tool claude-code --from-release --version 版本号
 EOF
 }
 
@@ -121,7 +121,7 @@ detect_repo_root() {
   if [ -n "$src" ] && [ -f "$src" ]; then
     local d
     d="$(cd "$(dirname "$src")" 2>/dev/null && pwd)"
-    if [ -n "$d" ] && [ -f "$d/bin/rss.js" ] && [ -f "$d/package.json" ]; then
+    if [ -n "$d" ] && [ -f "$d/bin/loom.js" ] && [ -f "$d/package.json" ]; then
       echo "$d"
       return 0
     fi
@@ -131,14 +131,14 @@ detect_repo_root() {
 
 REPO_ROOT="$(detect_repo_root || true)"
 
-# ── Resolve RSS source ────────────────────────────────────────────────
-RSS_CLI=""
+# ── Resolve loom source ─────────────────────────────────────────────────
+LOOM_CLI=""
 CLEANUP_DIR=""
 
 resolve_source() {
   if [ "$FROM_RELEASE" = 0 ] && [ -n "$REPO_ROOT" ]; then
     note "  mode: local ($REPO_ROOT)"
-    RSS_CLI="$REPO_ROOT/bin/rss.js"
+    LOOM_CLI="$REPO_ROOT/bin/loom.js"
     return 0
   fi
 
@@ -154,21 +154,21 @@ resolve_source() {
 
   note "  mode: release (v$INSTALL_VERSION)"
   CLEANUP_DIR="$(mktemp -d)"
-  local tarball="$CLEANUP_DIR/rss.tar.gz"
+  local tarball="$CLEANUP_DIR/loom.tar.gz"
 
-  say "  downloading rss v$INSTALL_VERSION from $REPO..."
+  say "  downloading loom v$INSTALL_VERSION from $REPO..."
   curl -fsSL "https://github.com/$REPO/archive/refs/tags/v$INSTALL_VERSION.tar.gz" -o "$tarball"
 
   note "  extracting..."
   tar xzf "$tarball" -C "$CLEANUP_DIR"
 
-  local extracted="$CLEANUP_DIR/rss-$INSTALL_VERSION"
+  local extracted="$CLEANUP_DIR/loom-$INSTALL_VERSION"
   if [ ! -d "$extracted" ]; then
     extracted=$(find "$CLEANUP_DIR" -maxdepth 1 -type d | tail -1)
   fi
 
-  if [ ! -f "$extracted/bin/rss.js" ]; then
-    err "error: download appears incomplete — bin/rss.js not found"
+  if [ ! -f "$extracted/bin/loom.js" ]; then
+    err "error: download appears incomplete — bin/loom.js not found"
     rm -rf "$CLEANUP_DIR"
     exit 1
   fi
@@ -177,7 +177,7 @@ resolve_source() {
   (cd "$extracted" && npm install --production 2>/dev/null) || \
     warn "  warning: npm install failed, some features may not work"
 
-  RSS_CLI="$extracted/bin/rss.js"
+  LOOM_CLI="$extracted/bin/loom.js"
 }
 
 cleanup() {
@@ -205,7 +205,7 @@ check_node() {
 # ── Main ───────────────────────────────────────────────────────────────
 main() {
   say ""
-  say "  rss uninstall v$INSTALL_VERSION"
+  say "  loom uninstall v$INSTALL_VERSION"
   say "  ${REPO}"
   say ""
 
@@ -220,7 +220,7 @@ main() {
   # Run uninstall for each tool
   for tool in "${TOOLS[@]}"; do
     say "→ $tool"
-    if node "$RSS_CLI" uninstall --tool "$tool" "${CLI_ARGS[@]}"; then
+    if node "$LOOM_CLI" uninstall --tool "$tool" "${CLI_ARGS[@]}"; then
       ok "  ✔ $tool 卸载完成"
     else
       warn "  ✘ $tool 卸载失败（可能未安装或 manifest 缺失）"

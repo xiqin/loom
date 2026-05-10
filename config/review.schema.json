@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/xiqin/rss/config/review.schema.json",
-  "title": "rss Review Framework",
+  "$id": "https://github.com/xiqin/loom/config/review.schema.json",
+  "title": "loom Review Framework",
   "description": "审查框架定义 — 维度、严重等级、判定规则。驱动 combined-reviewer / spec-reviewer / code-quality-reviewer。",
   "version": 1,
   "dimensions": [
@@ -18,7 +18,7 @@
         "新增模块是否遵循项目分层模式",
         "依赖是否单向流动"
       ],
-      "source": ".rss/rules/project-structure.md"
+      "source": ".loom/rules/project-structure.md"
     },
     {
       "id": "code-quality",
@@ -35,7 +35,7 @@
         "命名规范",
         "日志格式"
       ],
-      "source": ".rss/memory/constitution.md"
+      "source": ".loom/memory/constitution.md"
     },
     {
       "id": "security",
@@ -84,7 +84,7 @@
         "错误码格式",
         "配置项命名"
       ],
-      "source": ".rss/rules/project-structure.md"
+      "source": ".loom/rules/project-structure.md"
     }
   ],
   "severity": {
@@ -202,7 +202,7 @@
   },
   "customDimensions": {
     "description": "项目可追加自定义维度",
-    "source": ".rss/rules/review-dimensions.md",
+    "source": ".loom/rules/review-dimensions.md",
     "format": "在默认 5 维基础上追加，格式：序号. 维度名 — 默认等级 — 说明"
   },
   "implementerStatuses": {

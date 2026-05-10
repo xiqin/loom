@@ -148,7 +148,7 @@ function unregisterPluginClaude(projectRoot) {
       return false;
     }
   };
-  run('claude plugin uninstall rss@rss --scope project');
+  run('claude plugin uninstall loom@loom --scope project');
   run(`claude plugin marketplace remove "${projectRoot}"`);
 }
 
@@ -168,14 +168,14 @@ export async function uninstall(options) {
   // Read manifest
   const manifest = readManifest(projectRoot);
   if (!manifest) {
-    console.log('\n  No manifest found (.rss/install-manifest.json).');
+    console.log('\n  No manifest found (.loom/install-manifest.json).');
     console.log('  Cannot safely uninstall without manifest.\n');
     return null;
   }
 
   if (manifest.tool !== tool) {
     console.log(`\n  Manifest records tool "${manifest.tool}", but "${tool}" was requested.`);
-    console.log('  Use the correct tool or delete .rss/ manually.\n');
+    console.log('  Use the correct tool or delete .loom/ manually.\n');
     return null;
   }
 
@@ -187,7 +187,7 @@ export async function uninstall(options) {
 
   // ── Dry run ─────────────────────────────────────────────────────────
   if (dryRun) {
-    console.log(`\n  [dry-run] rss uninstall — ${tool} v${manifest.version}`);
+    console.log(`\n  [dry-run] loom uninstall — ${tool} v${manifest.version}`);
     console.log(`  Project: ${projectRoot}\n`);
 
     if (safe.length > 0) {
@@ -207,10 +207,10 @@ export async function uninstall(options) {
     }
     if (purge) {
       console.log('\n  [purge] Would also remove:');
-      console.log('    - .rss-backup/ (if exists)');
-      console.log('    - .gitignore rss entries (if exists)');
+      console.log('    - .loom-backup/ (if exists)');
+      console.log('    - .gitignore loom entries (if exists)');
     }
-    console.log('\n  Would remove .rss/install-manifest.json');
+    console.log('\n  Would remove .loom/install-manifest.json');
     console.log('');
     return null;
   }
@@ -232,7 +232,7 @@ export async function uninstall(options) {
   }
 
   // Remove manifest
-  const manifestPath = join(projectRoot, '.rss', 'install-manifest.json');
+  const manifestPath = join(projectRoot, '.loom', 'install-manifest.json');
   try {
     if (existsSync(manifestPath)) {
       unlinkSync(manifestPath);
@@ -242,14 +242,14 @@ export async function uninstall(options) {
     console.log(`  Warning: could not delete manifest: ${e.message}`);
   }
 
-  // Remove .rss/ — purge: recursive (all ours), normal: only if empty
-  const rssDir = join(projectRoot, '.rss');
+  // Remove .loom/ — purge: recursive (all ours), normal: only if empty
+  const loomDir = join(projectRoot, '.loom');
   try {
-    if (existsSync(rssDir)) {
+    if (existsSync(loomDir)) {
       if (purge) {
-        rmSync(rssDir, { recursive: true, force: true });
+        rmSync(loomDir, { recursive: true, force: true });
       } else {
-        // Remove empty subdirs then try .rss itself
+        // Remove empty subdirs then try .loom itself
         const tryRmEmpty = (dir) => {
           try {
             const entries = readdirSync(dir);
@@ -260,7 +260,7 @@ export async function uninstall(options) {
             if (readdirSync(dir).length === 0) rmdirSync(dir);
           } catch { /* ignore */ }
         };
-        tryRmEmpty(rssDir);
+        tryRmEmpty(loomDir);
       }
     }
   } catch { /* ignore */ }
@@ -278,15 +278,15 @@ export async function uninstall(options) {
   let purgedGitignore = false;
 
   if (purge) {
-    // Remove .rss-backup/
-    const backupDir = join(projectRoot, '.rss-backup');
+    // Remove .loom-backup/
+    const backupDir = join(projectRoot, '.loom-backup');
     if (existsSync(backupDir)) {
       try {
         rmSync(backupDir, { recursive: true, force: true });
         purgedBackup = true;
-        console.log('  Removed .rss-backup/');
+        console.log('  Removed .loom-backup/');
       } catch (e) {
-        console.log(`  Warning: could not remove .rss-backup/: ${e.message}`);
+        console.log(`  Warning: could not remove .loom-backup/: ${e.message}`);
       }
     }
 
@@ -297,14 +297,14 @@ export async function uninstall(options) {
         let content = readFileSync(gitignorePath, 'utf-8');
         const before = content;
         content = content
-          .replace(/# rss-engineering\n?/g, '')
-          .replace(/\.rss-backup\/\n?/g, '')
+          .replace(/# loom-engineering\n?/g, '')
+          .replace(/\.loom-backup\/\n?/g, '')
           .replace(/\n{2,}/g, '\n')
           .trim();
         if (content !== before) {
           writeFileSync(gitignorePath, content + '\n');
           purgedGitignore = true;
-          console.log('  Cleaned .gitignore rss entries');
+          console.log('  Cleaned .gitignore loom entries');
         }
       } catch (e) {
         console.log(`  Warning: could not clean .gitignore: ${e.message}`);

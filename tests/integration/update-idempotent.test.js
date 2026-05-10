@@ -35,7 +35,7 @@ describe('update idempotency', () => {
     await install({ tool: 'cursor', version: '0.9.0' });
     await install({ tool: 'cursor', update: true, version: '1.0.0' });
     const content = readFileSync(join(TEST_DIR, '.cursorrules'), 'utf-8');
-    expect(content).toContain('rss:version=1.0.0');
+    expect(content).toContain('loom:version=1.0.0');
   });
 
   it('second update with same new version is no-op', async () => {

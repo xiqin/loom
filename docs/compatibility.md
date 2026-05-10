@@ -1,6 +1,6 @@
 # 工具兼容性
 
-rss 支持多种 AI 编程工具。每个工具通过独立的适配器实现。
+loom 支持多种 AI 编程工具。每个工具通过独立的适配器实现。
 
 ## 支持等级
 
@@ -14,19 +14,19 @@ rss 支持多种 AI 编程工具。每个工具通过独立的适配器实现。
 ### Claude Code（full）
 
 - **入口文件**：`CLAUDE.md`（项目根目录）
-- **Skills 发现**：`skills/` + `.rss/skills/`（双路径）
-- **Commands 发现**：`commands/` + `.rss/commands/`（双路径）
+- **Skills 发现**：`skills/` + `.loom/skills/`（双路径）
+- **Commands 发现**：`commands/` + `.loom/commands/`（双路径）
 - **Hooks**：✅ 支持（session-start 会话启动钩子）
 - **Plugin 注册**：✅ 自动注册到 `.claude-plugin/`
 - **平台**：Linux / macOS / Windows
 
-Claude Code 是功能最完整的工具。支持所有 rss 能力，包括会话启动时自动检测项目初始化状态。
+Claude Code 是功能最完整的工具。支持所有 loom 能力，包括会话启动时自动检测项目初始化状态。
 
 ### Cursor（full）
 
 - **入口文件**：`.cursorrules`（项目根目录）
-- **Skills 发现**：`.rss/skills/`
-- **Commands 发现**：`.rss/commands/`
+- **Skills 发现**：`.loom/skills/`
+- **Commands 发现**：`.loom/commands/`
 - **Hooks**：✗ 不支持
 - **Plugin 注册**：✗ 不支持
 - **平台**：Linux / macOS / Windows
@@ -36,8 +36,8 @@ Cursor 通过 `.cursorrules` 文件注入工程规范。不支持 hooks 和 plug
 ### GitHub Copilot（full）
 
 - **入口文件**：`.github/copilot-instructions.md`
-- **Skills 发现**：`.rss/skills/`
-- **Commands 发现**：`.rss/commands/`
+- **Skills 发现**：`.loom/skills/`
+- **Commands 发现**：`.loom/commands/`
 - **Hooks**：✗ 不支持
 - **Plugin 注册**：✗ 不支持
 - **平台**：Linux / macOS / Windows
@@ -47,13 +47,13 @@ Copilot 通过 `copilot-instructions.md` 注入工程规范。需要 GitHub Copi
 ### OpenCode（full）
 
 - **入口文件**：`AGENTS.md`（项目根目录）
-- **Skills 发现**：`.opencode/skills/` + `.rss/skills/`（双路径）
-- **Commands 发现**：`.opencode/commands/` + `.rss/commands/`（双路径）
+- **Skills 发现**：`.opencode/skills/` + `.loom/skills/`（双路径）
+- **Commands 发现**：`.opencode/commands/` + `.loom/commands/`（双路径）
 - **Hooks**：✗ 不支持
 - **Plugin 注册**：✅ 自动注册到 `.opencode/`
 - **平台**：Linux / macOS / Windows
 
-OpenCode 扫描 `.opencode/skills/` 和 `.opencode/commands/` 发现能力。rss 需要 `.rss/` 统一管理文件（manifest 跟踪、校验和、卸载）。适配器同时写两份：`.opencode/` 供发现，`.rss/` 供管理。
+OpenCode 扫描 `.opencode/skills/` 和 `.opencode/commands/` 发现能力。loom 需要 `.loom/` 统一管理文件（manifest 跟踪、校验和、卸载）。适配器同时写两份：`.opencode/` 供发现，`.loom/` 供管理。
 
 ### Codex（planned）
 

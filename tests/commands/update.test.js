@@ -28,7 +28,7 @@ describe('update command', () => {
   });
 
   it('reports up to date when version matches', async () => {
-    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), `<!-- rss:version=${CURRENT_VERSION} -->\ncontent`);
+    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), `<!-- loom:version=${CURRENT_VERSION} -->\ncontent`);
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { default: update } = await import('../../src/commands/update.js');
     await update({ tool: 'claude-code' });
@@ -38,15 +38,15 @@ describe('update command', () => {
   });
 
   it('updates when version differs', async () => {
-    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), '<!-- rss:version=0.9.0 -->\nold content');
+    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), '<!-- loom:version=0.9.0 -->\nold content');
     const { default: update } = await import('../../src/commands/update.js');
     await update({ tool: 'claude-code' });
     const content = readFileSync(join(TEST_DIR, 'CLAUDE.md'), 'utf-8');
-    expect(content).toContain(`rss:version=${CURRENT_VERSION}`);
+    expect(content).toContain(`loom:version=${CURRENT_VERSION}`);
   });
 
   it('preserves USER CUSTOM section in cursorrules', async () => {
-    const customContent = '# rss:version=0.9.0\nrss content\n## --- USER CUSTOM ---\nmy custom rules';
+    const customContent = '# loom:version=0.9.0\nloom content\n## --- USER CUSTOM ---\nmy custom rules';
     writeFileSync(join(TEST_DIR, '.cursorrules'), customContent);
     const { default: update } = await import('../../src/commands/update.js');
     await update({ tool: 'cursor' });

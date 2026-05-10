@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const MANIFEST_DIR = '.rss';
+const MANIFEST_DIR = '.loom';
 const MANIFEST_FILE = 'install-manifest.json';
 
 export function getManifestPath(projectRoot) {

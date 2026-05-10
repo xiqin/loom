@@ -4,7 +4,7 @@
 
 ## 审查维度
 
-rss 使用 5 维审查替代通用 code review，覆盖架构、质量、安全、性能、规范。
+loom 使用 5 维审查替代通用 code review，覆盖架构、质量、安全、性能、规范。
 
 ```mermaid
 flowchart TD
@@ -107,7 +107,7 @@ flowchart TD
 
 ### 自定义维度
 
-项目可在 `.rss/rules/review-dimensions.md` 中覆盖默认维度：
+项目可在 `.loom/rules/review-dimensions.md` 中覆盖默认维度：
 
 ```markdown
 # 自定义审查维度

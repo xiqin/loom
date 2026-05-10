@@ -1,5 +1,5 @@
 {
-  "name": "rss-execute-plan",
+  "name": "loom-execute-plan",
   "description": "执行实现计划。创建隔离分支，派发 subagent 编码，运行测试，更新索引。",
   "skill": "subagent-driven-development",
   "inputs": [
@@ -28,7 +28,7 @@
       "modified": true
     },
     {
-      "path": ".rss/memory/MEMORY.md",
+      "path":       ".loom/memory/MEMORY.md",
       "description": "记忆文件（踩坑、偏好、状态更新）",
       "modified": true
     }
@@ -40,7 +40,7 @@
       "创建/修改源码文件",
       "创建/修改测试文件",
       "更新 ENGINEERING-INDEX.md",
-      "更新 .rss/memory/MEMORY.md"
+      "更新 .loom/memory/MEMORY.md"
     ],
     "git": [
       "创建 feature/<date>-<name> 分支",
@@ -55,9 +55,9 @@
     "reads": [
       "specs/<date+feature>/plan.md",
       "specs/<date+feature>/spec.md",
-      ".rss/templates/subagent-context.md",
-      ".rss/memory/constitution.md",
-      ".rss/rules/project-structure.md"
+      ".loom/templates/subagent-context.md",
+      ".loom/memory/constitution.md",
+      ".loom/rules/project-structure.md"
     ],
     "interactive": [
       "reviewer 审查检查点（spec 合规 + 代码质量）",
@@ -70,7 +70,7 @@
   "interactive": true,
   "relatedTemplates": [],
   "prerequisites": [
-    "specs/<date+feature>/plan.md 必须存在（由 rss-write-plan 生成）"
+    "specs/<date+feature>/plan.md 必须存在（由 loom-write-plan 生成）"
   ],
   "nextCommand": null
 }

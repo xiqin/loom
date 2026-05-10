@@ -19,30 +19,30 @@ describe('detectConflicts', () => {
     expect(detectConflicts(targets)).toEqual([]);
   });
 
-  it('detects files without rss version marker', () => {
+  it('detects files without loom version marker', () => {
     const file = join(TEST_DIR, 'existing.md');
     writeFileSync(file, 'user content');
     const result = detectConflicts([file]);
     expect(result).toEqual([
-      { file, status: 'conflict', reason: 'File exists without rss version marker' }
+      { file, status: 'conflict', reason: 'File exists without loom version marker' }
     ]);
   });
 
-  it('detects files with rss version marker', () => {
-    const file = join(TEST_DIR, 'rss-managed.md');
-    writeFileSync(file, '<!-- rss:version=1.0.0 -->\ncontent');
+  it('detects files with loom version marker', () => {
+    const file = join(TEST_DIR, 'loom-managed.md');
+    writeFileSync(file, '<!-- loom:version=1.0.0 -->\ncontent');
     const result = detectConflicts([file]);
     expect(result).toEqual([
-      { file, status: 'rss-managed', version: '1.0.0' }
+      { file, status: 'loom-managed', version: '1.0.0' }
     ]);
   });
 });
 
 describe('ensureGitignore', () => {
-  it('creates .gitignore with rss-backup entry', () => {
+  it('creates .gitignore with loom-backup entry', () => {
     ensureGitignore(TEST_DIR);
     const content = readFileSync(join(TEST_DIR, '.gitignore'), 'utf-8');
-    expect(content).toContain('.rss-backup/');
+    expect(content).toContain('.loom-backup/');
   });
 
   it('appends to existing .gitignore', () => {
@@ -50,14 +50,14 @@ describe('ensureGitignore', () => {
     ensureGitignore(TEST_DIR);
     const content = readFileSync(join(TEST_DIR, '.gitignore'), 'utf-8');
     expect(content).toContain('node_modules/');
-    expect(content).toContain('.rss-backup/');
+    expect(content).toContain('.loom-backup/');
   });
 
-  it('does not duplicate rss-backup entry', () => {
-    writeFileSync(join(TEST_DIR, '.gitignore'), '.rss-backup/\n');
+  it('does not duplicate loom-backup entry', () => {
+    writeFileSync(join(TEST_DIR, '.gitignore'), '.loom-backup/\n');
     ensureGitignore(TEST_DIR);
     const content = readFileSync(join(TEST_DIR, '.gitignore'), 'utf-8');
-    const matches = content.match(/\.rss-backup\//g);
+    const matches = content.match(/\.loom-backup\//g);
     expect(matches.length).toBe(1);
   });
 });

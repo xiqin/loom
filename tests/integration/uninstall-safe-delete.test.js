@@ -43,7 +43,7 @@ describe('uninstall safe delete', () => {
   it('removes manifest after uninstall', async () => {
     await install({ tool: 'cursor' });
     await uninstall({ tool: 'cursor' });
-    expect(existsSync(join(TEST_DIR, '.rss', 'install-manifest.json'))).toBe(false);
+    expect(existsSync(join(TEST_DIR, '.loom', 'install-manifest.json'))).toBe(false);
   });
 
   it('handles missing manifest gracefully', async () => {
@@ -59,9 +59,9 @@ describe('uninstall safe delete', () => {
 
   it('classifies already-deleted files as missing', async () => {
     await install({ tool: 'claude-code' });
-    // claude-code creates .rss/skills/ which is tracked in manifest
+    // claude-code creates .loom/skills/ which is tracked in manifest
     // Delete a file that's in the manifest checksums
-    const manifest = readFileSync(join(TEST_DIR, '.rss', 'install-manifest.json'), 'utf-8');
+    const manifest = readFileSync(join(TEST_DIR, '.loom', 'install-manifest.json'), 'utf-8');
     const manifestData = JSON.parse(manifest);
     const checksumFiles = Object.keys(manifestData.fileChecksums);
     expect(checksumFiles.length).toBeGreaterThan(0);

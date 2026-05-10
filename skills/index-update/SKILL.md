@@ -53,7 +53,7 @@ description: >
 对照 `REFERENCE/update-checklist.md` 中的检查清单，逐一检查并更新。
 
 **更新顺序：**
-按项目架构分层的依赖顺序（从底层到上层），参考 `.rss/project-structure.md` 中定义的分层：
+按项目架构分层的依赖顺序（从底层到上层），参考 `.loom/project-structure.md` 中定义的分层：
 1. 先更新底层数据源（数据库表等）
 2. 再更新数据模型层
 3. 再更新业务逻辑层

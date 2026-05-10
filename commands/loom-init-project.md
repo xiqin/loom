@@ -1,11 +1,11 @@
-# /rss-init-project
+# /loom-init-project
 
 项目初始化。扫描项目源码，自动生成宪章、工程结构、记忆文件等配置文件。
 
 ## 用法
 
 ```
-/rss-init-project
+/loom-init-project
 ```
 
 ## 功能
@@ -15,15 +15,15 @@
 1. 扫描项目根目录（语言、框架、目录结构）
 2. 深度分析源码（错误处理、响应格式、日志、DI 模式）
 3. 生成项目文件：
-   - `.rss/memory/constitution.md`（宪章）
-   - `.rss/rules/project-structure.md`（工程结构）
-   - `.rss/memory/MEMORY.md`（记忆文件）
-   - `.rss/templates/subagent-context.md`（子 agent 上下文）
+   - `.loom/memory/constitution.md`（宪章）
+   - `.loom/rules/project-structure.md`（工程结构）
+   - `.loom/memory/MEMORY.md`（记忆文件）
+   - `.loom/templates/subagent-context.md`（子 agent 上下文）
 4. 输出报告（已生成 + 需人工完善的 [TODO]）
 
 ## 适用场景
 
-- 首次使用 rss 框架
+- 首次使用 loom 框架
 - 项目结构发生重大变更
 - 需要重新生成配置文件
 

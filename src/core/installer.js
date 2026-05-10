@@ -53,13 +53,13 @@ function registerPluginClaude(projectRoot) {
   if (process.env.CI) return false;
   try {
     const list = execSync('claude plugin list', { cwd: projectRoot, stdio: ['pipe', 'pipe', 'pipe'] }).toString();
-    if (list.includes('rss@')) {
+    if (list.includes('loom@')) {
       if (list.includes('✔ enabled')) return false;
-      execSync('claude plugin uninstall rss@rss --scope project', { cwd: projectRoot, stdio: 'pipe' });
+      execSync('claude plugin uninstall loom@loom --scope project', { cwd: projectRoot, stdio: 'pipe' });
     }
   } catch { /* claude CLI not available */ }
 
-  try { execSync('claude plugin marketplace remove rss', { cwd: projectRoot, stdio: 'pipe' }); } catch {}
+  try { execSync('claude plugin marketplace remove loom', { cwd: projectRoot, stdio: 'pipe' }); } catch {}
 
   const run = (cmd, opts = {}) => {
     try { execSync(cmd, { cwd: projectRoot, stdio: 'pipe' }); return true; }
@@ -73,13 +73,13 @@ function registerPluginClaude(projectRoot) {
   };
 
   run(`claude plugin marketplace add "${projectRoot}"`, { label: 'marketplace add', silent: ['already', 'exist'] });
-  run('claude plugin install rss@rss --scope project', { label: 'plugin install', silent: ['already', 'exist'] });
-  run('claude plugin enable rss@rss --scope project', { label: 'plugin enable', silent: ['already'] });
+  run('claude plugin install loom@loom --scope project', { label: 'plugin install', silent: ['already', 'exist'] });
+  run('claude plugin enable loom@loom --scope project', { label: 'plugin enable', silent: ['already'] });
   return true;
 }
 
 /**
- * Detect installed tool by scanning for rss-managed files.
+ * Detect installed tool by scanning for loom-managed files.
  */
 export function detectInstalledTool(projectRoot) {
   for (const tool of listAdapters()) {
@@ -118,16 +118,16 @@ export async function install(options) {
   const targetFiles = adapter.getTargetFiles(projectRoot);
   const conflicts = detectConflicts(targetFiles);
 
-  const rssManaged = conflicts.filter(c => c.status === 'rss-managed');
+  const loomManaged = conflicts.filter(c => c.status === 'loom-managed');
   const hasConflicts = conflicts.filter(c => c.status === 'conflict');
 
   // ── Update mode: check version ─────────────────────────────────────
   if (update) {
-    if (rssManaged.length === 0) {
-      console.log('  Not installed. Run "rss init --tool <target>" first.\n');
+    if (loomManaged.length === 0) {
+      console.log('  Not installed. Run "loom init --tool <target>" first.\n');
       return null;
     }
-    const installedVersion = rssManaged[0].version;
+    const installedVersion = loomManaged[0].version;
     if (!needsUpdate(installedVersion, version)) {
       console.log(`  Already up to date (v${installedVersion}).\n`);
       return null;
@@ -136,11 +136,11 @@ export async function install(options) {
   }
 
   // ── Init mode: already installed? ──────────────────────────────────
-  if (!update && rssManaged.length > 0) {
-    const current = rssManaged[0];
+  if (!update && loomManaged.length > 0) {
+    const current = loomManaged[0];
     if (current.version === version && !force) {
       if (tool === 'claude-code') registerPluginClaude(projectRoot);
-      console.log(`  Already installed (v${current.version}). Use 'rss update' to update.\n`);
+      console.log(`  Already installed (v${current.version}). Use 'loom update' to update.\n`);
       return null;
     }
   }
@@ -156,7 +156,7 @@ export async function install(options) {
   // ── Dry run ────────────────────────────────────────────────────────
   if (dryRun) {
     const action = update ? 'update' : 'install';
-    console.log(`\n  [dry-run] rss ${action} — ${tool} v${version}`);
+    console.log(`\n  [dry-run] loom ${action} — ${tool} v${version}`);
     console.log(`  Project: ${projectRoot}\n`);
     console.log('  Files to be generated:');
     for (const f of targetFiles) console.log(`    ${f}`);
@@ -165,7 +165,7 @@ export async function install(options) {
       for (const c of hasConflicts) console.log(`    ${c.file}`);
     }
     if (tool === 'claude-code') console.log('\n  Would register Claude Code plugin.');
-    console.log(`\n  Would write manifest to .rss/install-manifest.json`);
+    console.log(`\n  Would write manifest to .loom/install-manifest.json`);
     console.log('');
     return null;
   }
@@ -220,7 +220,7 @@ export async function install(options) {
   // ── Summary ────────────────────────────────────────────────────────
   console.log(`\n  Installed v${version} (${tool}).`);
   console.log(`    created: ${created.length}  updated: ${updatedFiles.length}  backed-up: ${backedUp.length}`);
-  console.log(`    manifest: .rss/install-manifest.json\n`);
+  console.log(`    manifest: .loom/install-manifest.json\n`);
 
   return manifest;
 }

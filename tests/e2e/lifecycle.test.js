@@ -60,7 +60,7 @@ describe('e2e lifecycle: install → update → uninstall', () => {
         expect(result.skipped).toBe(0); // no modifications
 
         // Verify cleanup
-        expect(existsSync(join(TEST_DIR, '.rss', 'install-manifest.json'))).toBe(false);
+        expect(existsSync(join(TEST_DIR, '.loom', 'install-manifest.json'))).toBe(false);
       });
     });
   }
@@ -88,12 +88,12 @@ describe('e2e lifecycle: install → update → uninstall', () => {
     // Force reinstall — creates backup because CLAUDE.md already exists
     const m2 = await install({ tool, version: '1.0.0', force: true });
     expect(m2).not.toBeNull();
-    expect(existsSync(join(TEST_DIR, '.rss-backup'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom-backup'))).toBe(true);
 
     // Uninstall with purge
     const result = await uninstall({ tool, purge: true });
     expect(result).not.toBeNull();
-    expect(existsSync(join(TEST_DIR, '.rss-backup'))).toBe(false);
+    expect(existsSync(join(TEST_DIR, '.loom-backup'))).toBe(false);
   });
 });
 
@@ -123,7 +123,7 @@ describe('e2e lifecycle: opencode with dual paths', () => {
 
     // Verify dual path structure
     expect(existsSync(join(TEST_DIR, 'AGENTS.md'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.rss', 'skills'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom', 'skills'))).toBe(true);
     expect(existsSync(join(TEST_DIR, '.opencode', 'skills'))).toBe(true);
     expect(existsSync(join(TEST_DIR, '.opencode', 'plugin.json'))).toBe(true);
 

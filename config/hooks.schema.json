@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/xiqin/rss/config/hooks.schema.json",
-  "title": "rss Hook System",
+  "$id": "https://github.com/xiqin/loom/config/hooks.schema.json",
+  "title": "loom Hook System",
   "description": "Hook 系统定义 — 生命周期钩子、平台兼容、失败回退策略。驱动 src/hooks/run-hook.js。",
   "version": 1,
   "hooks": {

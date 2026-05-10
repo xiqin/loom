@@ -17,17 +17,17 @@ function registerPluginClaude(projectRoot) {
   try {
     // Check if already installed and healthy
     const list = execSync('claude plugin list', { cwd: projectRoot, stdio: ['pipe', 'pipe', 'pipe'] }).toString();
-    if (list.includes('rss@')) {
+    if (list.includes('loom@')) {
       if (list.includes('✔ enabled')) {
         return false;
       }
       // Plugin exists but is broken — uninstall first
-      execSync('claude plugin uninstall rss@rss --scope project', { cwd: projectRoot, stdio: 'pipe' });
+      execSync('claude plugin uninstall loom@loom --scope project', { cwd: projectRoot, stdio: 'pipe' });
     }
   } catch { /* claude CLI not available or list failed */ }
 
   // Remove stale marketplace registration, then re-register
-  try { execSync('claude plugin marketplace remove rss', { cwd: projectRoot, stdio: 'pipe' }); } catch {}
+  try { execSync('claude plugin marketplace remove loom', { cwd: projectRoot, stdio: 'pipe' }); } catch {}
 
   const run = (cmd, opts = {}) => {
     try { execSync(cmd, { cwd: projectRoot, stdio: 'pipe' }); return true; }
@@ -42,8 +42,8 @@ function registerPluginClaude(projectRoot) {
   };
 
   run(`claude plugin marketplace add "${projectRoot}"`, { label: 'marketplace add', silent: ['already', 'exist'] });
-  run('claude plugin install rss@rss --scope project', { label: 'plugin install', silent: ['already', 'exist'] });
-  run('claude plugin enable rss@rss --scope project', { label: 'plugin enable', silent: ['already'] });
+  run('claude plugin install loom@loom --scope project', { label: 'plugin install', silent: ['already', 'exist'] });
+  run('claude plugin enable loom@loom --scope project', { label: 'plugin enable', silent: ['already'] });
 
   return true;
 }
@@ -54,24 +54,24 @@ export default async function init(options) {
   const adapter = getAdapter(tool);
   const projectRoot = process.cwd();
 
-  console.log(`\n  rss init — ${tool}\n  Project: ${projectRoot}\n`);
+  console.log(`\n  loom init — ${tool}\n  Project: ${projectRoot}\n`);
 
   // Check conflicts
   const targetFiles = adapter.getTargetFiles(projectRoot);
   const conflicts = detectConflicts(targetFiles);
 
-  const hasExistingRss = conflicts.filter(c => c.status === 'rss-managed');
+  const hasExistingLoom = conflicts.filter(c => c.status === 'loom-managed');
   const hasConflicts = conflicts.filter(c => c.status === 'conflict');
 
   // Already installed with same version
-  if (hasExistingRss.length > 0) {
-    const current = hasExistingRss[0];
+  if (hasExistingLoom.length > 0) {
+    const current = hasExistingLoom[0];
     if (current.version === pkg.version) {
       // Still ensure plugin is registered
       if (tool === 'claude-code' && registerPluginClaude(projectRoot)) {
         console.log('  Registered as Claude Code plugin.');
       }
-      console.log(`  Already installed (v${current.version}). Use 'rss update' to update.`);
+      console.log(`  Already installed (v${current.version}). Use 'loom update' to update.`);
       return;
     }
   }

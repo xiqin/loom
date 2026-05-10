@@ -1,11 +1,11 @@
-# /rss-brainstorm
+# /loom-brainstorm
 
 开始需求头脑风暴。
 
 ## 用法
 
 ```
-/rss-brainstorm <需求描述>
+/loom-brainstorm <需求描述>
 ```
 
 ## 功能
@@ -20,5 +20,5 @@
 ## 示例
 
 ```
-/rss-brainstorm 我想做一个用户账号绑定列表的功能，支持按企微 ID 查询
+/loom-brainstorm 我想做一个用户账号绑定列表的功能，支持按企微 ID 查询
 ```

@@ -1,5 +1,5 @@
 #!/bin/bash
-# rss session-start hook — thin wrapper
+# loom session-start hook — thin wrapper
 # Core logic in handlers/session-start.js, executed via run-hook.js
 
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"

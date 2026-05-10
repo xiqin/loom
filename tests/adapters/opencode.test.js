@@ -40,7 +40,7 @@ describe('OpenCodeAdapter', () => {
 
   it('getTargetFiles includes dual paths', () => {
     const files = adapter.getTargetFiles(TEST_DIR);
-    expect(files).toContainEqual(expect.stringContaining('.rss'));
+    expect(files).toContainEqual(expect.stringContaining('.loom'));
     expect(files).toContainEqual(expect.stringContaining('.opencode'));
     expect(files).toContainEqual(expect.stringContaining('AGENTS.md'));
   });
@@ -48,21 +48,21 @@ describe('OpenCodeAdapter', () => {
   it('generate creates AGENTS.md with version marker', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
     const content = readFileSync(join(TEST_DIR, 'AGENTS.md'), 'utf-8');
-    expect(content).toContain('<!-- rss:version=1.0.0 -->');
-    expect(content).toContain('Requirement-Driven Software Engineering');
+    expect(content).toContain('<!-- loom:version=1.0.0 -->');
+    expect(content).toContain('loom — AI 工程化框架');
   });
 
-  it('generate copies skills to both .rss/ and .opencode/', async () => {
+  it('generate copies skills to both .loom/ and .opencode/', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
-    // .rss/skills should exist
-    expect(existsSync(join(TEST_DIR, '.rss', 'skills'))).toBe(true);
+    // .loom/skills should exist
+    expect(existsSync(join(TEST_DIR, '.loom', 'skills'))).toBe(true);
     // .opencode/skills should exist
     expect(existsSync(join(TEST_DIR, '.opencode', 'skills'))).toBe(true);
   });
 
-  it('generate copies commands to both .rss/ and .opencode/', async () => {
+  it('generate copies commands to both .loom/ and .opencode/', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
-    expect(existsSync(join(TEST_DIR, '.rss', 'commands'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom', 'commands'))).toBe(true);
     expect(existsSync(join(TEST_DIR, '.opencode', 'commands'))).toBe(true);
   });
 
@@ -71,10 +71,10 @@ describe('OpenCodeAdapter', () => {
     expect(existsSync(join(TEST_DIR, '.opencode', 'plugin.json'))).toBe(true);
   });
 
-  it('generate copies hooks, templates, core to .rss/', async () => {
+  it('generate copies hooks, templates, core to .loom/', async () => {
     await adapter.generate(TEST_DIR, '1.0.0');
-    expect(existsSync(join(TEST_DIR, '.rss', 'hooks'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.rss', 'templates'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.rss', 'core'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom', 'hooks'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom', 'templates'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom', 'core'))).toBe(true);
   });
 });

@@ -1,9 +1,9 @@
 ---
 title: Skills 参考
-description: rss 全部技能快速参考
+description: loom 全部技能快速参考
 ---
 
-<!-- rss:version=1.0.0 -->
+<!-- loom:version=1.0.0 -->
 
 # Skills 参考
 
@@ -44,10 +44,10 @@ description: rss 全部技能快速参考
 ### init-project
 
 - **用途**：项目初始化
-- **触发**：`/rss-init-project` 命令
+- **触发**：`/loom-init-project` 命令
 - **输出**：宪章、工程结构、记忆文件、子 agent 上下文
 
-## 通用 Skills（继承 superpowers）
+## 通用 Skills（继承 superpowers 框架）
 
 ### test-driven-development
 

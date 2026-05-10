@@ -1,9 +1,9 @@
-# rss — 安装脚本（可重现、可审计、可 dry-run）
+# loom — 安装脚本（可重现、可审计、可 dry-run）
 #
 # 本地模式：
 #   .\install.ps1 -Tool claude-code
 #   .\install.ps1 -Tool claude-code -DryRun
-#   .\install.ps1 -Tool claude-code -Version 1.0.1
+#   .\install.ps1 -Tool claude-code -Version 版本号
 #
 # Release 模式（从指定版本 tag 下载）：
 #   .\install.ps1 -Tool claude-code -FromRelease
@@ -12,7 +12,7 @@
 [CmdletBinding()]
 param(
   [string[]]$Tool = @(),
-  [string]$Version = "",
+  [string]$Version = "1.1.0",,
   [switch]$DryRun,
   [switch]$Force,
   [switch]$FromRelease,
@@ -20,15 +20,14 @@ param(
   [switch]$Help
 )
 
-$Repo = "xiqin/rss"
-$DefaultVersion = "1.0.1"
+$Repo = "xiqin/loom"
 # TODO: replace hardcoded list — import from config/tools.schema.json via generate-tooling.mjs
 $SupportedTools = @("claude-code", "cursor", "copilot", "opencode", "codex")
 
 # ── Help ────────────────────────────────────────────────────────────────
 if ($Help) {
 @"
-rss 安装脚本
+loom 安装脚本
 
 USAGE
   install.ps1 -Tool <target> [flags]
@@ -62,7 +61,7 @@ function Warn($msg)  { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc
 function Err($msg)   { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc[31m$msg$Esc[0m" } }
 
 # ── Resolve version ─────────────────────────────────────────────────────
-$InstallVersion = if ($Version) { $Version } else { $DefaultVersion }
+$InstallVersion = $Version
 
 # ── Validate tool ───────────────────────────────────────────────────────
 $Tools = @()
@@ -91,7 +90,7 @@ function Get-RepoRoot {
   $src = $PSCommandPath
   if ($src -and (Test-Path $src)) {
     $d = Split-Path -Parent $src
-    if ((Test-Path (Join-Path $d "bin\rss.js")) -and (Test-Path (Join-Path $d "package.json"))) {
+    if ((Test-Path (Join-Path $d "bin\loom.js")) -and (Test-Path (Join-Path $d "package.json"))) {
       return $d
     }
   }
@@ -100,15 +99,15 @@ function Get-RepoRoot {
 
 $RepoRoot = Get-RepoRoot
 
-# ── Resolve RSS source ──────────────────────────────────────────────────
-$RssCli = ""
+# ── Resolve loom source ───────────────────────────────────────────────────
+$LoomCli = ""
 $CleanupDir = ""
 $Cleanup = $false
 
 function Resolve-Source {
   if (-not $FromRelease -and $RepoRoot) {
     Note "  mode: local ($RepoRoot)"
-    $script:RssCli = Join-Path $RepoRoot "bin\rss.js"
+    $script:LoomCli = Join-Path $RepoRoot "bin\loom.js"
     return
   }
 
@@ -121,12 +120,12 @@ function Resolve-Source {
     exit 1
   }
 
-  $script:CleanupDir = Join-Path $env:TEMP "rss-install-$([Guid]::NewGuid())"
+  $script:CleanupDir = Join-Path $env:TEMP "loom-install-$([Guid]::NewGuid())"
   New-Item -ItemType Directory -Path $CleanupDir -Force | Out-Null
   $script:Cleanup = $true
 
-  $tarball = Join-Path $CleanupDir "rss.tar.gz"
-  Say "  downloading rss v$InstallVersion from $Repo..."
+  $tarball = Join-Path $CleanupDir "loom.tar.gz"
+  Say "  downloading loom v$InstallVersion from $Repo..."
   & $curlCmd -fsSL "https://github.com/$Repo/archive/refs/tags/v$InstallVersion.tar.gz" -o $tarball 2>$null
   if ($LASTEXITCODE -ne 0) {
     Err "error: download failed"
@@ -144,8 +143,8 @@ function Resolve-Source {
   }
 
   $extracted = Get-ChildItem -Path $CleanupDir -Directory | Select-Object -First 1
-  if (-not $extracted -or -not (Test-Path (Join-Path $extracted.FullName "bin\rss.js"))) {
-    Err "error: download appears incomplete — bin\rss.js not found"
+  if (-not $extracted -or -not (Test-Path (Join-Path $extracted.FullName "bin\loom.js"))) {
+    Err "error: download appears incomplete — bin\loom.js not found"
     exit 1
   }
 
@@ -156,7 +155,7 @@ function Resolve-Source {
     if ($LASTEXITCODE -ne 0) { Warn "  warning: npm install failed, some features may not work" }
   } finally { Pop-Location }
 
-  $script:RssCli = Join-Path $extracted.FullName "bin\rss.js"
+  $script:LoomCli = Join-Path $extracted.FullName "bin\loom.js"
 }
 
 # ── Cleanup ─────────────────────────────────────────────────────────────
@@ -185,7 +184,7 @@ function Check-Node {
 # ── Main ────────────────────────────────────────────────────────────────
 try {
   Say ""
-  Say "  rss install v$InstallVersion"
+  Say "  loom install v$InstallVersion"
   Say "  $Repo"
   Say ""
 
@@ -201,9 +200,9 @@ try {
     Say "→ $t"
     $fullArgs = $cliArgs + @("--tool", $t)
 
-    Write-Host "  $ node $RssCli $($fullArgs -join ' ')"
+    Write-Host "  $ node $LoomCli $($fullArgs -join ' ')"
     try {
-      & node $RssCli @fullArgs
+      & node $LoomCli @fullArgs
       if ($LASTEXITCODE -eq 0) {
         Ok "  ✔ $t 安装完成"
       } else {
@@ -216,7 +215,7 @@ try {
 
   Say ""
   Say "  done"
-  Note "  可用命令: rss doctor, rss list, rss update"
+  Note "  可用命令: loom doctor, loom list, loom update"
   Note "  卸载: .\uninstall.ps1 -Tool <target>"
   Say ""
 

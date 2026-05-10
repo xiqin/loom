@@ -35,7 +35,7 @@ describe('listTemplateIds', () => {
     const ids = listTemplateIds();
     expect(ids).toContain('constitution');
     expect(ids).toContain('project-structure');
-    expect(ids).toContain('rss');
+    expect(ids).toContain('loom');
     expect(ids).toContain('memory');
   });
 });
@@ -110,7 +110,7 @@ describe('validateRawTemplate', () => {
 describe('renderTemplate', () => {
   it('replaces variables with provided values', () => {
     const raw = 'Project: {{PROJECT_NAME}}, Desc: {{PROJECT_DESC}}';
-    const result = renderTemplate('rss', raw, {
+    const result = renderTemplate('loom', raw, {
       PROJECT_NAME: 'my-app',
       PROJECT_DESC: 'A test app',
       ENTRY_POINTS: 'main.go',
@@ -145,7 +145,7 @@ describe('renderTemplate', () => {
 
   it('returns warnings for undeclared variables', () => {
     const raw = '{{UNKNOWN_VAR}}';
-    const result = renderTemplate('rss', raw, {});
+    const result = renderTemplate('loom', raw, {});
     expect(result.content).toContain('{{UNKNOWN_VAR}}');
     expect(result.warnings.some(w => w.includes('Undeclared variable'))).toBe(true);
   });

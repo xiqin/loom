@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 const _require = createRequire(import.meta.url);
 
 function makeTempDir() {
-  return mkdtempSync(join(tmpdir(), 'rss-handler-test-'));
+  return mkdtempSync(join(tmpdir(), 'loom-handler-test-'));
 }
 
 describe('session-start handler', () => {
@@ -47,8 +47,8 @@ describe('session-start handler', () => {
   it('does nothing when constitution.md exists', () => {
     const dir = makeTempDir();
     writeFileSync(join(dir, 'package.json'), '{}');
-    mkdirSync(join(dir, '.rss', 'memory'), { recursive: true });
-    writeFileSync(join(dir, '.rss', 'memory', 'constitution.md'), '# Constitution');
+    mkdirSync(join(dir, '.loom', 'memory'), { recursive: true });
+    writeFileSync(join(dir, '.loom', 'memory', 'constitution.md'), '# Constitution');
     process.chdir(dir);
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     handler();

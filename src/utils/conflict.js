@@ -15,9 +15,9 @@ export function detectConflicts(targetFiles) {
     const version = parseVersion(content);
 
     if (version) {
-      conflicts.push({ file, status: 'rss-managed', version });
+      conflicts.push({ file, status: 'loom-managed', version });
     } else {
-      conflicts.push({ file, status: 'conflict', reason: 'File exists without rss version marker' });
+      conflicts.push({ file, status: 'conflict', reason: 'File exists without loom version marker' });
     }
   }
 
@@ -26,13 +26,13 @@ export function detectConflicts(targetFiles) {
 
 export function ensureGitignore(projectRoot) {
   const gitignorePath = join(projectRoot, '.gitignore');
-  const marker = '.rss-backup/';
+  const marker = '.loom-backup/';
 
   if (existsSync(gitignorePath)) {
     const content = readFileSync(gitignorePath, 'utf-8');
     if (content.includes(marker)) return;
-    appendFileSync(gitignorePath, `\n# rss-engineering\n${marker}\n`);
+    appendFileSync(gitignorePath, `\n# loom-engineering\n${marker}\n`);
   } else {
-    writeFileSync(gitignorePath, `# rss-engineering\n${marker}\n`);
+    writeFileSync(gitignorePath, `# loom-engineering\n${marker}\n`);
   }
 }

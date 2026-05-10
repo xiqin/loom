@@ -1,7 +1,7 @@
 {
-  "name": "rss-engineering",
-  "version": "1.0.1",
-  "description": "Requirement-Driven Software Engineering — AI 工程化框架",
+  "name": "loom-engineering",
+  "version": "1.1.0",
+  "description": "Loom — AI 工程化框架",
   "type": "module",
   "license": "MIT",
   "keywords": [
@@ -10,18 +10,19 @@
     "skills",
     "pipeline",
     "tdd",
-    "chinese"
+    "chinese",
+    "loom"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/xiqin/rss"
+    "url": "https://github.com/xiqin/loom"
   },
   "bugs": {
-    "url": "https://github.com/xiqin/rss/issues"
+    "url": "https://github.com/xiqin/loom/issues"
   },
-  "homepage": "https://github.com/xiqin/rss#readme",
+  "homepage": "https://github.com/xiqin/loom#readme",
   "bin": {
-    "rss": "./bin/rss.js"
+    "loom": "./bin/loom.js"
   },
   "files": [
     "bin/",

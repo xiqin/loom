@@ -174,7 +174,7 @@ digraph process {
 
 ### Step 2：读取项目约束（派发时传入精简上下文）
 
-每个 subagent 注入精简上下文模板：`.rss/subagent-context.md`（约 30-50 行，替代完整宪章 + 工程结构）。
+每个 subagent 注入精简上下文模板：`.loom/subagent-context.md`（约 30-50 行，替代完整宪章 + 工程结构）。
 
 同时传入：`specs/<date+feature>/spec.md` — 需求规格
 
@@ -185,7 +185,7 @@ digraph process {
 **输入上下文：**
 
 - task 完整文本（来自 plan.md）
-- `.rss/subagent-context.md`（精简项目约束）
+- `.loom/subagent-context.md`（精简项目约束）
 - `specs/<date+feature>/spec.md` 中相关章节
 
 **implementer 的指令模板：**
@@ -195,7 +195,7 @@ digraph process {
 
 **审查模式选项：**
 
-- **合并模式**（rss 当前）：spec + quality 一次审查，参见 `combined-reviewer-prompt.md`
+- **合并模式**（loom 当前）：spec + quality 一次审查，参见 `combined-reviewer-prompt.md`
 - **拆分模式**（superpowers）：先 spec → 通过后 quality，参见 `spec-reviewer-prompt.md` 和 `code-quality-reviewer-prompt.md`
 
 **输入上下文（合并模式）：**
@@ -204,7 +204,7 @@ digraph process {
 - `specs/<date+feature>/spec.md`（完整需求）
 - `specs/<date+feature>/plan.md`（当前 task 定义）
 - git diff（仅变更部分）
-- `.rss/subagent-context.md`（精简项目约束）
+- `.loom/subagent-context.md`（精简项目约束）
 
 **判定规则：**
 

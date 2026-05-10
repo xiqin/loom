@@ -86,7 +86,7 @@ export async function withTimeout(fn, timeoutMs) {
  * Resolve log function for fallback strategy.
  */
 function logForStrategy(strategy, hookId) {
-  const prefix = `[rss:hook:${hookId}]`;
+  const prefix = `[loom:hook:${hookId}]`;
   switch (strategy) {
     case 'skip':
       return (msg) => console.debug(`${prefix} ${msg}`);

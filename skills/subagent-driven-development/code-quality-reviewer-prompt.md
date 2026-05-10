@@ -7,7 +7,7 @@
 - 实现者的输出（创建/修改的文件列表 + 代码）
 - `specs/<date+feature>/spec.md`（完整需求）
 - `specs/<date+feature>/plan.md`（当前 task 定义）
-- `.rss/subagent-context.md`（精简项目约束）
+- `.loom/subagent-context.md`（精简项目约束）
 - git diff（仅变更部分）
 
 ## 质量审查维度

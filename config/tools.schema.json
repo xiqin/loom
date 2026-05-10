@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/xiqin/rss/config/tools.schema.json",
-  "title": "rss Supported Tools",
+  "$id": "https://github.com/xiqin/loom/config/tools.schema.json",
+  "title": "loom Supported Tools",
   "description": "Single source of truth for all tool definitions. Run `node scripts/generate-tooling.mjs` after editing.",
   "version": 1,
   "tools": [

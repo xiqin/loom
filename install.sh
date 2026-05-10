@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# rss — 安装脚本（可重现、可审计、可 dry-run）
+# loom — 安装脚本（可重现、可审计、可 dry-run）
 #
 # 本地模式：
 #   bash install.sh --tool claude-code
 #   bash install.sh --tool claude-code --dry-run
-#   bash install.sh --tool claude-code --version 1.0.1
+#   bash install.sh --tool claude-code --version 版本号
 #
 # Release 模式（从指定版本 tag 下载）：
 #   bash install.sh --tool claude-code --from-release
@@ -12,8 +12,8 @@
 
 set -euo pipefail
 
-REPO="xiqin/rss"
-VERSION="1.0.1"
+REPO="xiqin/loom"
+VERSION="1.1.0"
 # TODO: replace hardcoded list — import from config/tools.schema.json via generate-tooling.mjs
 SUPPORTED_TOOLS=("claude-code" "cursor" "copilot" "opencode" "codex")
 
@@ -47,7 +47,7 @@ err()   { printf '%s%s%s\n' "$c_err" "$1" "$c_reset" >&2; }
 # ── Help ───────────────────────────────────────────────────────────────
 print_help() {
   cat <<'EOF'
-rss 安装脚本
+loom 安装脚本
 
 USAGE
   install.sh --tool <target> [flags]
@@ -71,7 +71,7 @@ FLAGS
   bash install.sh --tool claude-code --dry-run
 
   # 从指定版本 release 安装（远程，可重现）
-  bash install.sh --tool claude-code --from-release --version 1.0.1
+  bash install.sh --tool claude-code --from-release --version 版本号
 
   # 多工具安装
   bash install.sh --tool claude-code --tool cursor --force
@@ -125,7 +125,7 @@ detect_repo_root() {
   if [ -n "$src" ] && [ -f "$src" ]; then
     local d
     d="$(cd "$(dirname "$src")" 2>/dev/null && pwd)"
-    if [ -n "$d" ] && [ -f "$d/bin/rss.js" ] && [ -f "$d/package.json" ]; then
+    if [ -n "$d" ] && [ -f "$d/bin/loom.js" ] && [ -f "$d/package.json" ]; then
       echo "$d"
       return 0
     fi
@@ -135,14 +135,14 @@ detect_repo_root() {
 
 REPO_ROOT="$(detect_repo_root || true)"
 
-# ── Resolve RSS source ────────────────────────────────────────────────
-RSS_CLI=""
+# ── Resolve loom source ─────────────────────────────────────────────────
+LOOM_CLI=""
 CLEANUP_DIR=""
 
 resolve_source() {
   if [ "$FROM_RELEASE" = 0 ] && [ -n "$REPO_ROOT" ]; then
     note "  mode: local ($REPO_ROOT)"
-    RSS_CLI="$REPO_ROOT/bin/rss.js"
+    LOOM_CLI="$REPO_ROOT/bin/loom.js"
     return 0
   fi
 
@@ -158,21 +158,21 @@ resolve_source() {
 
   note "  mode: release (v$INSTALL_VERSION)"
   CLEANUP_DIR="$(mktemp -d)"
-  local tarball="$CLEANUP_DIR/rss.tar.gz"
+  local tarball="$CLEANUP_DIR/loom.tar.gz"
 
-  say "  downloading rss v$INSTALL_VERSION from $REPO..."
+  say "  downloading loom v$INSTALL_VERSION from $REPO..."
   curl -fsSL "https://github.com/$REPO/archive/refs/tags/v$INSTALL_VERSION.tar.gz" -o "$tarball"
 
   note "  extracting..."
   tar xzf "$tarball" -C "$CLEANUP_DIR"
 
-  local extracted="$CLEANUP_DIR/rss-$INSTALL_VERSION"
+  local extracted="$CLEANUP_DIR/loom-$INSTALL_VERSION"
   if [ ! -d "$extracted" ]; then
     extracted=$(find "$CLEANUP_DIR" -maxdepth 1 -type d | tail -1)
   fi
 
-  if [ ! -f "$extracted/bin/rss.js" ]; then
-    err "error: download appears incomplete — bin/rss.js not found"
+  if [ ! -f "$extracted/bin/loom.js" ]; then
+    err "error: download appears incomplete — bin/loom.js not found"
     rm -rf "$CLEANUP_DIR"
     exit 1
   fi
@@ -181,7 +181,7 @@ resolve_source() {
   (cd "$extracted" && npm install --production 2>/dev/null) || \
     warn "  warning: npm install failed, some features may not work"
 
-  RSS_CLI="$extracted/bin/rss.js"
+  LOOM_CLI="$extracted/bin/loom.js"
 }
 
 cleanup() {
@@ -209,7 +209,7 @@ check_node() {
 # ── Main ───────────────────────────────────────────────────────────────
 main() {
   say ""
-  say "  rss install v$INSTALL_VERSION"
+  say "  loom install v$INSTALL_VERSION"
   say "  ${REPO}"
   say ""
 
@@ -224,7 +224,7 @@ main() {
   # Run init for each tool
   for tool in "${TOOLS[@]}"; do
     say "→ $tool"
-    if node "$RSS_CLI" init --tool "$tool" "${CLI_ARGS[@]}"; then
+    if node "$LOOM_CLI" init --tool "$tool" "${CLI_ARGS[@]}"; then
       ok "  ✔ $tool 安装完成"
     else
       warn "  ✘ $tool 安装失败"
@@ -233,7 +233,7 @@ main() {
 
   say ""
   say "  done"
-  note "  可用命令: rss doctor, rss list, rss update"
+  note "  可用命令: loom doctor, loom list, loom update"
   note "  卸载: bash uninstall.sh --tool <target>"
   say ""
 }

@@ -1,9 +1,9 @@
 ---
 name: finishing-a-development-branch
 description: >
-   开发分支收尾。完成开发后，整理分支并准备合并。
-   Use when: feature development is complete and branch needs to be cleaned up.
-   Trigger keywords: 完成开发, 收尾, 合并分支, 准备提交.
+  开发分支收尾。完成开发后，整理分支并准备合并。
+  Use when: feature development is complete and branch needs to be cleaned up.
+  Trigger keywords: 完成开发, 收尾, 合并分支, 准备提交.
 ---
 
 # 开发分支收尾
@@ -35,7 +35,7 @@ git diff --stat
 
 ### Step 3：运行最终验证
 
-读取 `.rss/constitution.md` 中的 BUILD_CMD、VET_CMD、TEST_CMD，依次执行。
+读取 `.loom/memory/constitution.md` 中的 BUILD_CMD、VET_CMD、TEST_CMD，依次执行。
 
 - [ ] 编译通过
 - [ ] vet 通过
@@ -59,6 +59,7 @@ git diff --stat
 ### Step 5：执行用户选择
 
 **如果选择 Merge：**
+
 ```bash
 git checkout main
 git merge --no-ff feature/<date>-<feature-name>
@@ -66,6 +67,7 @@ git push origin main
 ```
 
 **如果选择 Pull Request：**
+
 ```bash
 git push -u origin feature/<date>-<feature-name>
 gh pr create --title "feat: <功能描述>" --body "$(cat <<'EOF'
@@ -82,10 +84,12 @@ EOF
 ```
 
 **如果选择 Keep：**
+
 - 保持当前状态
 - 提醒用户稍后继续
 
 **如果选择 Discard：**
+
 ```bash
 git checkout main
 git branch -D feature/<date>-<feature-name>
@@ -117,6 +121,7 @@ Co-Authored-By: AI Assistant
 ```
 
 **Type：**
+
 - `feat`：新功能
 - `fix`：修复
 - `refactor`：重构

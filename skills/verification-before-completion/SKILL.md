@@ -1,8 +1,8 @@
 ---
 name: verification-before-completion
 description: >
-   完成前验证。在宣布任务完成前，执行完整性检查确保所有工作已完成。
-   Use when: before declaring a task or feature complete.
+  完成前验证。在宣布任务完成前，执行完整性检查确保所有工作已完成。
+  Use when: before declaring a task or feature complete.
 ---
 
 # 完成前验证
@@ -25,16 +25,17 @@ description: >
 
 跳过任何一步 = 不诚实。
 
-## 红旗信号
+## Red Flag
 
 以下措辞意味着未验证就声称：
+
 - "应该通过了" / "probably passes"
 - "似乎没问题" / "seems fine"
 - "我觉得可以" / "I think it works"
 - 表达满意在验证之前
 - 信任 agent 报告而无独立确认
 
-**发现红旗？** 立即停止，运行实际命令，读取输出，然后才声称。
+**发现Red Flag？** 立即停止，运行实际命令，读取输出，然后才声称。
 
 ## 验证清单
 
@@ -48,7 +49,7 @@ description: >
 
 ### 2. 占位符扫描
 
-- [ ] 搜索计划中的红旗 — "TBD"、"TODO"、"implement later"
+- [ ] 搜索计划中的Red Flag — "TBD"、"TODO"、"implement later"
 - [ ] 修复它们
 
 ### 3. 类型一致性
@@ -58,20 +59,20 @@ description: >
 
 ### 4. 编译验证
 
-读取 `.rss/constitution.md` 中的 `BUILD_CMD` 并执行。
+读取 `.loom/memory/constitution.md` 中的 `BUILD_CMD` 并执行。
 
 - [ ] 编译通过，无错误
 - [ ] 无编译警告
 
 ### 5. 静态分析
 
-读取 `.rss/constitution.md` 中的 `VET_CMD` 并执行。
+读取 `.loom/memory/constitution.md` 中的 `VET_CMD` 并执行。
 
 - [ ] vet 通过，无警告
 
 ### 6. 测试验证
 
-读取 `.rss/constitution.md` 中的 `TEST_CMD` 并执行。
+读取 `.loom/memory/constitution.md` 中的 `TEST_CMD` 并执行。
 
 - [ ] 所有测试通过
 - [ ] 无跳过的测试（除非有正当理由）
@@ -106,7 +107,7 @@ description: >
 
 ### Step 2：占位符扫描
 
-搜索计划中的红旗 — 任何 "TBD"、"TODO"、"implement later"、"fill in details"、"Similar to Task N"。修复它们。
+搜索计划中的Red Flag — 任何 "TBD"、"TODO"、"implement later"、"fill in details"、"Similar to Task N"。修复它们。
 
 ### Step 3：类型一致性检查
 
@@ -114,7 +115,7 @@ description: >
 
 ### Step 4：运行编译和测试
 
-读取 `.rss/constitution.md` 中的 BUILD_CMD、VET_CMD、TEST_CMD，依次执行。
+读取 `.loom/memory/constitution.md` 中的 BUILD_CMD、VET_CMD、TEST_CMD，依次执行。
 
 ### Step 5：检查代码质量
 
@@ -138,17 +139,17 @@ description: >
 
 ### 检查结果
 
-| 检查项 | 状态 | 说明 |
-|--------|------|------|
-| Spec 覆盖 | ✅ | 全部覆盖 |
-| 占位符扫描 | ✅ | 无占位符 |
-| 类型一致性 | ✅ | 类型匹配 |
-| BUILD_CMD | ✅ | 编译通过 |
-| VET_CMD | ✅ | 无警告 |
-| TEST_CMD | ✅ | 全部通过 |
-| 编码红线 | ✅ | 无违规 |
-| 功能完整性 | ✅ | 全部实现 |
-| 文档同步 | ✅ | 已更新 |
+| 检查项     | 状态 | 说明     |
+| ---------- | ---- | -------- |
+| Spec 覆盖  | ✅   | 全部覆盖 |
+| 占位符扫描 | ✅   | 无占位符 |
+| 类型一致性 | ✅   | 类型匹配 |
+| BUILD_CMD  | ✅   | 编译通过 |
+| VET_CMD    | ✅   | 无警告   |
+| TEST_CMD   | ✅   | 全部通过 |
+| 编码红线   | ✅   | 无违规   |
+| 功能完整性 | ✅   | 全部实现 |
+| 文档同步   | ✅   | 已更新   |
 
 **结论：** ✅ 可以提交
 ```

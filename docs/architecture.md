@@ -1,20 +1,20 @@
 # 架构
 
-rss 项目的代码架构和模块组织。
+loom 项目的代码架构和模块组织。
 
 ## 目录结构
 
 ```
-rss/
-├── bin/rss.js              # CLI 入口
+loom/
+├── bin/loom.js              # CLI 入口
 ├── src/
 │   ├── cli.js              # CLI 命令注册（commander）
 │   ├── commands/           # CLI 命令实现
-│   │   ├── init.js         # rss init
-│   │   ├── update.js       # rss update
-│   │   ├── doctor.js       # rss doctor
-│   │   ├── list.js         # rss list
-│   │   └── uninstall.js    # rss uninstall
+│   │   ├── init.js         # loom init
+│   │   ├── update.js       # loom update
+│   │   ├── doctor.js       # loom doctor
+│   │   ├── list.js         # loom list
+│   │   └── uninstall.js    # loom uninstall
 │   ├── adapters/           # 工具适配器
 │   │   ├── base.js         # BaseAdapter 基类
 │   │   ├── claude-code.js  # Claude Code 适配器
@@ -65,10 +65,10 @@ rss/
 ### CLI 层
 
 ```
-bin/rss.js → src/cli.js → src/commands/*.js
+bin/loom.js → src/cli.js → src/commands/*.js
 ```
 
-- `bin/rss.js`：Node.js 入口，加载 `src/cli.js`
+- `bin/loom.js`：Node.js 入口，加载 `src/cli.js`
 - `src/cli.js`：使用 commander 注册命令
 - `src/commands/`：每个命令一个文件
 
@@ -117,15 +117,15 @@ src/core/schema-validator.js — 模板验证与渲染
 ### 工具函数层
 
 - `backup.js`：创建备份、清理旧备份（保留最近 3 份）
-- `conflict.js`：检测文件冲突状态（不存在/rss-managed/conflict）
-- `version.js`：解析 `rss:version=x.y.z` 标记、比较版本号
+- `conflict.js`：检测文件冲突状态（不存在/loom-managed/conflict）
+- `version.js`：解析 `loom:version=x.y.z` 标记、比较版本号
 
 ## 数据流
 
 ### 安装数据流
 
 ```
-CLI (rss init)
+CLI (loom init)
   → installer.install({ tool, version, dryRun, force })
     → getAdapter(tool) → adapter
     → adapter.getTargetFiles(projectRoot) → targetFiles
@@ -135,20 +135,20 @@ CLI (rss init)
       → _copyDirRecursive() for each directory
       → writeFileSync() for entry file
     → buildChecksumMap() → checksums
-    → writeManifest() → .rss/install-manifest.json
+    → writeManifest() → .loom/install-manifest.json
 ```
 
 ### 卸载数据流
 
 ```
-CLI (rss uninstall)
+CLI (loom uninstall)
   → uninstaller.uninstall({ tool, dryRun, purge })
     → readManifest() → manifest
     → classifyFiles(projectRoot, manifest) → { safe, modified, missing }
     → unlinkSync() for safe files
     → cleanupEmptyDirs()
     → unregisterPluginClaude() if claude-code
-    → rmSync(.rss-backup/) if purge
+    → rmSync(.loom-backup/) if purge
     → clean .gitignore if purge
 ```
 
@@ -176,7 +176,7 @@ hooks/session-start (shell wrapper)
 
 ## Schema 驱动
 
-rss 使用 JSON Schema 定义配置：
+loom 使用 JSON Schema 定义配置：
 
 - `tools.schema.json` → `scripts/generate-tooling.mjs` → `src/generated/tooling.js`
 - `hooks.schema.json` → 驱动 `hooks/run-hook.js`

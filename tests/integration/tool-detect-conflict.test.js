@@ -42,8 +42,8 @@ describe('tool auto-detect and conflict', () => {
     expect(detectInstalledTool(TEST_DIR)).toBe('opencode');
   });
 
-  it('non-rss entry file is not detected', () => {
-    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), '# Not rss managed');
+  it('non-loom entry file is not detected', () => {
+    writeFileSync(join(TEST_DIR, 'CLAUDE.md'), '# Not loom managed');
     expect(detectInstalledTool(TEST_DIR)).toBeNull();
   });
 
@@ -57,7 +57,7 @@ describe('tool auto-detect and conflict', () => {
   });
 
   it('init without force on existing different entry file detects conflict', async () => {
-    // Write a non-rss CLAUDE.md
+    // Write a non-loom CLAUDE.md
     writeFileSync(join(TEST_DIR, 'CLAUDE.md'), '# My custom CLAUDE.md');
     // init should detect conflict and return null (no force)
     const result = await install({ tool: 'claude-code' });

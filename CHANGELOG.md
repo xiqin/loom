@@ -30,6 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - 初始版本
 
-[Unreleased]: https://github.com/xiqin/rss/compare/v1.0.1...HEAD
-[1.0.1]: https://github.com/xiqin/rss/compare/v1.0.0...v1.0.1
-[1.0.0]: https://github.com/xiqin/rss/releases/tag/v1.0.0
+[Unreleased]: https://github.com/xiqin/loom/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/xiqin/loom/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/xiqin/loom/releases/tag/v1.0.0

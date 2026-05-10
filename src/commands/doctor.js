@@ -11,7 +11,7 @@ const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'),
 export default async function doctor(options) {
   const projectRoot = process.cwd();
 
-  console.log(`\n  rss doctor — Diagnosis Report\n  Project: ${projectRoot}\n`);
+  console.log(`\n  loom doctor — Diagnosis Report\n  Project: ${projectRoot}\n`);
 
   const tools = options.tool ? [options.tool] : listAdapters();
   let foundAny = false;
@@ -47,7 +47,7 @@ export default async function doctor(options) {
       const version = parseVersion(content);
 
       if (!version) {
-        console.log(`    WARN: ${file} — no rss version marker`);
+        console.log(`    WARN: ${file} — no loom version marker`);
       } else if (needsUpdate(version, pkg.version)) {
         console.log(`    OUTDATED: ${file} — v${version} (current: v${pkg.version})`);
       } else {
@@ -59,10 +59,10 @@ export default async function doctor(options) {
     const gitignorePath = join(projectRoot, '.gitignore');
     if (existsSync(gitignorePath)) {
       const gitignore = readFileSync(gitignorePath, 'utf-8');
-      if (gitignore.includes('.rss-backup/')) {
-        console.log(`    OK: .gitignore includes .rss-backup/`);
+      if (gitignore.includes('.loom-backup/')) {
+        console.log(`    OK: .gitignore includes .loom-backup/`);
       } else {
-        console.log(`    WARN: .gitignore missing .rss-backup/ entry`);
+        console.log(`    WARN: .gitignore missing .loom-backup/ entry`);
       }
     } else {
       console.log(`    WARN: .gitignore not found`);
@@ -81,7 +81,7 @@ export default async function doctor(options) {
   }
 
   if (!foundAny) {
-    console.log('  No rss installation detected. Run "rss init --tool <target>" to install.');
+    console.log('  No loom installation detected. Run "loom init --tool <target>" to install.');
   }
 }
 

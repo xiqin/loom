@@ -12,5 +12,8 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Test coverage
+coverage/
+
 # User-generated specs
 specs/

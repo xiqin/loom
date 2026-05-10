@@ -19,9 +19,9 @@ afterEach(() => {
 });
 
 describe('getManifestPath', () => {
-  it('returns .rss/install-manifest.json path', () => {
+  it('returns .loom/install-manifest.json path', () => {
     const p = getManifestPath(TEST_DIR);
-    expect(p).toBe(join(TEST_DIR, '.rss', 'install-manifest.json'));
+    expect(p).toBe(join(TEST_DIR, '.loom', 'install-manifest.json'));
   });
 });
 
@@ -69,10 +69,10 @@ describe('writeManifest + readManifest', () => {
     expect(loaded.fileChecksums['.github/copilot-instructions.md']).toBe('def456');
   });
 
-  it('creates .rss directory if missing', () => {
+  it('creates .loom directory if missing', () => {
     const data = createManifest({ version: '1.0.0', tool: 'cursor' });
     writeManifest(TEST_DIR, data);
-    expect(existsSync(join(TEST_DIR, '.rss', 'install-manifest.json'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom', 'install-manifest.json'))).toBe(true);
   });
 });
 
@@ -82,8 +82,8 @@ describe('readManifest', () => {
   });
 
   it('returns null on invalid JSON', () => {
-    mkdirSync(join(TEST_DIR, '.rss'), { recursive: true });
-    writeFileSync(join(TEST_DIR, '.rss', 'install-manifest.json'), 'not json');
+    mkdirSync(join(TEST_DIR, '.loom'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.loom', 'install-manifest.json'), 'not json');
     expect(readManifest(TEST_DIR)).toBeNull();
   });
 });

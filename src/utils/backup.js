@@ -1,7 +1,7 @@
 import { mkdirSync, cpSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { join, relative, dirname } from 'node:path';
 
-export const BACKUP_DIR = '.rss-backup';
+export const BACKUP_DIR = '.loom-backup';
 const MAX_BACKUPS = 5;
 
 export function createBackup(projectRoot, filePaths) {

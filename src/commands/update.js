@@ -13,21 +13,21 @@ const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'),
 function registerPluginClaude(projectRoot) {
   if (process.env.CI) return;
   try {
-    execSync('claude plugin update rss', { cwd: projectRoot, stdio: 'pipe' });
+    execSync('claude plugin update loom', { cwd: projectRoot, stdio: 'pipe' });
   } catch {
     // Plugin may not be installed yet, try install
     try {
-      execSync('claude plugin marketplace remove rss', { cwd: projectRoot, stdio: 'pipe' });
+      execSync('claude plugin marketplace remove loom', { cwd: projectRoot, stdio: 'pipe' });
     } catch { /* not registered */ }
     try {
       execSync(`claude plugin marketplace add "${projectRoot}"`, { cwd: projectRoot, stdio: 'pipe' });
     } catch { /* ignore */ }
     try {
-      execSync('claude plugin install rss@rss --scope project', { cwd: projectRoot, stdio: 'pipe' });
+      execSync('claude plugin install loom@loom --scope project', { cwd: projectRoot, stdio: 'pipe' });
     } catch { /* ignore */ }
   }
   try {
-    execSync('claude plugin enable rss@rss --scope project', { cwd: projectRoot, stdio: 'pipe' });
+    execSync('claude plugin enable loom@loom --scope project', { cwd: projectRoot, stdio: 'pipe' });
   } catch { /* ignore */ }
 }
 
@@ -39,7 +39,7 @@ export default async function update(options) {
   if (!tool) {
     tool = detectInstalledTool(projectRoot);
     if (!tool) {
-      console.log('\n  No rss installation detected. Run "rss init --tool <target>" first.\n');
+      console.log('\n  No loom installation detected. Run "loom init --tool <target>" first.\n');
       return;
     }
     console.log(`\n  Detected: ${tool}\n`);
@@ -48,24 +48,24 @@ export default async function update(options) {
   const adapter = getAdapter(tool);
   const targetFiles = adapter.getTargetFiles(projectRoot);
 
-  console.log(`  rss update — ${tool}\n  Project: ${projectRoot}\n`);
+  console.log(`  loom update — ${tool}\n  Project: ${projectRoot}\n`);
 
   // Check if installed
   const conflicts = detectConflicts(targetFiles);
-  const rssManaged = conflicts.filter(c => c.status === 'rss-managed');
+  const loomManaged = conflicts.filter(c => c.status === 'loom-managed');
 
-  if (rssManaged.length === 0) {
+  if (loomManaged.length === 0) {
     const anyExist = conflicts.length > 0;
     if (!anyExist) {
-      console.log('  not installed. Run "rss init --tool <target>" first.\n');
+      console.log('  not installed. Run "loom init --tool <target>" first.\n');
       return;
     }
-    console.log('  Files exist but have no rss version marker. Use "rss init --force" to overwrite.\n');
+    console.log('  Files exist but have no loom version marker. Use "loom init --force" to overwrite.\n');
     return;
   }
 
   // Check version
-  const installedVersion = rssManaged[0].version;
+  const installedVersion = loomManaged[0].version;
   if (!needsUpdate(installedVersion, pkg.version)) {
     console.log(`  Already up to date (v${installedVersion}).\n`);
     return;
@@ -83,7 +83,7 @@ export default async function update(options) {
   }
 
   // Backup
-  const existingFiles = rssManaged.map(c => c.file);
+  const existingFiles = loomManaged.map(c => c.file);
   const userCustoms = {};
   for (const file of existingFiles) {
     const content = readFileSync(file, 'utf-8');

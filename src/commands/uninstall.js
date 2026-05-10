@@ -6,7 +6,7 @@ import { parseVersion } from '../utils/version.js';
 
 function uninstallPluginClaude(projectRoot) {
   try {
-    execSync('claude plugin uninstall rss@rss --scope project', { cwd: projectRoot, stdio: 'pipe' });
+    execSync('claude plugin uninstall loom@loom --scope project', { cwd: projectRoot, stdio: 'pipe' });
   } catch {
     // plugin may not be installed
   }
@@ -25,13 +25,13 @@ function cleanGitignore(projectRoot) {
     let content = readFileSync(gitignorePath, 'utf-8');
     const before = content;
     content = content
-      .replace(/# rss-engineering\n?/g, '')
-      .replace(/\.rss-backup\/\n?/g, '')
+      .replace(/# loom-engineering\n?/g, '')
+      .replace(/\.loom-backup\/\n?/g, '')
       .replace(/\n{2,}/g, '\n')
       .trim();
     if (content !== before) {
       writeFileSync(gitignorePath, content + '\n');
-      console.log('  Cleaned .gitignore rss entries');
+      console.log('  Cleaned .gitignore loom entries');
     }
   } catch {
     // best effort
@@ -47,21 +47,21 @@ export default async function uninstall(options) {
   if (!tool) {
     tool = detectInstalledTool(projectRoot);
     if (!tool) {
-      console.log('\n  No rss installation detected.\n');
+      console.log('\n  No loom installation detected.\n');
       return;
     }
     console.log(`\n  Detected: ${tool}\n`);
   }
 
   const adapter = getAdapter(tool);
-  console.log(`  rss uninstall — ${tool}\n  Project: ${projectRoot}\n`);
+  console.log(`  loom uninstall — ${tool}\n  Project: ${projectRoot}\n`);
 
   // Verify installation exists
   const entryFile = join(projectRoot, adapter.entryFilename);
   if (existsSync(entryFile)) {
     const content = readFileSync(entryFile, 'utf-8');
     if (!parseVersion(content)) {
-      console.log(`  ${adapter.entryFilename} exists but is not rss-managed. Skipped.\n`);
+      console.log(`  ${adapter.entryFilename} exists but is not loom-managed. Skipped.\n`);
     } else {
       unlinkSync(entryFile);
       console.log(`  Removed ${adapter.entryFilename}`);
@@ -83,13 +83,13 @@ export default async function uninstall(options) {
     rmIfExists(join(projectRoot, '.opencode'));
   }
 
-  // Remove common .rss directory
-  rmIfExists(join(projectRoot, '.rss'));
+  // Remove common .loom directory
+  rmIfExists(join(projectRoot, '.loom'));
 
   // --purge: additional cleanup
   if (purge) {
     cleanGitignore(projectRoot);
-    rmIfExists(join(projectRoot, '.rss-backup'));
+    rmIfExists(join(projectRoot, '.loom-backup'));
     console.log('  Purge complete (backups and .gitignore entries removed).');
   }
 

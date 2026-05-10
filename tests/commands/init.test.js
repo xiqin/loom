@@ -55,8 +55,8 @@ describe('init command', () => {
     const { default: init } = await import('../../src/commands/init.js');
     await init({ tool: 'claude-code', force: true });
     const content = readFileSync(join(TEST_DIR, 'CLAUDE.md'), 'utf-8');
-    expect(content).toContain('rss:version');
-    expect(existsSync(join(TEST_DIR, '.rss-backup'))).toBe(true);
+    expect(content).toContain('loom:version');
+    expect(existsSync(join(TEST_DIR, '.loom-backup'))).toBe(true);
     sp.mockRestore();
   });
 
@@ -65,7 +65,7 @@ describe('init command', () => {
     const { default: init } = await import('../../src/commands/init.js');
     await init({ tool: 'claude-code' });
     const gitignore = readFileSync(join(TEST_DIR, '.gitignore'), 'utf-8');
-    expect(gitignore).toContain('.rss-backup/');
+    expect(gitignore).toContain('.loom-backup/');
     sp.mockRestore();
   });
 

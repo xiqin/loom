@@ -1,6 +1,6 @@
 # SYNC-LOG
 
-rss 与 superpowers 同步记录。
+loom 与 superpowers 同步记录。
 
 ## 格式
 
@@ -17,8 +17,8 @@ rss 与 superpowers 同步记录。
 
 **来源**: superpowers v1.0.0
 **同步内容**:
-- 初始 rss 框架建立，基于 superpowers 核心 skills 增强
-- 新增：brainstorming, writing-plans, init-project, index-update, using-rss
+- 初始 loom 框架建立，基于 superpowers 核心 skills 增强
+- 新增：brainstorming, writing-plans, init-project, index-update, using-loom
 
 **变更摘要**:
 - 建立 5 步流水线：brainstorming → writing-plans → git-worktree → subagent-dev → index-update

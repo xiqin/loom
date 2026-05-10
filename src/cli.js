@@ -10,13 +10,13 @@ const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-
 const program = new Command();
 
 program
-  .name('rss')
-  .description('rss — Requirement-Driven Software Engineering CLI')
+  .name('loom')
+  .description('loom — AI 工程化框架 CLI')
   .version(pkg.version);
 
 program
   .command('init')
-  .description('Install rss to your project')
+  .description('Install loom to your project')
   .requiredOption('--tool <target>', `Target tool: ${TOOL_IDS.join(' | ')}`)
   .option('--version <ver>', 'Version to install (default: package.json version)')
   .option('--dry-run', 'Show files to be generated without writing')
@@ -28,7 +28,7 @@ program
 
 program
   .command('update')
-  .description('Update installed rss files')
+  .description('Update installed loom files')
   .option('--tool <target>', 'Target tool (auto-detect if omitted)')
   .option('--version <ver>', 'Version to install (default: package.json version)')
   .option('--dry-run', 'Show diff without applying')
@@ -37,7 +37,7 @@ program
     if (!options.tool) {
       const detected = detectInstalledTool(process.cwd());
       if (!detected) {
-        console.log('\n  No rss installation detected. Run "rss init --tool <target>" first.\n');
+        console.log('\n  No loom installation detected. Run "loom init --tool <target>" first.\n');
         return;
       }
       options.tool = detected;
@@ -48,7 +48,7 @@ program
 
 program
   .command('doctor')
-  .description('Diagnose rss installation')
+  .description('Diagnose loom installation')
   .option('--tool <target>', 'Target tool (auto-detect if omitted)')
   .action(async (options) => {
     const { default: doctor } = await import('./commands/doctor.js');
@@ -57,7 +57,7 @@ program
 
 program
   .command('uninstall')
-  .description('Uninstall rss from your project')
+  .description('Uninstall loom from your project')
   .requiredOption('--tool <target>', `Target tool: ${TOOL_IDS.join(' | ')}`)
   .option('--dry-run', 'Preview files to be deleted without removing')
   .option('--purge', 'Also remove backups and .gitignore entries')

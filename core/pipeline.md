@@ -37,7 +37,7 @@ stateDiagram-v2
 
 ## 5 步流水线
 
-rss 框架的核心是 5 步流水线，定义了从需求到代码交付的完整执行流程。
+loom 框架的核心是 5 步流水线，定义了从需求到代码交付的完整执行流程。
 
 ```
 brainstorming → writing-plans → git-worktree → subagent-dev → index-update
