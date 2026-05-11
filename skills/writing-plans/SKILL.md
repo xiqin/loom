@@ -58,7 +58,7 @@ description: >
 ### Step 2：读取项目约束
 
 1. 读取 `.loom/memory/constitution.md`（宪章）
-2. 读取 `.loom/project-structure.md`（工程结构）
+2. 读取 `.loom/rules/project-structure.md`（工程结构）
 3. 如果存在 `.loom/subagent-context.md`，读取它用于后续 task 上下文
 
 ### Step 3：文件结构
@@ -74,7 +74,7 @@ description: >
 
 ### Step 4：按依赖顺序拆分 task（Bite-Sized 粒度）
 
-**读取 `.loom/project-structure.md` 中定义的架构分层，按项目的实际依赖顺序拆分 task。**
+**读取 `.loom/rules/project-structure.md` 中定义的架构分层，按项目的实际依赖顺序拆分 task。**
 
 不同项目架构不同（MVC、分层、六边形、Clean Architecture、前端组件树等）。不要硬编码层级名称，而是从 project-structure.md 中提取项目的实际分层，按依赖顺序（底层→上层）排列。
 

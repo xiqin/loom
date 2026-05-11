@@ -9,7 +9,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 ## 项目规则
 
 - **宪章**：`.loom/memory/constitution.md`（由 `/loom-init-project` 自动生成）
-- **工程约束**：`.loom/project-structure.md`（由 `/loom-init-project` 自动生成）
+- **工程约束**：`.loom/rules/project-structure.md`（由 `/loom-init-project` 自动生成）
 
 **所有开发活动必须遵守以上两份文件。**
 

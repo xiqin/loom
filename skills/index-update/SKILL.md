@@ -53,7 +53,8 @@ description: >
 对照 `REFERENCE/update-checklist.md` 中的检查清单，逐一检查并更新。
 
 **更新顺序：**
-按项目架构分层的依赖顺序（从底层到上层），参考 `.loom/project-structure.md` 中定义的分层：
+按项目架构分层的依赖顺序（从底层到上层），参考 `.loom/rules/project-structure.md` 中定义的分层：
+
 1. 先更新底层数据源（数据库表等）
 2. 再更新数据模型层
 3. 再更新业务逻辑层
@@ -63,24 +64,29 @@ description: >
 7. 更新中间件、定时任务、队列、公共包等
 
 **签名格式标准**（参考 `REFERENCE/update-checklist.md`）：
+
 - 各层签名格式遵循项目语言的代码签名规范
 - 数据库表：表名 | 用途 | 关键字段
 
 ### Step 3: 更新 MEMORY.md
 
 **3.1 踩坑记录**
+
 - 开发过程中发现了新的踩坑点 → 添加到"踩坑记录"节
 - 格式：`- 问题描述；解决方案`
 
 **3.2 用户偏好**
+
 - 用户表达了新的偏好 → 添加到"用户偏好"节
 
 **3.3 项目状态**
+
 - 项目有重大变更（新增技术栈、架构调整等） → 更新"项目状态"节
 
 ### Step 4: 更新 {{ENTRY_FILE}}（仅在必要时）
 
 以下情况才更新 {{ENTRY_FILE}}：
+
 - 引入了新的约定或命令
 - 入口程序有变化
 - 开发流程有调整
@@ -97,11 +103,11 @@ description: >
 
 ### ENGINEERING-INDEX.md 更新
 
-| 节 | 变更类型 | 内容 |
-|----|---------|------|
-| 路由表 | 新增 | POST /xxx/edit → XxxController.Edit |
-| 控制器签名 | 新增 | XxxController 完整签名 |
-| 服务层签名 | 新增 | XxxService 完整签名 |
+| 节         | 变更类型 | 内容                                |
+| ---------- | -------- | ----------------------------------- |
+| 路由表     | 新增     | POST /xxx/edit → XxxController.Edit |
+| 控制器签名 | 新增     | XxxController 完整签名              |
+| 服务层签名 | 新增     | XxxService 完整签名                 |
 
 ### MEMORY.md 更新
 

@@ -54,13 +54,15 @@ description: >
   hooks/                           ← Hooks
   core/                            ← 核心框架定义
 
-.claude/CLAUDE.md                  ← Claude Code 入口（自动分发，wrapper 引用 .loom/）
-AGENTS.md                          ← OpenCode 入口（自动分发）
+.claude/CLAUDE.md                  ← Claude Code 入口（wrapper → .loom/）
+AGENTS.md                          ← OpenCode / Codex 入口（wrapper → .loom/）
 
-.cursor/                           ← Cursor 适配（自动分发）
+.cursor/                           ← Cursor 适配（mdc → .loom/）
   rules/
     constitution.mdc
     project-structure.mdc
+
+.github/copilot-instructions.md    ← GitHub Copilot 入口（wrapper → .loom/）
 ```
 
 ## 执行流程
@@ -217,53 +219,93 @@ pkg/          → 公共工具包
 
 ### Step 5: 检测工具目录并分发
 
-**5.1 检测项目中存在的 AI 编码工具目录**
+**5.1 检测项目中存在的 AI 编码工具**
 
-| 检测目标                                    | 分发条件                  |
-| ------------------------------------------- | ------------------------- |
-| `.claude/` 目录或 `.loom/` 已有 claude 适配 | 项目使用 Claude Code      |
-| `.opencode/` 目录                           | 项目使用 OpenCode         |
-| `.cursor/` 目录                             | 项目使用 Cursor           |
-| `AGENTS.md` 文件                            | 项目需要通用 agent 上下文 |
+| 检测目标                    | 对应工具           | 分发目标                          |
+| --------------------------- | ------------------ | --------------------------------- |
+| `.claude/` 目录或 CLAUDE.md | Claude Code        | `.claude/CLAUDE.md` (wrapper)     |
+| `.opencode/` 目录           | OpenCode           | `AGENTS.md` (wrapper)             |
+| `.cursor/` 目录             | Cursor             | `.cursor/rules/*.mdc` (完整复制)  |
+| `.github/` 目录             | GitHub Copilot     | `.github/copilot-instructions.md` |
+| `AGENTS.md` 文件            | Codex / 通用 agent | `AGENTS.md` (wrapper)             |
 
 检测逻辑：
 
 1. 检查项目根目录下是否存在上述目录/文件
-2. 如果没有任何工具目录被检测到，询问用户使用哪些工具
-3. 根据用户回答创建对应目录
+2. 如果没有任何工具目录被检测到，询问用户使用哪些工具（列出所有支持的工具）
+3. 根据用户回答创建对应目录和 wrapper 文件
 
 **5.2 分发规则**
 
-| 源文件 (`.loom/`)      | Claude Code 目标                      | OpenCode 目标                         | Cursor 目标                           |
-| ---------------------- | ------------------------------------- | ------------------------------------- | ------------------------------------- |
-| `constitution.md`      | `.loom/memory/constitution.md`        | `.loom/memory/constitution.md`        | `.cursor/rules/constitution.mdc`      |
-| `project-structure.md` | `.loom/rules/project-structure.md`    | `.loom/rules/project-structure.md`    | `.cursor/rules/project-structure.mdc` |
-| `memory.md`            | `.loom/memory/MEMORY.md`              | `.loom/memory/MEMORY.md`              | —                                     |
-| `subagent-context.md`  | `.loom/templates/subagent-context.md` | `.loom/templates/subagent-context.md` | —                                     |
+所有工具统一使用 wrapper 模式：入口文件引用 `.loom/` 下的源文件，AI 工具运行时按需读取。
 
-Claude Code 的目标路径均为 `.loom/` 下的真实文件。`.claude/` wrapper 由 `loom init` / `loom update` 自动维护，不从 init-project skill 直接写入。
+| 工具        | 分发目标                              | 格式    | 内容                                       |
+| ----------- | ------------------------------------- | ------- | ------------------------------------------ |
+| Claude Code | `.claude/CLAUDE.md`                   | wrapper | 指引读取 `.loom/memory/constitution.md` 等 |
+| OpenCode    | `AGENTS.md`                           | wrapper | 指引读取 `.loom/memory/constitution.md` 等 |
+| Cursor      | `.cursor/rules/constitution.mdc`      | mdc     | 完整复制 + frontmatter                     |
+| Cursor      | `.cursor/rules/project-structure.mdc` | mdc     | 完整复制 + frontmatter                     |
+| Copilot     | `.github/copilot-instructions.md`     | wrapper | 指引读取 `.loom/memory/constitution.md` 等 |
+| Codex       | `AGENTS.md`                           | wrapper | 同 OpenCode，共享文件                      |
+
+**分发原则：**
+
+- `.loom/` 是唯一维护点，wrapper 文件只放引用指引，不复制内容
+- Cursor 的 `.mdc` 格式例外，因 Cursor 不支持跨目录引用，需完整复制
+- 同一文件被多个工具共享时（如 `AGENTS.md`），只生成一次
 
 **5.3 分发格式适配**
 
-- **loom**: 直接复制内容
-- **Cursor**: 在文件头部添加 frontmatter：
+**Wrapper 模板（Claude Code / OpenCode / Copilot / Codex）：**
 
-  ```markdown
-  ---
-  description: [文件描述]
-  globs:
-  alwaysApply: true
-  ---
+所有 wrapper 文件使用统一模板，根据工具特性微调：
 
-  [原始内容]
-  ```
+```markdown
+# {{PROJECT_NAME}} — AI 编码指令
 
-- **AGENTS.md**: 将宪章和工程结构合并为单一文件，头部标注来源
+> 本文件由 loom init-project 自动生成。修改请编辑 `.loom/` 源文件，重新运行 `/loom-init-project` 重新分发。
+
+## 必读规则
+
+在开始任何编码任务前，必须先读取以下文件：
+
+1. `.loom/memory/constitution.md` — 项目宪章（编码准则、红线、技术栈）
+2. `.loom/rules/project-structure.md` — 工程结构约束（目录分层、架构模式）
+3. `.loom/memory/MEMORY.md` — 项目记忆（踩坑记录、用户偏好）
+
+## 快速参考
+
+- **语言**：{{LANGUAGE}}
+- **框架**：{{WEB_FRAMEWORK}}
+- **构建**：`{{BUILD_CMD}}`
+- **测试**：`{{TEST_CMD}}`
+- **检查**：`{{VET_CMD}}`
+```
+
+**Cursor mdc 模板（完整复制）：**
+
+```markdown
+---
+description: [文件描述]
+globs:
+alwaysApply: true
+---
+
+[.loom/ 源文件的完整内容]
+```
+
+**工具特定适配：**
+
+- **Claude Code** (`CLAUDE.md`)：使用上述 wrapper 模板。Claude Code 支持自动读取项目文件，wrapper 中的指引会被遵循。
+- **OpenCode / Codex** (`AGENTS.md`)：使用上述 wrapper 模板。两者都读取 `AGENTS.md`。
+- **Copilot** (`copilot-instructions.md`)：使用上述 wrapper 模板。Copilot 会自动加载 `.github/copilot-instructions.md`。
+- **Cursor** (`.cursor/rules/*.mdc`)：完整复制 `.loom/` 内容 + frontmatter。Cursor 不支持跨目录引用。
 
 **5.4 分发执行**
 
 - 已有目标文件时，提示用户确认是否覆盖
 - 分发后在报告中记录每个目标的状态
+- wrapper 文件只包含引用指引，不包含 `.loom/` 源文件的完整内容
 
 ### Step 6: 输出报告
 
@@ -284,11 +326,13 @@ Claude Code 的目标路径均为 `.loom/` 下的真实文件。`.claude/` wrapp
 
 ### 工具适配分发
 
-| 工具        | 检测                 | 分发文件数 | 状态      |
-| ----------- | -------------------- | ---------- | --------- |
-| Claude Code | ✅ 检测到 CLAUDE.md  | 4          | ✅ 已分发 |
-| OpenCode    | ✅ 检测到 .opencode/ | 4          | ✅ 已分发 |
-| Cursor 适配 | ✅ 检测到 .cursor/   | 2          | ✅ 已分发 |
+| 工具           | 检测结果                 | 分发文件                             | 状态      |
+| -------------- | ------------------------ | ------------------------------------ | --------- |
+| Claude Code    | ✅ 检测到 .claude/       | `.claude/CLAUDE.md` (wrapper)        | ✅ 已分发 |
+| OpenCode       | ✅ 检测到 .opencode/     | `AGENTS.md` (wrapper)                | ✅ 已分发 |
+| Cursor         | ✅ 检测到 .cursor/       | `.cursor/rules/constitution.mdc` + 1 | ✅ 已分发 |
+| GitHub Copilot | ✅ 检测到 .github/       | `.github/copilot-instructions.md`    | ✅ 已分发 |
+| Codex          | ⬜ 未检测到              | —                                    | ⬜ 跳过   |
 
 ### 需人工完善的 [TODO]
 
@@ -343,12 +387,14 @@ Claude Code 的目标路径均为 `.loom/` 下的真实文件。`.claude/` wrapp
 
 ## 约束
 
-- `.loom/` 是唯一维护点，`.claude/` wrapper 文件由 `loom init` / `loom update` 自动生成，工具目录中的副本不得独立修改
+- `.loom/` 是唯一维护点，所有 wrapper 文件只包含引用指引，不复制 `.loom/` 内容
+- Cursor 的 `.mdc` 文件例外，因 Cursor 不支持跨目录引用，需完整复制
 - 已有配置文件时，必须提示用户确认是否覆盖
 - 检测到不明确的信息时，使用 `[TODO]` 标记
 - 生成的文件必须是完整可用的，不包含未渲染的模板变量
 - 禁止修改任何业务代码
 - 分发时自动创建不存在的工具目录（如用户确认使用该工具）
+- wrapper 文件之间内容一致，仅文件名和位置不同
 
 ## 完成条件与下一步
 
@@ -356,5 +402,5 @@ Claude Code 的目标路径均为 `.loom/` 下的真实文件。`.claude/` wrapp
 
 1. 输出报告，列出已生成文件和分发状态
 2. 提示用户检查 `.loom/` 下的核心文件并完善 [TODO]
-3. 提示用户：修改配置应只改 `.loom/`，工具目录文件为副本
+3. 提示用户：修改配置应只改 `.loom/`，wrapper 文件会自动引用最新内容
 4. 后续可使用 `/loom-import-rules` 导入已有项目规则

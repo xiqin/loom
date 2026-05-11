@@ -42,7 +42,7 @@ description: >
 ### Step 1：理解需求
 
 1. 读取 `.loom/memory/constitution.md`（宪章）了解项目约束
-2. 读取 `.loom/project-structure.md`（工程结构）了解技术栈和分层
+2. 读取 `.loom/rules/project-structure.md`（工程结构）了解技术栈和分层
 3. 如果是修改类需求，先分析现有代码的实现方式和影响范围
 4. 明确需求边界：做什么、不做什么
 

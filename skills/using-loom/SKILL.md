@@ -89,7 +89,7 @@ loom 继承了 superpowers 的 skills 系统，并进行了融合增强。
 
 ## 项目规则
 
-项目规则存储在 `.loom/memory/constitution.md`（宪章）和 `.loom/project-structure.md`（工程约束）中。
+项目规则存储在 `.loom/memory/constitution.md`（宪章）和 `.loom/rules/project-structure.md`（工程约束）中。
 
 首次使用请运行 `/loom-init-project` 自动生成这些文件。
 
