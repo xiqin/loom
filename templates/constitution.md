@@ -40,15 +40,15 @@
 
 ## 技术栈
 
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| {{LANGUAGE}} | {{LANGUAGE_VERSION}} | 编程语言 |
+| 技术              | 版本                  | 用途     |
+| ----------------- | --------------------- | -------- |
+| {{LANGUAGE}}      | {{LANGUAGE_VERSION}}  | 编程语言 |
 | {{WEB_FRAMEWORK}} | {{FRAMEWORK_VERSION}} | Web 框架 |
-| {{ORM}} | {{ORM_VERSION}} | ORM |
-| {{DATABASE}} | {{DATABASE_VERSION}} | 数据库 |
-| {{CACHE}} | {{CACHE_VERSION}} | 缓存 |
-| {{LOGGING}} | {{LOGGING_VERSION}} | 日志 |
-| {{DI}} | {{DI_VERSION}} | 依赖注入 |
+| {{ORM}}           | {{ORM_VERSION}}       | ORM      |
+| {{DATABASE}}      | {{DATABASE_VERSION}}  | 数据库   |
+| {{CACHE}}         | {{CACHE_VERSION}}     | 缓存     |
+| {{LOGGING}}       | {{LOGGING_VERSION}}   | 日志     |
+| {{DI}}            | {{DI_VERSION}}        | 依赖注入 |
 
 ## 编码红线
 
@@ -63,10 +63,53 @@
 - 必须通过：{{VET_CMD}}
 - 测试命令：{{TEST_CMD}}
 
-## 开发流程
+## 开发流程（硬性约束 · 必须严格执行）
+
+**任何新增功能或接口，必须严格按以下顺序执行，不可跳过、不可合并步骤：**
+
+本项目使用 loom (loom-engineering) 插件。
 
 ```
 brainstorming → writing-plans → git-worktree → subagent-dev → index-update
 ```
+
+### 第一步：需求设计（brainstorming）
+
+- 头脑风暴设计方案
+- 产出 `specs/<date+feature>/spec.md`
+- 用户确认 spec 后方可进入下一步
+
+### 第二步：计划拆解（writing-plans）
+
+- **硬性前置条件**：`specs/<date+feature>/spec.md` 必须存在
+- **如果不存在，必须停止，提示用户先执行第一步**
+- 按分层拆分 task
+- 产出 `specs/<date+feature>/plan.md`
+- 用户确认 spec 后方可进入下一步
+
+### 第三步：环境隔离（git-worktree）
+
+- 创建`feature/<date+feature>`隔离分支
+
+### 第四步：编码执行（subagent-dev）
+
+- **硬性前置条件**：`specs/<date+feature>/spec.md` 必须存在，git worktree 已创建
+- **如果不存在，必须停止，提示用户先执行第二步和第三步**
+- Subagent 隔离派发 + 双审查
+
+### 第五步：索引更新（index-update）
+
+- 同步工程索引
+- 索引内容必须与实际代码一致
+
+**严令禁止跳过任何步骤。每个步骤完成后必须显式触发下一步，不可自行终止。**
+**每个 skill 执行完毕后，必须读取自身的"完成条件与下一步"节并严格遵守。跳过串联视为严重错误。**
+
+## 治理规则
+
+本章程高于所有其他开发规范。
+
+- 修订章程必须记录变更内容、获得审批。
+- 所有合并请求必须验证是否符合本章程。
 
 详见 {{ENTRY_FILE}}。

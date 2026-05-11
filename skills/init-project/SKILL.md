@@ -154,12 +154,9 @@ pkg/          → 公共工具包
 ```markdown
 # 项目宪章
 
-## 编码行为准则（固定）
+## 编码行为准则
 
-1. 先思考，再编码
-2. 极简优先
-3. 精准手术
-4. 目标驱动
+...
 
 ## 核心原则（由扫描结果填充）
 
@@ -176,9 +173,21 @@ pkg/          → 公共工具包
 ## 编码红线
 
 ...
+
+## 项目约束
+
+...
+
+## 开发流程
+
+...
+
+## 治理规则
+
+...
 ```
 
-**4.2 `.loom/project-structure.md`**（工程结构）
+**4.2 `.loom/rules/project-structure.md`**（工程结构）
 
 从 `templates/project-structure.md` 渲染：
 
@@ -193,13 +202,9 @@ pkg/          → 公共工具包
 
 {{ARCH_PATTERN}}
 
-## 编码红线
+## 编码要求
 
-{{CODING_REDLINES}}
-
-## 开发流程
-
-{{DEV_FLOW}}
+...
 ```
 
 **4.3 `.loom/memory/MEMORY.md`**（记忆文件）
@@ -208,18 +213,18 @@ pkg/          → 公共工具包
 
 **4.4 `.loom/templates/subagent-context.md`**（子 agent 上下文模板）
 
-根据分析结果生成精简版项目约束。
+从`.loom/memory/constitution.md`和`.loom/rules/project-structure.md`的内容中生成精简版项目约束。
 
 ### Step 5: 检测工具目录并分发
 
 **5.1 检测项目中存在的 AI 编码工具目录**
 
-| 检测目标                                  | 分发条件                  |
-| ----------------------------------------- | ------------------------- |
+| 检测目标                                    | 分发条件                  |
+| ------------------------------------------- | ------------------------- |
 | `.claude/` 目录或 `.loom/` 已有 claude 适配 | 项目使用 Claude Code      |
-| `.opencode/` 目录                         | 项目使用 OpenCode         |
-| `.cursor/` 目录                           | 项目使用 Cursor           |
-| `AGENTS.md` 文件                          | 项目需要通用 agent 上下文 |
+| `.opencode/` 目录                           | 项目使用 OpenCode         |
+| `.cursor/` 目录                             | 项目使用 Cursor           |
+| `AGENTS.md` 文件                            | 项目需要通用 agent 上下文 |
 
 检测逻辑：
 
@@ -242,6 +247,7 @@ Claude Code 的目标路径均为 `.loom/` 下的真实文件。`.claude/` wrapp
 
 - **loom**: 直接复制内容
 - **Cursor**: 在文件头部添加 frontmatter：
+
   ```markdown
   ---
   description: [文件描述]
@@ -251,6 +257,7 @@ Claude Code 的目标路径均为 `.loom/` 下的真实文件。`.claude/` wrapp
 
   [原始内容]
   ```
+
 - **AGENTS.md**: 将宪章和工程结构合并为单一文件，头部标注来源
 
 **5.4 分发执行**
@@ -268,12 +275,12 @@ Claude Code 的目标路径均为 `.loom/` 下的真实文件。`.claude/` wrapp
 
 ### 核心配置文件（`.loom/`）
 
-| 文件                         | 状态      | 说明                   |
-| ---------------------------- | --------- | ---------------------- |
-| .loom/memory/constitution.md | ✅ 已生成 | 项目宪章，5 项核心原则 |
-| .loom/project-structure.md   | ✅ 已生成 | 工程结构约束           |
-| .loom/memory.md              | ✅ 已生成 | 记忆文件（空模板）     |
-| .loom/subagent-context.md    | ✅ 已生成 | 子 agent 精简上下文    |
+| 文件                             | 状态      | 说明                   |
+| -------------------------------- | --------- | ---------------------- |
+| .loom/memory/constitution.md     | ✅ 已生成 | 项目宪章，5 项核心原则 |
+| .loom/rules/project-structure.md | ✅ 已生成 | 工程结构约束           |
+| .loom/memory.md                  | ✅ 已生成 | 记忆文件（空模板）     |
+| .loom/subagent-context.md        | ✅ 已生成 | 子 agent 精简上下文    |
 
 ### 工具适配分发
 
@@ -286,7 +293,7 @@ Claude Code 的目标路径均为 `.loom/` 下的真实文件。`.claude/` wrapp
 ### 需人工完善的 [TODO]
 
 - [ ] .loom/memory/constitution.md 中的「编码红线」需确认是否完整
-- [ ] .loom/project-structure.md 中的「开发流程」需确认
+- [ ] .loom/rules/project-structure.md 中的「开发流程」需确认
 - [ ] .loom/memory.md 需在使用中逐步积累
 ```
 
