@@ -12,7 +12,8 @@ const program = new Command();
 program
   .name('loom')
   .description('loom — AI 工程化框架 CLI')
-  .version(pkg.version);
+  .version(pkg.version)
+  .enablePositionalOptions();
 
 program
   .command('install')

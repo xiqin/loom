@@ -34,6 +34,7 @@
     "hooks/",
     "templates/",
     "plugin-meta/",
+    ".claude-plugin/",
     "plugin.mjs",
     "install.sh",
     "install.ps1",
