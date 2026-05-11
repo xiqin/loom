@@ -12,7 +12,7 @@
 set -euo pipefail
 
 REPO="xiqin/loom"
-VERSION="1.3.1"
+VERSION="1.3.2"
 # TODO: replace hardcoded list — import from config/tools.schema.json via generate-tooling.mjs
 SUPPORTED_TOOLS=("claude-code" "cursor" "copilot" "opencode" "codex")
 
