@@ -1,0 +1,21 @@
+{
+  "name": "loom-engineering",
+  "version": "1.2.1",
+  "description": "Loom — AI 工程化框架",
+  "license": "MIT",
+  "keywords": [
+    "ai",
+    "engineering",
+    "skills",
+    "pipeline",
+    "tdd",
+    "chinese",
+    "loom"
+  ],
+  "skills": [
+    "./skills"
+  ],
+  "commands": [
+    "./commands"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "loom-engineering",
+  "description": "Loom — AI 工程化框架",
+  "owner": {
+    "name": "loom"
+  },
+  "plugins": [
+    {
+      "name": "loom",
+      "description": "Loom — AI 工程化框架",
+      "source": "./",
+      "category": "development"
+    }
+  ]
+}

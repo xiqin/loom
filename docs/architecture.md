@@ -10,18 +10,18 @@ loom/
 ├── src/
 │   ├── cli.js              # CLI 命令注册（commander）
 │   ├── commands/           # CLI 命令实现
-│   │   ├── init.js         # loom init
+│   │   ├── install.js      # loom install
+│   │   ├── uninstall.js    # loom uninstall
 │   │   ├── update.js       # loom update
 │   │   ├── doctor.js       # loom doctor
-│   │   ├── list.js         # loom list
-│   │   └── uninstall.js    # loom uninstall
-│   ├── adapters/           # 工具适配器
+│   │   └── list.js         # loom list
+│   ├── adapters/           # 工具适配器（user-level）
 │   │   ├── base.js         # BaseAdapter 基类
 │   │   ├── claude-code.js  # Claude Code 适配器
 │   │   ├── cursor.js       # Cursor 适配器
 │   │   ├── copilot.js      # Copilot 适配器
 │   │   ├── opencode.js     # OpenCode 适配器
-│   │   └── registry.js     # 适配器注册表
+│   │   └── codex.js        # Codex 适配器
 │   ├── core/               # 核心逻辑
 │   │   ├── installer.js    # 安装器
 │   │   ├── uninstaller.js  # 卸载器
@@ -75,44 +75,34 @@ bin/loom.js → src/cli.js → src/commands/*.js
 ### 适配器层
 
 ```
-src/adapters/registry.js → src/adapters/<tool>.js → src/adapters/base.js
+src/core/installer.js → src/adapters/<tool>.js → src/adapters/base.js
 ```
 
-- `BaseAdapter`：基类，提供 `_copyDirRecursive`、`readAsset`、`_getAssetsDir` 等公共方法
-- 每个工具一个适配器，实现 `generate()`、`getTargetFiles()`、`entryFilename`
-- `registry.js`：注册表，提供 `getAdapter(id)`、`listAdapters()`
+- `BaseAdapter`：基类，提供 `_copySkills`、`_copyCommands`、`_copyDir` 等公共方法
+- 每个工具一个适配器，实现 `toolName`、`getUserDir()`、`getSkillsDir()`、`getCommandsDir()`
+- `installer.js`：通过 `ADAPTER_MAP` 注册适配器，提供 `getUserAdapter(tool)`、`USER_TOOL_IDS`
 
 ### 核心层
 
 ```
-src/core/installer.js    — 安装流程
-src/core/uninstaller.js  — 卸载流程
-src/core/manifest.js     — manifest 读写
-src/core/schema-validator.js — 模板验证与渲染
+src/core/installer.js    — 适配器注册与获取（ADAPTER_MAP、getUserAdapter）
 ```
 
-**安装流程** (`installer.js`)：
+**安装流程** (`loom install --tool <target>`)：
 
-1. 获取适配器和目标文件列表
-2. 检测冲突（`conflict.js`）
-3. 必要时备份（`backup.js`）
-4. 快照文件状态（before）
-5. 调用 `adapter.generate()` 生成文件
-6. 快照文件状态（after），diff 出 created/updated
-7. 更新 `.gitignore`
-8. 注册插件（Claude Code）
-9. 计算 SHA-256 校验和
-10. 写入 manifest
+1. 通过 `getUserAdapter(tool)` 获取适配器
+2. 调用 `adapter.install(loomRoot, version)`
+3. 复制 skills（含 `SKILL.md` 的子目录）到用户目录
+4. 复制 commands（`.md` 文件）到用户目录
+5. 注册插件（Claude Code / OpenCode）
 
-**卸载流程** (`uninstaller.js`)：
+**卸载流程** (`loom uninstall --tool <target>`)：
 
-1. 读取 manifest
-2. 分类文件：safe（未修改）/ modified（已修改）/ missing（已删除）
-3. 删除 safe 文件
-4. 跳过 modified 文件（输出 warning）
-5. 清理空目录
-6. 注销插件（Claude Code）
-7. 可选：purge 模式清理备份和 .gitignore
+1. 通过 `getUserAdapter(tool)` 获取适配器
+2. 调用 `adapter.uninstall(loomRoot)`
+3. 删除 loom 安装的 skills 子目录
+4. 删除 loom 安装的 commands 文件
+5. 注销插件配置
 
 ### 工具函数层
 
@@ -125,31 +115,24 @@ src/core/schema-validator.js — 模板验证与渲染
 ### 安装数据流
 
 ```
-CLI (loom init)
-  → installer.install({ tool, version, dryRun, force })
-    → getAdapter(tool) → adapter
-    → adapter.getTargetFiles(projectRoot) → targetFiles
-    → detectConflicts(targetFiles) → conflicts
-    → createBackup() if conflicts
-    → adapter.generate(projectRoot, version)
-      → _copyDirRecursive() for each directory
-      → writeFileSync() for entry file
-    → buildChecksumMap() → checksums
-    → writeManifest() → .loom/install-manifest.json
+CLI (loom install --tool <target>)
+  → getUserAdapter(tool) → adapter
+  → adapter.install(loomRoot, version)
+    → _copySkills() → 复制 skills 到 getUserDir()/skills/
+    → _copyCommands() → 复制 commands 到 getCommandsDir()
+    → _postInstall() → 工具特定后处理
+    → _registerPlugin() → 插件系统注册（Claude Code / OpenCode）
 ```
 
 ### 卸载数据流
 
 ```
-CLI (loom uninstall)
-  → uninstaller.uninstall({ tool, dryRun, purge })
-    → readManifest() → manifest
-    → classifyFiles(projectRoot, manifest) → { safe, modified, missing }
-    → unlinkSync() for safe files
-    → cleanupEmptyDirs()
-    → unregisterPluginClaude() if claude-code
-    → rmSync(.loom-backup/) if purge
-    → clean .gitignore if purge
+CLI (loom uninstall --tool <target>)
+  → getUserAdapter(tool) → adapter
+  → adapter.uninstall(loomRoot)
+    → _removeSkills() → 删除 loom 安装的 skills
+    → _removeCommands() → 删除 loom 安装的 commands
+    → _removeGlobalInstructions() → 清理工具特定配置（Copilot）
 ```
 
 ## Hook 系统

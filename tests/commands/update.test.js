@@ -1,15 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { mkdirSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const { version: CURRENT_VERSION } = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf-8'));
 const TEST_DIR = join(import.meta.dirname, '__test_update__');
 
 beforeEach(() => {
   mkdirSync(TEST_DIR, { recursive: true });
-  vi.spyOn(process, 'cwd').mockReturnValue(TEST_DIR);
 });
 
 afterEach(() => {
@@ -18,41 +14,61 @@ afterEach(() => {
 });
 
 describe('update command', () => {
-  it('reports not installed when no files exist', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  it('calls adapter.install for each tool', async () => {
+    const mockAdapter = {
+      toolName: 'claude-code',
+      getUserDir: () => join(TEST_DIR, '.claude'),
+      getSkillsDir: () => join(TEST_DIR, '.claude', 'skills'),
+      getCommandsDir: () => null,
+      supportsPlugin: () => false,
+      install: vi.fn(() => ['  skills: 2 copied']),
+    };
+
+    vi.doMock('../../src/core/installer.js', () => ({
+      getUserAdapter: async () => mockAdapter,
+      USER_TOOL_IDS: ['claude-code'],
+    }));
+
+    const sp = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { default: update } = await import('../../src/commands/update.js');
     await update({ tool: 'claude-code' });
-    const output = consoleSpy.mock.calls.map(c => c[0]).join('\n');
-    expect(output).toContain('Not installed');
-    consoleSpy.mockRestore();
+    expect(mockAdapter.install).toHaveBeenCalled();
+    sp.mockRestore();
   });
 
-  it('reports up to date when version matches', async () => {
-    mkdirSync(join(TEST_DIR, '.claude'), { recursive: true });
-    writeFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), `<!-- loom:version=${CURRENT_VERSION} -->\ncontent`);
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  it('dry-run does not call install', async () => {
+    const mockAdapter = {
+      toolName: 'cursor',
+      getUserDir: () => join(TEST_DIR, '.cursor'),
+      getSkillsDir: () => join(TEST_DIR, '.cursor', 'skills'),
+      getCommandsDir: () => join(TEST_DIR, '.cursor', 'commands'),
+      supportsPlugin: () => false,
+      install: vi.fn(),
+    };
+
+    vi.doMock('../../src/core/installer.js', () => ({
+      getUserAdapter: async () => mockAdapter,
+      USER_TOOL_IDS: ['cursor'],
+    }));
+
+    const sp = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { default: update } = await import('../../src/commands/update.js');
-    await update({ tool: 'claude-code' });
-    const output = consoleSpy.mock.calls.map(c => c[0]).join('\n');
-    expect(output).toContain('up to date');
-    consoleSpy.mockRestore();
+    await update({ tool: 'cursor', dryRun: true });
+    expect(mockAdapter.install).not.toHaveBeenCalled();
+    sp.mockRestore();
   });
 
-  it('updates when version differs', async () => {
-    mkdirSync(join(TEST_DIR, '.claude'), { recursive: true });
-    writeFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), '<!-- loom:version=0.9.0 -->\nold content');
-    const { default: update } = await import('../../src/commands/update.js');
-    await update({ tool: 'claude-code' });
-    const content = readFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'utf-8');
-    expect(content).toContain(`loom:version=${CURRENT_VERSION}`);
-  });
+  it('skips unknown tool', async () => {
+    vi.doMock('../../src/core/installer.js', () => ({
+      getUserAdapter: async () => { throw new Error('Unknown tool'); },
+      USER_TOOL_IDS: ['claude-code'],
+    }));
 
-  it('preserves USER CUSTOM section in cursorrules', async () => {
-    const customContent = '# loom:version=0.9.0\nloom content\n## --- USER CUSTOM ---\nmy custom rules';
-    writeFileSync(join(TEST_DIR, '.cursorrules'), customContent);
+    const sp = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { default: update } = await import('../../src/commands/update.js');
-    await update({ tool: 'cursor' });
-    const content = readFileSync(join(TEST_DIR, '.cursorrules'), 'utf-8');
-    expect(content).toContain('my custom rules');
+    await update({ tool: 'unknown' });
+    const output = sp.mock.calls.map(c => c[0]).join('\n');
+    expect(output).toContain('Unknown tool');
+    sp.mockRestore();
   });
 });

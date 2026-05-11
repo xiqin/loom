@@ -26,13 +26,17 @@ const JSON_TARGETS = [
     path: 'plugin-meta/opencode-plugin.json',
     update(json) { json.version = V; },
   },
+  {
+    path: '.claude-plugin/plugin.json',
+    update(json) { json.version = V; },
+  },
 ];
 
 const SHELL_TARGETS = [
   { path: 'install.sh',    pattern: /^VERSION="[^"]*"/m,         replacement: `VERSION="${V}"` },
-  { path: 'install.ps1',   pattern: /^\s+\[string\]\$Version = "[^"]*"/m, replacement: `  [string]\$Version = "${V}",` },
+  { path: 'install.ps1',   pattern: /^\$Version = "[^"]*"/m, replacement: `$Version = "${V}"` },
   { path: 'uninstall.sh',  pattern: /^VERSION="[^"]*"/m,         replacement: `VERSION="${V}"` },
-  { path: 'uninstall.ps1', pattern: /^\s+\[string\]\$Version = "[^"]*"/m, replacement: `  [string]\$Version = "${V}",` },
+  { path: 'uninstall.ps1', pattern: /^\$Version = "[^"]*"/m, replacement: `$Version = "${V}"` },
 ];
 
 // ── Run ────────────────────────────────────────────────────────────────

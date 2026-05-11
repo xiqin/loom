@@ -1,97 +1,76 @@
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getAdapter, listAdapters } from '../adapters/registry.js';
-import { parseVersion, needsUpdate } from '../utils/version.js';
-import { BACKUP_DIR } from '../utils/backup.js';
+import { getUserAdapter, USER_TOOL_IDS } from '../core/installer.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf-8'));
+const PROJECT_ROOT = join(__dirname, '..', '..');
+const pkg = JSON.parse(readFileSync(join(PROJECT_ROOT, 'package.json'), 'utf-8'));
 
 export default async function doctor(options) {
-  const projectRoot = process.cwd();
+  const tools = options.tool ? [options.tool] : USER_TOOL_IDS;
 
-  console.log(`\n  loom doctor — Diagnosis Report\n  Project: ${projectRoot}\n`);
+  console.log(`\n  loom doctor — Diagnosis Report\n`);
 
-  const tools = options.tool ? [options.tool] : listAdapters();
   let foundAny = false;
 
   for (const tool of tools) {
-    const adapter = getAdapter(tool);
-    const targetFiles = adapter.getTargetFiles(projectRoot);
-    const exists = targetFiles.some(f => {
-      try { return existsSync(f); } catch { return false; }
-    });
+    if (!USER_TOOL_IDS.includes(tool)) {
+      console.log(`  Unknown tool: "${tool}". Supported: ${USER_TOOL_IDS.join(', ')}`);
+      continue;
+    }
 
-    if (!exists) continue;
+    const adapter = await getUserAdapter(tool);
+    const userDir = adapter.getUserDir();
+    const skillsDir = adapter.getSkillsDir();
+    const cmdDir = adapter.getCommandsDir();
+
+    const hasSkills = existsSync(skillsDir) && readdirSync(skillsDir, { withFileTypes: true }).some(e => e.isDirectory());
+    const hasCommands = cmdDir && existsSync(cmdDir) && readdirSync(cmdDir, { withFileTypes: true }).some(e => e.isFile() && e.name.endsWith('.md'));
+
+    if (!hasSkills && !hasCommands) continue;
     foundAny = true;
 
     console.log(`  [${tool}]`);
+    console.log(`    user dir:  ${userDir}`);
 
-    for (const file of targetFiles) {
-      if (!existsSync(file)) {
-        console.log(`    MISSING: ${file}`);
-        continue;
-      }
-
-      try {
-        const fileStat = statSync(file);
-        if (fileStat.isDirectory()) {
-          const count = countFiles(file);
-          console.log(`    OK: ${file} (${count} files)`);
-          continue;
-        }
-      } catch {}
-
-      const content = readFileSync(file, 'utf-8');
-      const version = parseVersion(content);
-
-      if (!version) {
-        console.log(`    WARN: ${file} — no loom version marker`);
-      } else if (needsUpdate(version, pkg.version)) {
-        console.log(`    OUTDATED: ${file} — v${version} (current: v${pkg.version})`);
-      } else {
-        console.log(`    OK: ${file} — v${version}`);
-      }
-    }
-
-    // Check .gitignore
-    const gitignorePath = join(projectRoot, '.gitignore');
-    if (existsSync(gitignorePath)) {
-      const gitignore = readFileSync(gitignorePath, 'utf-8');
-      if (gitignore.includes('.loom-backup/')) {
-        console.log(`    OK: .gitignore includes .loom-backup/`);
-      } else {
-        console.log(`    WARN: .gitignore missing .loom-backup/ entry`);
-      }
+    if (hasSkills) {
+      const count = countSkillDirs(skillsDir);
+      console.log(`    skills:    ${skillsDir} (${count} skill(s))`);
     } else {
-      console.log(`    WARN: .gitignore not found`);
+      console.log(`    skills:    (none)`);
     }
 
-    // Check backup count
-    const backupRoot = join(projectRoot, BACKUP_DIR);
-    if (existsSync(backupRoot)) {
-      try {
-        const backups = readdirSync(backupRoot).length;
-        console.log(`    INFO: ${backups} backup(s) in ${BACKUP_DIR}/`);
-      } catch {}
+    if (cmdDir) {
+      if (hasCommands) {
+        const count = readdirSync(cmdDir).filter(f => f.endsWith('.md')).length;
+        console.log(`    commands:  ${cmdDir} (${count} command(s))`);
+      } else {
+        console.log(`    commands:  (none)`);
+      }
+    }
+
+    if (adapter.supportsPlugin()) {
+      console.log(`    plugin:    registered`);
     }
 
     console.log('');
   }
 
   if (!foundAny) {
-    console.log('  No loom installation detected. Run "loom init --tool <target>" to install.');
+    console.log('  No loom installation detected. Run "loom install --tool <target>" to install.');
   }
 }
 
-function countFiles(dir) {
+function countSkillDirs(dir) {
   let count = 0;
   try {
     const entries = readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
-      if (entry.isFile()) count++;
-      if (entry.isDirectory()) count += countFiles(join(dir, entry.name));
+      if (entry.isDirectory()) {
+        const skillMd = join(dir, entry.name, 'SKILL.md');
+        if (existsSync(skillMd)) count++;
+      }
     }
   } catch {}
   return count;

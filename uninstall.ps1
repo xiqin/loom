@@ -1,4 +1,4 @@
-# loom — 卸载脚本（安全、可审计、可 dry-run）
+# loom — 卸载脚本（用户级卸载，可 dry-run）
 #
 # 本地模式：
 #   .\uninstall.ps1 -Tool claude-code
@@ -6,52 +6,42 @@
 #
 # Release 模式（从指定版本 tag 下载）：
 #   .\uninstall.ps1 -Tool claude-code -FromRelease
-#   .\uninstall.ps1 -Tool claude-code -FromRelease -Version 版本号
 
 [CmdletBinding()]
 param(
   [string[]]$Tool = @(),
-  [string]$Version = "1.2.1",,,
   [switch]$DryRun,
-  [switch]$Purge,
   [switch]$FromRelease,
   [switch]$NoColor,
   [switch]$Help
 )
 
 $Repo = "xiqin/loom"
+$Version = "1.2.1"
 # TODO: replace hardcoded list — import from config/tools.schema.json via generate-tooling.mjs
 $SupportedTools = @("claude-code", "cursor", "copilot", "opencode", "codex")
 
 # ── Help ────────────────────────────────────────────────────────────────
 if ($Help) {
 @"
-loom 卸载脚本
+loom 卸载脚本（用户级卸载）
 
 USAGE
   uninstall.ps1 -Tool <target> [flags]
 
 FLAGS
   -Tool <target>      目标工具（必填，逗号分隔或重复指定）
-                      支持：claude-code | cursor | copilot | opencode | codex
-  -Version <ver>      指定版本（默认取脚本内嵌版本）
+                       支持：claude-code | cursor | copilot | opencode | codex
   -DryRun             预览删除文件，不实际执行
   -FromRelease        从 GitHub release tag 下载（可重现卸载）
-                      默认：本地模式（需 clone 仓库）
-  -Purge              额外清理：移除备份目录和 .gitignore 条目
+                       默认：本地模式（需 clone 仓库）
   -NoColor            禁用颜色输出
   -Help               显示帮助信息
-
-安全策略
-  - 只删除 install-manifest.json 中记录的文件
-  - 文件被用户修改后不会删除（输出 warning）
-  -Purge 也不能越过 manifest 边界
 
 示例
   .\uninstall.ps1 -Tool claude-code
   .\uninstall.ps1 -Tool claude-code -DryRun
-  .\uninstall.ps1 -Tool claude-code -Purge
-  .\uninstall.ps1 -Tool claude-code -FromRelease -Version 版本号
+  .\uninstall.ps1 -Tool claude-code -FromRelease
 "@
   exit 0
 }
@@ -63,9 +53,6 @@ function Note($msg)  { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc
 function Ok($msg)    { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc[32m$msg$Esc[0m" } }
 function Warn($msg)  { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc[33m$msg$Esc[0m" } }
 function Err($msg)   { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc[31m$msg$Esc[0m" } }
-
-# ── Resolve version ─────────────────────────────────────────────────────
-$InstallVersion = $Version
 
 # ── Validate tool ───────────────────────────────────────────────────────
 $Tools = @()
@@ -116,7 +103,7 @@ function Resolve-Source {
   }
 
   # Remote: download from release tag
-  Note "  mode: release (v$InstallVersion)"
+  Note "  mode: release (v$Version)"
 
   $curlCmd = if (Get-Command "curl.exe" -ErrorAction SilentlyContinue) { "curl.exe" } else { "curl" }
   if (-not (Get-Command $curlCmd -ErrorAction SilentlyContinue)) {
@@ -124,13 +111,13 @@ function Resolve-Source {
     exit 1
   }
 
-  $script:CleanupDir = Join-Path $env:TEMP "loom-uninstall-$([Guid]::NewGuid())"
+  $script:CleanupDir = Join-Path $env:TEMP "loom-install-$([Guid]::NewGuid())"
   New-Item -ItemType Directory -Path $CleanupDir -Force | Out-Null
   $script:Cleanup = $true
 
   $tarball = Join-Path $CleanupDir "loom.tar.gz"
-  Say "  downloading loom v$InstallVersion from $Repo..."
-  & $curlCmd -fsSL "https://github.com/$Repo/archive/refs/tags/v$InstallVersion.tar.gz" -o $tarball 2>$null
+  Say "  downloading loom v$Version from $Repo..."
+  & $curlCmd -fsSL "https://github.com/$Repo/archive/refs/tags/v$Version.tar.gz" -o $tarball 2>$null
   if ($LASTEXITCODE -ne 0) {
     Err "error: download failed"
     exit 1
@@ -188,7 +175,7 @@ function Check-Node {
 # ── Main ────────────────────────────────────────────────────────────────
 try {
   Say ""
-  Say "  loom uninstall v$InstallVersion"
+  Say "  loom uninstall v$Version"
   Say "  $Repo"
   Say ""
 
@@ -196,9 +183,8 @@ try {
   Resolve-Source
 
   # Build CLI args
-  $cliArgs = @("uninstall", "--version", $InstallVersion)
+  $cliArgs = @("uninstall")
   if ($DryRun) { $cliArgs += "--dry-run" }
-  if ($Purge)  { $cliArgs += "--purge" }
 
   foreach ($t in $Tools) {
     Say "→ $t"
@@ -210,7 +196,7 @@ try {
       if ($LASTEXITCODE -eq 0) {
         Ok "  ✔ $t 卸载完成"
       } else {
-        Warn "  ✘ $t 卸载失败（可能未安装或 manifest 缺失）"
+        Warn "  ✘ $t 卸载失败"
       }
     } catch {
       Warn "  ✘ $t 卸载失败: $($_.Exception.Message)"

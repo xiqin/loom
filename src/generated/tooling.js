@@ -50,12 +50,12 @@ export const TOOLS = [
   {
     id: "codex",
     displayName: "Codex",
-    supportLevel: "planned",
+    supportLevel: "full",
     platforms: ["linux","macos","windows"],
     hooksSupport: false,
     pluginMeta: null,
     entryFilename: "AGENTS.md",
-    description: "OpenAI Codex CLI — 适配器待实现",
+    description: "OpenAI Codex CLI — 支持 skills",
   }
 ];
 

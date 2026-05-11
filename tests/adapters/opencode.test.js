@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, readFileSync, rmSync, existsSync, readdirSync } from 'node:fs';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { OpenCodeAdapter } from '../../src/adapters/opencode.js';
 
@@ -10,6 +10,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   for (let i = 0; i < 3; i++) {
     try {
       rmSync(TEST_DIR, { recursive: true, force: true });
@@ -28,84 +29,52 @@ afterEach(async () => {
 describe('OpenCodeAdapter', () => {
   const adapter = new OpenCodeAdapter();
 
-  it('has name "opencode"', () => {
-    expect(adapter.name).toBe('opencode');
+  it('has toolName "opencode"', () => {
+    expect(adapter.toolName).toBe('opencode');
   });
 
-  it('has entryFilename AGENTS.md', () => {
-    expect(adapter.entryFilename).toBe('AGENTS.md');
+  it('getUserDir returns ~/.config/opencode', () => {
+    expect(adapter.getUserDir()).toContain(join('.config', 'opencode'));
   });
 
-  it('getTargetFiles returns .opencode/skills/ not .opencode/agents/', () => {
-    const files = adapter.getTargetFiles(TEST_DIR);
-    expect(files).toContainEqual(expect.stringContaining('.loom'));
-    expect(files).toContainEqual(expect.stringContaining('.opencode'));
-    expect(files).toContainEqual(expect.stringContaining('AGENTS.md'));
-    expect(files.some(f => f.includes('.opencode') && f.includes('skills'))).toBe(true);
-    expect(files.some(f => f.includes('.opencode') && f.includes('agents'))).toBe(false);
+  it('getSkillsDir returns ~/.config/opencode/skills', () => {
+    expect(adapter.getSkillsDir()).toContain(join('.config', 'opencode', 'skills'));
   });
 
-  it('getTargetFiles does NOT include .claude/ paths', () => {
-    const files = adapter.getTargetFiles(TEST_DIR);
-    expect(files.some(f => f.includes('.claude'))).toBe(false);
+  it('getCommandsDir returns ~/.config/opencode/commands', () => {
+    expect(adapter.getCommandsDir()).toContain(join('.config', 'opencode', 'commands'));
   });
 
-  it('generate creates AGENTS.md with version marker', async () => {
-    await adapter.generate(TEST_DIR, '1.0.0');
-    const content = readFileSync(join(TEST_DIR, 'AGENTS.md'), 'utf-8');
-    expect(content).toContain('<!-- loom:version=1.0.0 -->');
-    expect(content).toContain('loom — Weave Specs into Execution');
+  it('supportsPlugin returns true', () => {
+    expect(adapter.supportsPlugin()).toBe(true);
   });
 
-  it('generate does NOT create root-level skills/ or commands/', async () => {
-    await adapter.generate(TEST_DIR, '1.0.0');
-    expect(existsSync(join(TEST_DIR, 'skills'))).toBe(false);
-    expect(existsSync(join(TEST_DIR, 'commands'))).toBe(false);
+  it('install adds plugin to opencode.json and copies commands', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.config', 'opencode'));
+
+    const loomRoot = join(TEST_DIR, 'loom-root');
+    mkdirSync(join(loomRoot, 'commands'), { recursive: true });
+    writeFileSync(join(loomRoot, 'commands', 'test-cmd.md'), '# Test');
+
+    const log = adapter.install(loomRoot, '1.0.0');
+    expect(log.some(l => l.includes('plugin'))).toBe(true);
+    expect(log.some(l => l.includes('commands'))).toBe(true);
+
+    const configPath = join(TEST_DIR, '.config', 'opencode', 'opencode.json');
+    expect(existsSync(configPath)).toBe(true);
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+    expect(config.plugin).toContain('loom-engineering');
   });
 
-  it('generate does NOT create .claude/', async () => {
-    await adapter.generate(TEST_DIR, '1.0.0');
-    expect(existsSync(join(TEST_DIR, '.claude'))).toBe(false);
-  });
+  it('uninstall removes plugin from opencode.json', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.config', 'opencode'));
+    mkdirSync(join(TEST_DIR, '.config', 'opencode'), { recursive: true });
+    const configPath = join(TEST_DIR, '.config', 'opencode', 'opencode.json');
+    writeFileSync(configPath, JSON.stringify({ plugin: ['loom-engineering', 'other'] }));
 
-  it('generate copies skills to .loom/', async () => {
-    await adapter.generate(TEST_DIR, '1.0.0');
-    expect(existsSync(join(TEST_DIR, '.loom', 'skills'))).toBe(true);
-  });
-
-  it('generate creates skill wrappers in .opencode/skills/ (not agents/)', async () => {
-    await adapter.generate(TEST_DIR, '1.0.0');
-    expect(existsSync(join(TEST_DIR, '.opencode', 'skills'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.opencode', 'agents'))).toBe(false);
-    const wrapperPath = join(TEST_DIR, '.opencode', 'skills', 'brainstorming', 'SKILL.md');
-    expect(existsSync(wrapperPath)).toBe(true);
-    const wrapper = readFileSync(wrapperPath, 'utf-8');
-    expect(wrapper).toContain('@.loom/skills/brainstorming/SKILL.md');
-    expect(wrapper).toContain('name: brainstorming');
-    expect(wrapper).toContain('description: 需求头脑风暴');
-  });
-
-  it('generate creates command wrappers in .opencode/commands/', async () => {
-    await adapter.generate(TEST_DIR, '1.0.0');
-    const wrapperPath = join(TEST_DIR, '.opencode', 'commands', 'loom-init-project.md');
-    expect(existsSync(wrapperPath)).toBe(true);
-    const wrapper = readFileSync(wrapperPath, 'utf-8');
-    expect(wrapper).toContain('@.loom/commands/loom-init-project.md');
-  });
-
-  it('generate copies hooks, templates, core to .loom/', async () => {
-    await adapter.generate(TEST_DIR, '1.0.0');
-    expect(existsSync(join(TEST_DIR, '.loom', 'hooks'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.loom', 'templates'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.loom', 'core'))).toBe(true);
-  });
-
-  it('generateWrappers resyncs .opencode/ from existing .loom/', async () => {
-    await adapter.generate(TEST_DIR, '1.0.0');
-    expect(existsSync(join(TEST_DIR, '.opencode', 'skills', 'brainstorming', 'SKILL.md'))).toBe(true);
-
-    adapter.generateWrappers(TEST_DIR, '2.0.0');
-    const opencodeMd = readFileSync(join(TEST_DIR, 'AGENTS.md'), 'utf-8');
-    expect(opencodeMd).toContain('<!-- loom:version=2.0.0 -->');
+    adapter.uninstall(TEST_DIR);
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+    expect(config.plugin).not.toContain('loom-engineering');
+    expect(config.plugin).toContain('other');
   });
 });

@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# loom — 安装脚本（可重现、可审计、可 dry-run）
+# loom — 安装脚本（用户级安装，可重现、可 dry-run）
 #
 # 本地模式：
 #   bash install.sh --tool claude-code
 #   bash install.sh --tool claude-code --dry-run
-#   bash install.sh --tool claude-code --version 版本号
 #
 # Release 模式（从指定版本 tag 下载）：
 #   bash install.sh --tool claude-code --from-release
@@ -19,9 +18,7 @@ SUPPORTED_TOOLS=("claude-code" "cursor" "copilot" "opencode" "codex")
 
 # ── Flags ──────────────────────────────────────────────────────────────
 DRY=0
-FORCE=0
 FROM_RELEASE=0
-VERSION_FLAG=""
 TOOLS=()
 NO_COLOR=0
 
@@ -47,7 +44,7 @@ err()   { printf '%s%s%s\n' "$c_err" "$1" "$c_reset" >&2; }
 # ── Help ───────────────────────────────────────────────────────────────
 print_help() {
   cat <<'EOF'
-loom 安装脚本
+loom 安装脚本（用户级安装）
 
 USAGE
   install.sh --tool <target> [flags]
@@ -55,26 +52,24 @@ USAGE
 FLAGS
   --tool <target>     目标工具（必填，可重复）
                       支持：claude-code | cursor | copilot | opencode | codex
-  --version <ver>     指定安装版本（默认取脚本内嵌版本）
   --dry-run           预览安装文件，不实际写入
   --from-release      从 GitHub release tag 下载（可重现安装）
                       默认：本地模式（需 clone 仓库）
-  --force             覆盖已有文件（自动备份）
   --no-color          禁用颜色输出
   -h, --help          显示帮助信息
 
 示例
-  # 本地安装（在 clone 的仓库内运行）
+  # 用户级安装（在 clone 的仓库内运行）
   bash install.sh --tool claude-code
 
   # 预览安装
   bash install.sh --tool claude-code --dry-run
 
   # 从指定版本 release 安装（远程，可重现）
-  bash install.sh --tool claude-code --from-release --version 版本号
+  bash install.sh --tool claude-code --from-release
 
   # 多工具安装
-  bash install.sh --tool claude-code --tool cursor --force
+  bash install.sh --tool claude-code --tool cursor
 EOF
 }
 
@@ -85,12 +80,7 @@ while [ $# -gt 0 ]; do
       shift
       if [ $# -eq 0 ]; then err "error: --tool requires an argument"; exit 2; fi
       TOOLS+=("$1") ;;
-    --version)
-      shift
-      if [ $# -eq 0 ]; then err "error: --version requires an argument"; exit 2; fi
-      VERSION_FLAG="$1" ;;
     --dry-run)       DRY=1 ;;
-    --force)         FORCE=1 ;;
     --from-release)  FROM_RELEASE=1 ;;
     --no-color)      NO_COLOR=1 ;;
     -h|--help)       print_help; exit 0 ;;
@@ -115,9 +105,6 @@ for t in "${TOOLS[@]}"; do
     exit 2
   fi
 done
-
-# ── Resolve version ───────────────────────────────────────────────────
-INSTALL_VERSION="${VERSION_FLAG:-$VERSION}"
 
 # ── Detect repo root ──────────────────────────────────────────────────
 detect_repo_root() {
@@ -156,17 +143,17 @@ resolve_source() {
     exit 1
   fi
 
-  note "  mode: release (v$INSTALL_VERSION)"
+  note "  mode: release (v$VERSION)"
   CLEANUP_DIR="$(mktemp -d)"
   local tarball="$CLEANUP_DIR/loom.tar.gz"
 
-  say "  downloading loom v$INSTALL_VERSION from $REPO..."
-  curl -fsSL "https://github.com/$REPO/archive/refs/tags/v$INSTALL_VERSION.tar.gz" -o "$tarball"
+  say "  downloading loom v$VERSION from $REPO..."
+  curl -fsSL "https://github.com/$REPO/archive/refs/tags/v$VERSION.tar.gz" -o "$tarball"
 
   note "  extracting..."
   tar xzf "$tarball" -C "$CLEANUP_DIR"
 
-  local extracted="$CLEANUP_DIR/loom-$INSTALL_VERSION"
+  local extracted="$CLEANUP_DIR/loom-$VERSION"
   if [ ! -d "$extracted" ]; then
     extracted=$(find "$CLEANUP_DIR" -maxdepth 1 -type d | tail -1)
   fi
@@ -209,7 +196,7 @@ check_node() {
 # ── Main ───────────────────────────────────────────────────────────────
 main() {
   say ""
-  say "  loom install v$INSTALL_VERSION"
+  say "  loom install v$VERSION"
   say "  ${REPO}"
   say ""
 
@@ -217,15 +204,14 @@ main() {
   resolve_source
 
   # Build common args
-  CLI_ARGS=("--version" "$INSTALL_VERSION")
+  CLI_ARGS=()
   [ "$DRY" = 1 ] && CLI_ARGS+=("--dry-run")
-  [ "$FORCE" = 1 ] && CLI_ARGS+=("--force")
 
-  # Run init for each tool
+  # Run user-level install for each tool
   for tool in "${TOOLS[@]}"; do
     say "→ $tool"
-    if node "$LOOM_CLI" init --tool "$tool" "${CLI_ARGS[@]}"; then
-      ok "  ✔ $tool 安装完成"
+    if node "$LOOM_CLI" install --tool "$tool" "${CLI_ARGS[@]}"; then
+      ok "  ✔ $tool 用户级安装完成"
     else
       warn "  ✘ $tool 安装失败"
     fi
@@ -233,7 +219,7 @@ main() {
 
   say ""
   say "  done"
-  note "  可用命令: loom doctor, loom list, loom update"
+  note "  可用命令: loom doctor, loom list"
   note "  卸载: bash uninstall.sh --tool <target>"
   say ""
 }

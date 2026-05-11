@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# loom — 卸载脚本（安全、可审计、可 dry-run）
+# loom — 卸载脚本（用户级卸载，可 dry-run）
 #
 # 本地模式：
 #   bash uninstall.sh --tool claude-code
@@ -7,7 +7,6 @@
 #
 # Release 模式（从指定版本 tag 下载）：
 #   bash uninstall.sh --tool claude-code --from-release
-#   bash uninstall.sh --tool claude-code --from-release --version 版本号
 
 set -euo pipefail
 
@@ -16,9 +15,7 @@ VERSION="1.2.1"
 
 # ── Flags ──────────────────────────────────────────────────────────────
 DRY=0
-PURGE=0
 FROM_RELEASE=0
-VERSION_FLAG=""
 TOOLS=()
 NO_COLOR=0
 
@@ -44,7 +41,7 @@ err()   { printf '%s%s%s\n' "$c_err" "$1" "$c_reset" >&2; }
 # ── Help ───────────────────────────────────────────────────────────────
 print_help() {
   cat <<'EOF'
-loom 卸载脚本
+loom 卸载脚本（用户级卸载）
 
 USAGE
   uninstall.sh --tool <target> [flags]
@@ -52,24 +49,16 @@ USAGE
 FLAGS
   --tool <target>     目标工具（必填，可重复）
                       支持：claude-code | cursor | copilot | opencode | codex
-  --version <ver>     指定版本（默认取脚本内嵌版本）
   --dry-run           预览删除文件，不实际执行
   --from-release      从 GitHub release tag 下载（可重现卸载）
                       默认：本地模式（需 clone 仓库）
-  --purge             额外清理：移除备份目录和 .gitignore 条目
   --no-color          禁用颜色输出
   -h, --help          显示帮助信息
-
-安全策略
-  - 只删除 install-manifest.json 中记录的文件
-  - 文件被用户修改后不会删除（输出 warning）
-  --purge 也不能越过 manifest 边界
 
 示例
   bash uninstall.sh --tool claude-code
   bash uninstall.sh --tool claude-code --dry-run
-  bash uninstall.sh --tool claude-code --purge
-  bash uninstall.sh --tool claude-code --from-release --version 版本号
+  bash uninstall.sh --tool claude-code --from-release
 EOF
 }
 
@@ -80,12 +69,7 @@ while [ $# -gt 0 ]; do
       shift
       if [ $# -eq 0 ]; then err "error: --tool requires an argument"; exit 2; fi
       TOOLS+=("$1") ;;
-    --version)
-      shift
-      if [ $# -eq 0 ]; then err "error: --version requires an argument"; exit 2; fi
-      VERSION_FLAG="$1" ;;
     --dry-run)       DRY=1 ;;
-    --purge)         PURGE=1 ;;
     --from-release)  FROM_RELEASE=1 ;;
     --no-color)      NO_COLOR=1 ;;
     -h|--help)       print_help; exit 0 ;;
@@ -111,9 +95,6 @@ for t in "${TOOLS[@]}"; do
     exit 2
   fi
 done
-
-# ── Resolve version ───────────────────────────────────────────────────
-INSTALL_VERSION="${VERSION_FLAG:-$VERSION}"
 
 # ── Detect repo root ──────────────────────────────────────────────────
 detect_repo_root() {
@@ -152,17 +133,17 @@ resolve_source() {
     exit 1
   fi
 
-  note "  mode: release (v$INSTALL_VERSION)"
+  note "  mode: release (v$VERSION)"
   CLEANUP_DIR="$(mktemp -d)"
   local tarball="$CLEANUP_DIR/loom.tar.gz"
 
-  say "  downloading loom v$INSTALL_VERSION from $REPO..."
-  curl -fsSL "https://github.com/$REPO/archive/refs/tags/v$INSTALL_VERSION.tar.gz" -o "$tarball"
+  say "  downloading loom v$VERSION from $REPO..."
+  curl -fsSL "https://github.com/$REPO/archive/refs/tags/v$VERSION.tar.gz" -o "$tarball"
 
   note "  extracting..."
   tar xzf "$tarball" -C "$CLEANUP_DIR"
 
-  local extracted="$CLEANUP_DIR/loom-$INSTALL_VERSION"
+  local extracted="$CLEANUP_DIR/loom-$VERSION"
   if [ ! -d "$extracted" ]; then
     extracted=$(find "$CLEANUP_DIR" -maxdepth 1 -type d | tail -1)
   fi
@@ -205,7 +186,7 @@ check_node() {
 # ── Main ───────────────────────────────────────────────────────────────
 main() {
   say ""
-  say "  loom uninstall v$INSTALL_VERSION"
+  say "  loom uninstall v$VERSION"
   say "  ${REPO}"
   say ""
 
@@ -213,17 +194,16 @@ main() {
   resolve_source
 
   # Build common args
-  CLI_ARGS=("--version" "$INSTALL_VERSION")
+  CLI_ARGS=()
   [ "$DRY" = 1 ] && CLI_ARGS+=("--dry-run")
-  [ "$PURGE" = 1 ] && CLI_ARGS+=("--purge")
 
-  # Run uninstall for each tool
+  # Run user-level uninstall for each tool
   for tool in "${TOOLS[@]}"; do
     say "→ $tool"
     if node "$LOOM_CLI" uninstall --tool "$tool" "${CLI_ARGS[@]}"; then
       ok "  ✔ $tool 卸载完成"
     else
-      warn "  ✘ $tool 卸载失败（可能未安装或 manifest 缺失）"
+      warn "  ✘ $tool 卸载失败"
     fi
   done
 

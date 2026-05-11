@@ -15,33 +15,14 @@ AI 工程化框架。把需求、规范、上下文、执行过程"织"成一套
 
 | 工具           | 支持等级 | 入口文件                          | Skills | Hooks | Plugin 注册 |
 | -------------- | -------- | --------------------------------- | ------ | ----- | ----------- |
-| Claude Code    | full     | `.claude/CLAUDE.md`               | ✅¹    | ✅    | ✗²          |
+| Claude Code    | full     | `.claude/CLAUDE.md`               | ✅     | ✅    | ✅          |
 | Cursor         | full     | `.cursorrules`                    | ✅     | ✗     | ✗           |
 | GitHub Copilot | full     | `.github/copilot-instructions.md` | ✅     | ✗     | ✗           |
-| OpenCode       | full     | `AGENTS.md`                       | ✅³    | ✗     | ✅          |
+| OpenCode       | full     | `AGENTS.md`                       | ✅     | ✗     | ✅          |
 
 - **full**：完整支持，适配器已实现
 - **planned**：计划中，适配器待实现
 - **Hooks**：仅 Claude Code 支持会话级钩子（session-start）
-- ¹ Claude Code 的 skills/commands 位于 `.claude/skills/*.md` 和 `.claude/commands/*.md`，通过 `@.loom/...` 引用完整定义
-- ² Claude Code 原生发现 `.claude/` 目录，无需额外插件注册
-- ³ OpenCode 的 skills/commands 位于 `.opencode/skills/*.md` 和 `.opencode/commands/*.md`，通过 `@.loom/...` 引用完整定义
-
-## 安装方式与安全等级
-
-| 安装方式                | 命令                                        | 安全等级 | 说明                             |
-| ----------------------- | ------------------------------------------- | -------- | -------------------------------- |
-| 本地 clone + bash       | `bash install.sh --tool claude-code`        | ★★★ 最高 | 代码可见，可审计，可 dry-run     |
-| 本地 clone + PowerShell | `.\install.ps1 -tool claude-code`           | ★★★ 最高 | 同上，Windows 平台               |
-| npm 全局安装            | `npm i -g loom-engineering && loom init`    | ★★☆ 中等 | 从 npm registry 拉取，需信任 npm |
-| 远程 curl-pipe          | `curl ... \| bash -s -- --tool claude-code` | ★☆☆ 最低 | 直接执行远程脚本，适合 CI/CD     |
-
-**安全建议**：
-
-- 生产环境推荐本地 clone 方式，可审计脚本内容
-- 所有安装方式均支持 `--dry-run` 预览，不实际写入
-- 安装前自动检测冲突，冲突文件自动备份到 `.loom-backup/`
-- 卸载时基于 SHA-256 校验和判断文件是否被修改，修改过的文件不会被删除
 
 ## 安装
 
@@ -49,7 +30,7 @@ AI 工程化框架。把需求、规范、上下文、执行过程"织"成一套
 
 - Node.js >= 18
 
-### 方式一：本地安装
+### 方式一：一键安装脚本
 
 ```bash
 git clone https://github.com/xiqin/loom.git
@@ -57,22 +38,21 @@ cd loom
 bash install.sh --tool claude-code
 ```
 
-### 方式二：npm 安装
-
-```bash
-npm i -g loom-engineering
-cd your-project
-loom init --tool claude-code
-```
-
-### 方式三：远程一键安装
+远程一键安装：
 
 ```bash
 # Unix
 curl -fsSL https://raw.githubusercontent.com/xiqin/loom/main/install.sh | bash -s -- --tool claude-code
 
 # Windows PowerShell
-irm https://raw.githubusercontent.com/xiqin/loom/main/install.ps1 | iex -tool claude-code
+irm https://raw.githubusercontent.com/xiqin/loom/main/install.ps1 | iex -Tool claude-code
+```
+
+### 方式二：npm 安装
+
+```bash
+npm i -g loom-engineering
+loom install --tool claude-code
 ```
 
 ### 安装选项
@@ -80,10 +60,8 @@ irm https://raw.githubusercontent.com/xiqin/loom/main/install.ps1 | iex -tool cl
 | Flag              | 作用                                     |
 | ----------------- | ---------------------------------------- |
 | `--tool <target>` | 目标工具（必填）                         |
-| `--force`         | 覆盖已有文件（自动备份）                 |
 | `--dry-run`       | 预览，不实际写入                         |
 | `--from-release`  | 从 GitHub release tag 下载（可重现安装） |
-| `--version <ver>` | 指定版本（默认脚本内嵌版本）             |
 
 ### 安装后验证
 
@@ -92,149 +70,27 @@ loom doctor    # 诊断安装状态
 loom list      # 列出可用 skills 和 commands
 ```
 
-## 初始化前后目录对比
-
-### 安装前
-
-```
-my-project/
-├── src/
-├── package.json
-└── ...
-```
-
-### 安装后（以 Claude Code 为例）
-
-```
-my-project/
-├── .claude/
-│   ├── CLAUDE.md                      # ← loom 生成：入口文档
-│   ├── skills/                        # ← loom 生成：skill 包装器（@.loom/...）
-│   └── commands/                      # ← loom 生成：command 包装器（@.loom/...）
-├── .loom/
-│   ├── install-manifest.json          # ← loom 生成：安装清单
-│   ├── skills/                        # ← loom 生成：15 个 skills（完整定义）
-│   ├── commands/                      # ← loom 生成：5 个 commands
-│   ├── hooks/                         # ← loom 生成：会话钩子
-│   ├── templates/                     # ← loom 生成：项目模板
-│   ├── core/                          # ← loom 生成：核心框架文档
-│   └── schema/                        # ← loom 生成：模板模式
-├── src/
-├── package.json
-└── ...
-```
-
-### 安装后（以 OpenCode 为例）
-
-```
-my-project/
-├── AGENTS.md                          # ← loom 生成：入口文档
-├── .opencode/
-│   ├── skills/                        # ← loom 生成：skill 包装器（@.loom/...）
-│   └── commands/                      # ← loom 生成：command 包装器（@.loom/...）
-├── .loom/
-│   ├── install-manifest.json          # ← loom 生成：安装清单
-│   ├── skills/                        # ← loom 生成：15 个 skills（完整定义）
-│   ├── commands/                      # ← loom 生成：5 个 commands
-│   ├── hooks/                         # ← loom 生成：会话钩子
-│   ├── templates/                     # ← loom 生成：项目模板
-│   ├── core/                          # ← loom 生成：核心框架文档
-│   └── schema/                        # ← loom 生成：模板模式
-├── src/
-├── package.json
-└── ...
-```
-
-### 运行 `/loom-init-project` 后
-
-```
-my-project/
-├── .claude/
-│   └── CLAUDE.md
-├── .loom/
-│   ├── memory/
-│   │   ├── constitution.md            # ← init-project 生成：项目宪章
-│   │   ├── MEMORY.md                  # ← init-project 生成：记忆文件
-│   │   └── loom.md                    # ← init-project 生成：项目入口文档
-│   ├── rules/
-│   │   └── project-structure.md       # ← init-project 生成：工程结构约束
-│   └── ...
-└── ...
-```
-
-## 生成文件说明
-
-| 文件                               | 生成时机                | 用途                                     | 可安全删除          |
-| ---------------------------------- | ----------------------- | ---------------------------------------- | ------------------- |
-| `.claude/CLAUDE.md`                | `loom init`             | Claude Code 入口文档                     | ✗                   |
-| `.claude/skills/`                  | `loom init`             | Skill 包装器（引用 `.loom/skills/`）     | ✗                   |
-| `.claude/commands/`                | `loom init`             | Command 包装器（引用 `.loom/commands/`） | ✗                   |
-| `.loom/skills/`                    | `loom init`             | Skills 完整定义（单一事实源）            | ✗                   |
-| `.loom/commands/`                  | `loom init`             | Commands 完整定义                        | ✗                   |
-| `.loom/hooks/`                     | `loom init`             | 会话钩子及处理器                         | ✗                   |
-| `.loom/templates/`                 | `loom init`             | 项目模板                                 | ✗                   |
-| `.loom/core/`                      | `loom init`             | 核心框架文档                             | ✗                   |
-| `.loom/install-manifest.json`      | `loom init`             | 安装清单（文件列表 + SHA-256 校验和）    | ✗（卸载依赖此文件） |
-| `.loom/memory/constitution.md`     | `/loom-init-project`    | 项目宪章（编码准则、技术栈、红线）       | ✓（可重新生成）     |
-| `.loom/memory/MEMORY.md`           | `/loom-init-project`    | 记忆文件（踩坑、偏好、状态）             | ✓（可重新生成）     |
-| `.loom/rules/project-structure.md` | `/loom-init-project`    | 工程结构约束                             | ✓（可重新生成）     |
-| `.loom/memory/loom.md`             | `/loom-init-project`    | 项目入口文档                             | ✓（可重新生成）     |
-| `specs/<date+feature>/`            | 流水线执行              | 需求规格、实现计划、进度追踪             | ✓（项目数据）       |
-| `.loom-backup/`                    | `--force` 安装          | 冲突文件备份（自动保留最近 3 份）        | ✓                   |
-| `AGENTS.md`                        | `loom init`（OpenCode） | OpenCode 入口文档                        | ✗                   |
-| `.opencode/skills/`                | `loom init`（OpenCode） | Skill 包装器（引用 `.loom/skills/`）     | ✗                   |
-| `.opencode/commands/`              | `loom init`（OpenCode） | Command 包装器（引用 `.loom/commands/`） | ✗                   |
-
-## 卸载与恢复策略
+## 卸载
 
 ### 卸载
 
 ```bash
 # 脚本卸载
 bash uninstall.sh --tool claude-code
-.\uninstall.ps1 -tool claude-code
+.\uninstall.ps1 -Tool claude-code
 
 # CLI 卸载
 loom uninstall --tool claude-code
 ```
 
-### 卸载安全策略
-
-卸载器基于 `install-manifest.json` 中的 SHA-256 校验和判断文件状态：
-
-| 文件状态               | 行为                   |
-| ---------------------- | ---------------------- |
-| 未修改（校验和匹配）   | 安全删除               |
-| 已修改（校验和不匹配） | 跳过，输出 warning     |
-| 已不存在               | 跳过                   |
-| 无 manifest            | 拒绝卸载，提示手动删除 |
-
-**这意味着**：如果你修改了 loom 生成的文件，卸载时不会删除它们。你不会丢失任何手动修改。
-
-### 完全清理
-
-```bash
-loom uninstall --tool claude-code --purge
-```
-
-`--purge` 额外清理：
-
-- `.loom-backup/` 备份目录
-- `.gitignore` 中的 loom 条目
+卸载只清理用户级安装的文件（用户目录下的 skills、commands、plugin 注册），不碰项目目录中的任何文件。
 
 ### 恢复
 
 如果误卸载，重新安装即可：
 
 ```bash
-loom init --tool claude-code
-```
-
-如果需要恢复被 `--force` 覆盖的文件：
-
-```bash
-ls .loom-backup/           # 查看备份
-cp .loom-backup/<file> .   # 手动恢复
+loom install --tool claude-code
 ```
 
 ## 版本与发布策略
@@ -310,34 +166,9 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 
 test-driven-development / systematic-debugging / verification-before-completion / finishing-a-development-branch / requesting-code-review / receiving-code-review / dispatching-parallel-agents / writing-skills
 
-## CLI 参考
-
-```bash
-loom init --tool <target>              # 安装：资产到 .loom/，包装器到工具目录
-  --force                             # 覆盖已有文件（自动备份）
-  --dry-run                           # 预览，不写入
-
-loom update                            # 重新同步 .loom/ 资产和工具包装器
-loom doctor                            # 诊断安装状态
-loom list [--type skills|commands|all] # 列出可用资源
-loom uninstall --tool <target>         # 移除 manifest 跟踪的生成文件
-  --purge                             # 同时清理备份和 .gitignore 条目
-```
-
 ## 与 superpowers 的关系
 
 loom 继承 superpowers 的插件基础设施，替换/增强核心 skills 为 loom 版本（增加流水线、宪章、审查维度等），并新增项目规则自动生成、进度追踪、索引同步等能力。
-
-## 已知限制
-
-- **`/loom-import-rules` 未实现**：命令定义存在但功能未开发
-- **Hooks 仅支持 Claude Code**：其他工具不支持会话级钩子
-- **远程安装需要 curl + tar**：`--from-release` 模式依赖系统工具
-- **Windows 远程安装需要 tar**：PowerShell 脚本的 `-FromRelease` 模式需要 tar 命令
-- **Node.js >= 18 硬性要求**：不支持更低版本
-- **单项目单工具**：一个项目同时只能安装一个工具的适配器
-- **流水线依赖 Git**：git-worktree 步骤需要 Git 仓库
-- **子 agent 上下文隔离**：subagent 无法访问主 agent 的完整上下文
 
 ## License
 

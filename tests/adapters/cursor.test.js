@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CursorAdapter } from '../../src/adapters/cursor.js';
 
@@ -10,48 +10,61 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   rmSync(TEST_DIR, { recursive: true, force: true });
 });
 
 describe('CursorAdapter', () => {
   const adapter = new CursorAdapter();
 
-  it('has name "cursor"', () => {
-    expect(adapter.name).toBe('cursor');
+  it('has toolName "cursor"', () => {
+    expect(adapter.toolName).toBe('cursor');
   });
 
-  it('has entryFilename .cursorrules', () => {
-    expect(adapter.entryFilename).toBe('.cursorrules');
+  it('getUserDir returns ~/.cursor', () => {
+    expect(adapter.getUserDir()).toContain('.cursor');
   });
 
-  it('getTargetFiles returns .cursorrules and .loom/ paths', () => {
-    const files = adapter.getTargetFiles(TEST_DIR);
-    expect(files).toContain(join(TEST_DIR, '.cursorrules'));
-    expect(files).toContain(join(TEST_DIR, '.loom', 'skills'));
-    expect(files).toContain(join(TEST_DIR, '.loom', 'core'));
+  it('getSkillsDir returns ~/.cursor/skills', () => {
+    expect(adapter.getSkillsDir()).toContain(join('.cursor', 'skills'));
   });
 
-  it('generate creates .cursorrules file', async () => {
-    await adapter.generate(TEST_DIR, '1.0.0');
-    expect(existsSync(join(TEST_DIR, '.cursorrules'))).toBe(true);
+  it('getCommandsDir returns ~/.cursor/commands', () => {
+    expect(adapter.getCommandsDir()).toContain(join('.cursor', 'commands'));
   });
 
-  it('generated file contains version marker', async () => {
-    await adapter.generate(TEST_DIR, '1.0.0');
-    const content = readFileSync(join(TEST_DIR, '.cursorrules'), 'utf-8');
-    expect(content).toContain('<!-- loom:version=1.0.0 -->');
+  it('supportsPlugin returns false', () => {
+    expect(adapter.supportsPlugin()).toBe(false);
   });
 
-  it('generated file contains pipeline definition', async () => {
-    await adapter.generate(TEST_DIR, '1.0.0');
-    const content = readFileSync(join(TEST_DIR, '.cursorrules'), 'utf-8');
-    expect(content).toContain('brainstorming');
-    expect(content).toContain('writing-plans');
+  it('install copies skills and commands to user dir', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.cursor'));
+
+    const loomRoot = join(TEST_DIR, 'loom-root');
+    mkdirSync(join(loomRoot, 'skills', 'test-skill'), { recursive: true });
+    writeFileSync(join(loomRoot, 'skills', 'test-skill', 'SKILL.md'), '# Test');
+    mkdirSync(join(loomRoot, 'commands'), { recursive: true });
+    writeFileSync(join(loomRoot, 'commands', 'test-cmd.md'), '# Test Cmd');
+
+    const log = adapter.install(loomRoot, '1.0.0');
+    expect(log.some(l => l.includes('skills'))).toBe(true);
+    expect(log.some(l => l.includes('commands'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.cursor', 'skills', 'test-skill', 'SKILL.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.cursor', 'commands', 'test-cmd.md'))).toBe(true);
   });
 
-  it('generated file contains Skills section', async () => {
-    await adapter.generate(TEST_DIR, '1.0.0');
-    const content = readFileSync(join(TEST_DIR, '.cursorrules'), 'utf-8');
-    expect(content).toContain('Skills 清单');
+  it('uninstall removes installed skills and commands', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.cursor'));
+
+    // Set up installed files
+    mkdirSync(join(TEST_DIR, '.cursor', 'skills', 'my-skill'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.cursor', 'skills', 'my-skill', 'SKILL.md'), '# My Skill');
+    mkdirSync(join(TEST_DIR, '.cursor', 'commands'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.cursor', 'commands', 'my-cmd.md'), '# My Cmd');
+
+    const log = adapter.uninstall(TEST_DIR);
+    expect(log.some(l => l.includes('removed'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.cursor', 'skills', 'my-skill'))).toBe(false);
+    expect(existsSync(join(TEST_DIR, '.cursor', 'commands', 'my-cmd.md'))).toBe(false);
   });
 });

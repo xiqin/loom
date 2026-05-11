@@ -15,20 +15,19 @@ program
   .version(pkg.version);
 
 program
-  .command('init')
-  .description('Install loom: assets to .loom/, wrappers to tool-specific dir')
-  .requiredOption('--tool <target>', `Target tool: ${TOOL_IDS.join(' | ')}`)
+  .command('install')
+  .description('Install loom at user-level (global) for CLI tool')
+  .requiredOption('--tool <target>', 'Target tool: claude-code | opencode | cursor | copilot | codex')
   .option('--version <ver>', 'Version to install (default: package.json version)')
-  .option('--dry-run', 'Show files to be generated without writing')
-  .option('--force', 'Overwrite existing files (backs up first)')
+  .option('--dry-run', 'Show what would be installed without writing')
   .action(async (options) => {
-    const { install } = await import('./core/installer.js');
-    await install({ ...options, update: false });
+    const { default: installCommand } = await import('./commands/install.js');
+    await installCommand(options);
   });
 
 program
   .command('update')
-  .description('Resync .loom/ assets and tool wrappers from latest version')
+  .description('Reinstall loom at user-level for CLI tool (update)')
   .option('--tool <target>', 'Target tool (auto-detect if omitted)')
   .option('--version <ver>', 'Version to install (default: package.json version)')
   .option('--dry-run', 'Show diff without applying')
@@ -48,13 +47,12 @@ program
 
 program
   .command('uninstall')
-  .description('Remove manifest-tracked generated files')
-  .requiredOption('--tool <target>', `Target tool: ${TOOL_IDS.join(' | ')}`)
-  .option('--dry-run', 'Preview files to be deleted without removing')
-  .option('--purge', 'Also remove backups and .gitignore entries')
+  .description('Remove user-level installation for CLI tool')
+  .requiredOption('--tool <target>', 'Target tool: claude-code | opencode | cursor | copilot | codex')
+  .option('--dry-run', 'Show what would be removed without deleting')
   .action(async (options) => {
-    const { uninstall } = await import('./core/uninstaller.js');
-    await uninstall(options);
+    const { default: uninstallCommand } = await import('./commands/uninstall.js');
+    await uninstallCommand(options);
   });
 
 program

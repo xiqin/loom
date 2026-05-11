@@ -3,6 +3,7 @@
   "version": "1.2.1",
   "description": "Loom — AI 工程化框架",
   "type": "module",
+  "main": "./plugin.mjs",
   "license": "MIT",
   "keywords": [
     "ai",
@@ -33,6 +34,7 @@
     "hooks/",
     "templates/",
     "plugin-meta/",
+    "plugin.mjs",
     "install.sh",
     "install.ps1",
     "uninstall.sh",
@@ -42,14 +44,14 @@
     "node": ">=18"
   },
   "scripts": {
-    "generate": "node scripts/generate-tooling.mjs",
+    "generate": "node scripts/generate-tooling.mjs && node scripts/generate-plugin-meta.mjs",
     "sync-version": "node scripts/sync-version.mjs",
     "sync-version:check": "node scripts/sync-version.mjs --check",
     "pretest": "node scripts/generate-tooling.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepack": "node scripts/sync-version.mjs && npm test",
-    "prepublishOnly": "node scripts/sync-version.mjs && npm test"
+    "prepack": "node scripts/generate-plugin-meta.mjs && node scripts/sync-version.mjs && npm test",
+    "prepublishOnly": "node scripts/generate-plugin-meta.mjs && node scripts/sync-version.mjs && npm test"
   },
   "dependencies": {
     "commander": "^12.0.0"

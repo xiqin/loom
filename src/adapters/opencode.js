@@ -1,61 +1,66 @@
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { homedir } from 'node:os';
 import { BaseAdapter } from './base.js';
-import { injectVersion } from '../utils/version.js';
 
 export class OpenCodeAdapter extends BaseAdapter {
-  get name() {
-    return 'opencode';
+  get toolName() { return 'opencode'; }
+
+  getUserDir() { return join(homedir(), '.config', 'opencode'); }
+
+  getSkillsDir() { return join(this.getUserDir(), 'skills'); }
+
+  getCommandsDir() { return join(this.getUserDir(), 'commands'); }
+
+  supportsPlugin() { return true; }
+
+  install(loomRoot, version) {
+    const log = [];
+    log.push(`Installing loom@${version} → ${this.toolName} (user-level)`);
+    this._addNpmPlugin(loomRoot, log);
+    this._copyCommands(loomRoot, log);
+    this._postInstall(loomRoot, version, log);
+    return log;
   }
 
-  get entryFilename() {
-    return 'AGENTS.md';
+  uninstall(loomRoot) {
+    const log = [];
+    this._removeNpmPlugin(log);
+    this._removeCommands(log);
+    return log;
   }
 
-  getTargetFiles(projectRoot) {
-    return [
-      join(projectRoot, 'AGENTS.md'),
-      join(projectRoot, '.opencode', 'skills'),
-      join(projectRoot, '.opencode', 'commands'),
-      join(projectRoot, '.loom', 'skills'),
-      join(projectRoot, '.loom', 'commands'),
-      join(projectRoot, '.loom', 'hooks'),
-      join(projectRoot, '.loom', 'hooks', 'handlers'),
-      join(projectRoot, '.loom', 'templates'),
-      join(projectRoot, '.loom', 'core'),
-    ];
-  }
-
-  _transformContent(content) {
-    return content
-      .replace(/\{\{ENTRY_FILE\}\}/g, this.entryFilename)
-      .replace(/\{\{SKILLS_SECTION\}\}/g, '## Skills 和 Commands\n\n所有 skills 定义在 `.opencode/skills/`，所有 commands 定义在 `.opencode/commands/` 目录中（均为指向 `.loom/` 源文件的包装器）。');
-  }
-
-  async generate(projectRoot, version, options = {}) {
-    this._generateLoomDirs(projectRoot, version);
-    this._generateWrappers(projectRoot, version);
-  }
-
-  generateWrappers(projectRoot, version) {
-    this._generateWrappers(projectRoot, version);
-  }
-
-  _generateWrappers(projectRoot, version) {
-    const opencodeDir = join(projectRoot, '.opencode');
-
-    const loomSkills = join(projectRoot, '.loom', 'skills');
-    if (existsSync(loomSkills)) {
-      this._generateSkillWrappers(loomSkills, join(opencodeDir, 'skills'));
+  _addNpmPlugin(loomRoot, log) {
+    const configPath = join(this.getUserDir(), 'opencode.json');
+    let config = {};
+    if (existsSync(configPath)) {
+      config = JSON.parse(readFileSync(configPath, 'utf-8'));
     }
-
-    const loomCommands = join(projectRoot, '.loom', 'commands');
-    if (existsSync(loomCommands)) {
-      this._generateCommandWrappers(loomCommands, join(opencodeDir, 'commands'));
+    if (!config.plugin) config.plugin = [];
+    if (!config.plugin.includes('loom-engineering')) {
+      config.plugin.push('loom-engineering');
+      mkdirSync(dirname(configPath), { recursive: true });
+      writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+      log.push('  plugin: loom-engineering added to opencode.json');
+    } else {
+      log.push('  plugin: loom-engineering already in opencode.json');
     }
+  }
 
-    const entryContent = this._generateEntryMd();
-    mkdirSync(opencodeDir, { recursive: true });
-    writeFileSync(join(projectRoot, 'AGENTS.md'), injectVersion(entryContent, version));
+  _removeNpmPlugin(log) {
+    const configPath = join(this.getUserDir(), 'opencode.json');
+    if (!existsSync(configPath)) return;
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+    if (!config.plugin) return;
+    const idx = config.plugin.indexOf('loom-engineering');
+    if (idx !== -1) {
+      config.plugin.splice(idx, 1);
+      writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+      log.push('  plugin: loom-engineering removed from opencode.json');
+    }
+  }
+
+  _postInstall(loomRoot, version, log) {
+    log.push('  config: commands copied, skills via npm plugin (loom-engineering)');
   }
 }

@@ -1,9 +1,8 @@
-# loom — 安装脚本（可重现、可审计、可 dry-run）
+# loom — 安装脚本（用户级安装，可重现、可 dry-run）
 #
 # 本地模式：
 #   .\install.ps1 -Tool claude-code
 #   .\install.ps1 -Tool claude-code -DryRun
-#   .\install.ps1 -Tool claude-code -Version 版本号
 #
 # Release 模式（从指定版本 tag 下载）：
 #   .\install.ps1 -Tool claude-code -FromRelease
@@ -12,42 +11,38 @@
 [CmdletBinding()]
 param(
   [string[]]$Tool = @(),
-  [string]$Version = "1.2.1",,,
   [switch]$DryRun,
-  [switch]$Force,
   [switch]$FromRelease,
   [switch]$NoColor,
   [switch]$Help
 )
 
 $Repo = "xiqin/loom"
+$Version = "1.2.1"
 # TODO: replace hardcoded list — import from config/tools.schema.json via generate-tooling.mjs
 $SupportedTools = @("claude-code", "cursor", "copilot", "opencode", "codex")
 
 # ── Help ────────────────────────────────────────────────────────────────
 if ($Help) {
 @"
-loom 安装脚本
+loom 安装脚本（用户级安装）
 
 USAGE
   install.ps1 -Tool <target> [flags]
 
 FLAGS
   -Tool <target>      目标工具（必填，逗号分隔或重复指定）
-                      支持：claude-code | cursor | copilot | opencode | codex
-  -Version <ver>      指定安装版本（默认取脚本内嵌版本）
+                       支持：claude-code | cursor | copilot | opencode | codex
   -DryRun             预览安装文件，不实际写入
   -FromRelease        从 GitHub release tag 下载（可重现安装）
-                      默认：本地模式（需 clone 仓库）
-  -Force              覆盖已有文件（自动备份）
+                       默认：本地模式（需 clone 仓库）
   -NoColor            禁用颜色输出
   -Help               显示帮助信息
 
 示例
-  .\install.ps1 -Tool claude-code                         # 本地安装
+  .\install.ps1 -Tool claude-code                         # 用户级安装
   .\install.ps1 -Tool claude-code -DryRun                 # 预览安装
   .\install.ps1 -Tool claude-code -FromRelease            # 从 release 安装
-  .\install.ps1 -Tool claude-code -FromRelease -Version 1.0.0
 "@
   exit 0
 }
@@ -59,9 +54,6 @@ function Note($msg)  { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc
 function Ok($msg)    { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc[32m$msg$Esc[0m" } }
 function Warn($msg)  { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc[33m$msg$Esc[0m" } }
 function Err($msg)   { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc[31m$msg$Esc[0m" } }
-
-# ── Resolve version ─────────────────────────────────────────────────────
-$InstallVersion = $Version
 
 # ── Validate tool ───────────────────────────────────────────────────────
 $Tools = @()
@@ -112,7 +104,7 @@ function Resolve-Source {
   }
 
   # Remote: download from release tag
-  Note "  mode: release (v$InstallVersion)"
+  Note "  mode: release (v$Version)"
 
   $curlCmd = if (Get-Command "curl.exe" -ErrorAction SilentlyContinue) { "curl.exe" } else { "curl" }
   if (-not (Get-Command $curlCmd -ErrorAction SilentlyContinue)) {
@@ -125,8 +117,8 @@ function Resolve-Source {
   $script:Cleanup = $true
 
   $tarball = Join-Path $CleanupDir "loom.tar.gz"
-  Say "  downloading loom v$InstallVersion from $Repo..."
-  & $curlCmd -fsSL "https://github.com/$Repo/archive/refs/tags/v$InstallVersion.tar.gz" -o $tarball 2>$null
+  Say "  downloading loom v$Version from $Repo..."
+  & $curlCmd -fsSL "https://github.com/$Repo/archive/refs/tags/v$Version.tar.gz" -o $tarball 2>$null
   if ($LASTEXITCODE -ne 0) {
     Err "error: download failed"
     exit 1
@@ -184,7 +176,7 @@ function Check-Node {
 # ── Main ────────────────────────────────────────────────────────────────
 try {
   Say ""
-  Say "  loom install v$InstallVersion"
+  Say "  loom install v$Version"
   Say "  $Repo"
   Say ""
 
@@ -192,9 +184,8 @@ try {
   Resolve-Source
 
   # Build CLI args
-  $cliArgs = @("init", "--version", $InstallVersion)
+  $cliArgs = @("install")
   if ($DryRun) { $cliArgs += "--dry-run" }
-  if ($Force)  { $cliArgs += "--force" }
 
   foreach ($t in $Tools) {
     Say "→ $t"
@@ -204,7 +195,7 @@ try {
     try {
       & node $LoomCli @fullArgs
       if ($LASTEXITCODE -eq 0) {
-        Ok "  ✔ $t 安装完成"
+        Ok "  ✔ $t 用户级安装完成"
       } else {
         Warn "  ✘ $t 安装失败"
       }
@@ -215,7 +206,7 @@ try {
 
   Say ""
   Say "  done"
-  Note "  可用命令: loom doctor, loom list, loom update"
+  Note "  可用命令: loom doctor, loom list"
   Note "  卸载: .\uninstall.ps1 -Tool <target>"
   Say ""
 

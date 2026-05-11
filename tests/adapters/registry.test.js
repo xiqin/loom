@@ -1,39 +1,55 @@
 import { describe, it, expect } from 'vitest';
-import { getAdapter, getEntryFilename, listAdapters } from '../../src/adapters/registry.js';
+import { getUserAdapter, USER_TOOL_IDS } from '../../src/core/installer.js';
 
-describe('adapter registry', () => {
-  it('getAdapter returns ClaudeCodeAdapter for "claude-code"', () => {
-    const adapter = getAdapter('claude-code');
-    expect(adapter.name).toBe('claude-code');
+describe('user adapter registry', () => {
+  it('USER_TOOL_IDS includes all expected tools', () => {
+    expect(USER_TOOL_IDS).toContain('claude-code');
+    expect(USER_TOOL_IDS).toContain('cursor');
+    expect(USER_TOOL_IDS).toContain('copilot');
+    expect(USER_TOOL_IDS).toContain('opencode');
+    expect(USER_TOOL_IDS).toContain('codex');
   });
 
-  it('getAdapter returns CursorAdapter for "cursor"', () => {
-    const adapter = getAdapter('cursor');
-    expect(adapter.name).toBe('cursor');
+  it('getUserAdapter returns adapter for "claude-code"', async () => {
+    const adapter = await getUserAdapter('claude-code');
+    expect(adapter.toolName).toBe('claude-code');
   });
 
-  it('getAdapter returns CopilotAdapter for "copilot"', () => {
-    const adapter = getAdapter('copilot');
-    expect(adapter.name).toBe('copilot');
+  it('getUserAdapter returns adapter for "cursor"', async () => {
+    const adapter = await getUserAdapter('cursor');
+    expect(adapter.toolName).toBe('cursor');
   });
 
-  it('getAdapter throws for unknown tool', () => {
-    expect(() => getAdapter('unknown')).toThrow('Unknown tool');
+  it('getUserAdapter returns adapter for "copilot"', async () => {
+    const adapter = await getUserAdapter('copilot');
+    expect(adapter.toolName).toBe('copilot');
   });
 
-  it('listAdapters returns all supported tools', () => {
-    const tools = listAdapters();
-    expect(tools).toEqual(['claude-code', 'cursor', 'copilot', 'opencode']);
+  it('getUserAdapter returns adapter for "opencode"', async () => {
+    const adapter = await getUserAdapter('opencode');
+    expect(adapter.toolName).toBe('opencode');
   });
 
-  it('getEntryFilename returns correct entry file per tool', () => {
-    expect(getEntryFilename('claude-code')).toBe('.claude/CLAUDE.md');
-    expect(getEntryFilename('cursor')).toBe('.cursorrules');
-    expect(getEntryFilename('copilot')).toBe('.github/copilot-instructions.md');
-    expect(getEntryFilename('opencode')).toBe('AGENTS.md');
+  it('getUserAdapter returns adapter for "codex"', async () => {
+    const adapter = await getUserAdapter('codex');
+    expect(adapter.toolName).toBe('codex');
   });
 
-  it('getEntryFilename throws for unknown tool', () => {
-    expect(() => getEntryFilename('unknown')).toThrow('Unknown tool');
+  it('getUserAdapter throws for unknown tool', async () => {
+    await expect(() => getUserAdapter('unknown')).rejects.toThrow('Unknown tool');
+  });
+
+  it('each adapter has getUserDir returning a string', async () => {
+    for (const tool of USER_TOOL_IDS) {
+      const adapter = await getUserAdapter(tool);
+      expect(typeof adapter.getUserDir()).toBe('string');
+    }
+  });
+
+  it('each adapter has getSkillsDir returning a string', async () => {
+    for (const tool of USER_TOOL_IDS) {
+      const adapter = await getUserAdapter(tool);
+      expect(typeof adapter.getSkillsDir()).toBe('string');
+    }
   });
 });

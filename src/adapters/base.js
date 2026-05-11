@@ -1,164 +1,123 @@
-import { mkdirSync, cpSync, writeFileSync, readdirSync, readFileSync, existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { mkdirSync, cpSync, writeFileSync, readdirSync, readFileSync, existsSync, rmSync, symlinkSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { homedir, platform } from 'node:os';
+import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { injectVersion, parseVersion } from '../utils/version.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ASSETS_DIR = join(__dirname, '..', '..');
-const SKIP_EXTENSIONS = new Set(['.png', '.jpg', '.gif', '.ico', '.woff', '.woff2', '.ttf']);
+const PROJECT_ROOT = join(__dirname, '..', '..');
 
 export class BaseAdapter {
-  get name() {
-    throw new Error('must implement get name()');
-  }
+  get toolName() { throw new Error('must implement toolName'); }
 
-  get entryFilename() {
-    throw new Error('must implement get entryFilename()');
-  }
+  getUserDir() { throw new Error('must implement getUserDir'); }
 
-  _getAssetsDir() {
-    return ASSETS_DIR;
-  }
+  getSkillsDir() { return join(this.getUserDir(), 'skills'); }
 
-  readAsset(relativePath) {
-    return readFileSync(join(ASSETS_DIR, relativePath), 'utf-8');
-  }
+  getCommandsDir() { return null; }
 
-  async generate(projectRoot, version, options = {}) {
-    throw new Error('must implement generate()');
-  }
+  supportsPlugin() { return false; }
 
-  generateWrappers(projectRoot, version) {
-  }
+  install(loomRoot, version) {
+    const log = [];
+    log.push(`Installing loom@${version} → ${this.toolName} (user-level)`);
 
-  getTargetFiles(projectRoot) {
-    throw new Error('must implement getTargetFiles()');
-  }
+    this._copySkills(loomRoot, log);
+    this._copyCommands(loomRoot, log);
+    this._postInstall(loomRoot, version, log);
 
-  _transformContent(content) {
-    return content;
-  }
-
-  _generateLoomDirs(projectRoot, version) {
-    const assetsDir = this._getAssetsDir();
-    const dirs = ['skills', 'commands', 'hooks', 'templates', 'core'];
-    for (const dir of dirs) {
-      const src = join(assetsDir, dir);
-      const dest = join(projectRoot, '.loom', dir);
-      this._copyDirRecursive(src, dest, version);
+    if (this.supportsPlugin()) {
+      this._registerPlugin(loomRoot, version, log);
     }
 
-    const schemaPath = join(assetsDir, 'config', 'templates.schema.json');
-    if (existsSync(schemaPath)) {
-      const schemaDest = join(projectRoot, '.loom', 'schema', 'templates.schema.json');
-      mkdirSync(join(projectRoot, '.loom', 'schema'), { recursive: true });
-      const schemaContent = readFileSync(schemaPath, 'utf-8');
-      writeFileSync(schemaDest, schemaContent);
-    }
+    return log;
   }
 
-  _generateEntryMd() {
-    return this._transformContent(this.readAsset('templates/loom.md'));
+  uninstall(loomRoot) {
+    const log = [];
+    this._removeSkills(log);
+    this._removeCommands(log);
+    return log;
   }
 
-  _generateSkillWrappers(srcDir, destDir) {
-    mkdirSync(destDir, { recursive: true });
-    const entries = readdirSync(srcDir, { withFileTypes: true });
+  _copySkills(loomRoot, log) {
+    const src = join(loomRoot, 'skills');
+    if (!existsSync(src)) return;
+    const dest = this.getSkillsDir();
+    mkdirSync(dest, { recursive: true });
+
+    let count = 0;
+    const entries = readdirSync(src, { withFileTypes: true });
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
-      const skillMd = join(srcDir, entry.name, 'SKILL.md');
+      const skillDir = join(src, entry.name);
+      const skillMd = join(skillDir, 'SKILL.md');
       if (!existsSync(skillMd)) continue;
-
-      const content = readFileSync(skillMd, 'utf-8');
-      const frontMatter = this._extractYamlFrontMatter(content);
-      const name = frontMatter.name || entry.name;
-      const description = frontMatter.description || '';
-
-      const skillDir = join(destDir, entry.name);
-      mkdirSync(skillDir, { recursive: true });
-      const wrapper = `---
-name: ${name}
-description: ${description}
----
-
-Full definition: @.loom/skills/${entry.name}/SKILL.md
-`;
-      writeFileSync(join(skillDir, 'SKILL.md'), wrapper);
+      this._copyDir(skillDir, join(dest, entry.name));
+      count++;
     }
+    log.push(`  skills: ${count} copied → ${dest}`);
   }
 
-  _generateCommandWrappers(srcDir, destDir) {
-    mkdirSync(destDir, { recursive: true });
-    const entries = readdirSync(srcDir, { withFileTypes: true });
+  _removeSkills(log) {
+    const dest = this.getSkillsDir();
+    if (!existsSync(dest)) return;
+    const entries = readdirSync(dest, { withFileTypes: true });
+    let count = 0;
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const skillDir = join(dest, entry.name, 'SKILL.md');
+      if (!existsSync(skillDir)) continue;
+      rmSync(join(dest, entry.name), { recursive: true, force: true });
+      count++;
+    }
+    log.push(`  skills: ${count} removed from ${dest}`);
+  }
+
+  _copyCommands(loomRoot, log) {
+    const cmdDir = this.getCommandsDir();
+    if (!cmdDir) return;
+    const src = join(loomRoot, 'commands');
+    if (!existsSync(src)) return;
+    mkdirSync(cmdDir, { recursive: true });
+
+    let count = 0;
+    const entries = readdirSync(src, { withFileTypes: true });
     for (const entry of entries) {
       if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
-      const name = entry.name.replace(/\.md$/, '');
-      const cmdName = name.replace(/^loom-/, '/');
-
-      const wrapper = `# ${cmdName}
-
-See @.loom/commands/${entry.name} for the full command definition.
-`;
-      writeFileSync(join(destDir, entry.name), wrapper);
+      cpSync(join(src, entry.name), join(cmdDir, entry.name), { force: true });
+      count++;
     }
+    log.push(`  commands: ${count} copied → ${cmdDir}`);
   }
 
-  _extractYamlFrontMatter(content) {
-    const result = {};
-    const match = content.match(/---\n([\s\S]*?)\n---/);
-    if (!match) return result;
-    const lines = match[1].split('\n');
-    let foldedKey = null;
-    for (const line of lines) {
-      if (foldedKey) {
-        const cont = line.match(/^(\s+)(.*)/);
-        if (cont && cont[1].length > 0) {
-          result[foldedKey] += (result[foldedKey] ? ' ' : '') + cont[2].trim();
-          continue;
-        } else {
-          foldedKey = null;
-        }
-      }
-      const kv = line.match(/^(\w+):\s*(.*)/);
-      if (kv) {
-        const val = kv[2].trim();
-        if (val === '>' || val === '>-') {
-          foldedKey = kv[1];
-          result[foldedKey] = '';
-        } else {
-          result[kv[1]] = val;
-        }
-      }
+  _removeCommands(log) {
+    const cmdDir = this.getCommandsDir();
+    if (!cmdDir || !existsSync(cmdDir)) return;
+    const entries = readdirSync(cmdDir, { withFileTypes: true });
+    let count = 0;
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+      rmSync(join(cmdDir, entry.name), { force: true });
+      count++;
     }
-    return result;
+    log.push(`  commands: ${count} removed from ${cmdDir}`);
   }
 
-  _copyDirRecursive(src, dest, version) {
+  _postInstall(loomRoot, version, log) {}
+
+  _registerPlugin(loomRoot, version, log) {}
+
+  _copyDir(src, dest) {
     mkdirSync(dest, { recursive: true });
     const entries = readdirSync(src, { withFileTypes: true });
-
     for (const entry of entries) {
-      const srcPath = join(src, entry.name);
-      const destPath = join(dest, entry.name);
-
+      const s = join(src, entry.name);
+      const d = join(dest, entry.name);
       if (entry.isDirectory()) {
-        this._copyDirRecursive(srcPath, destPath, version);
+        this._copyDir(s, d);
       } else {
-        const ext = entry.name.slice(entry.name.lastIndexOf('.'));
-        if (SKIP_EXTENSIONS.has(ext)) {
-          cpSync(srcPath, destPath);
-        } else {
-          const content = readFileSync(srcPath, 'utf-8');
-          const transformed = this._transformContent(content);
-          if (parseVersion(transformed) !== null) {
-            writeFileSync(destPath, transformed);
-          } else if (ext === '.json') {
-            // JSON files: skip version injection (comments break JSON parsing)
-            writeFileSync(destPath, transformed);
-          } else {
-            writeFileSync(destPath, injectVersion(transformed, version));
-          }
-        }
+        cpSync(s, d, { force: true });
       }
     }
   }

@@ -1,25 +1,42 @@
 import { describe, it, expect } from 'vitest';
+import { join } from 'node:path';
 import { BaseAdapter } from '../../src/adapters/base.js';
 
 describe('BaseAdapter', () => {
-  it('throws on unimplemented generate()', async () => {
+  it('throws on unimplemented toolName', () => {
     const adapter = new BaseAdapter();
-    await expect(adapter.generate('/tmp', '1.0.0')).rejects.toThrow('must implement generate()');
+    expect(() => adapter.toolName).toThrow('must implement toolName');
   });
 
-  it('throws on unimplemented getTargetFiles()', () => {
+  it('throws on unimplemented getUserDir()', () => {
     const adapter = new BaseAdapter();
-    expect(() => adapter.getTargetFiles('/tmp')).toThrow('must implement getTargetFiles()');
+    expect(() => adapter.getUserDir()).toThrow('must implement getUserDir');
   });
 
-  it('throws on unimplemented entryFilename', () => {
-    const adapter = new BaseAdapter();
-    expect(() => adapter.entryFilename).toThrow('must implement get entryFilename()');
+  it('getSkillsDir returns getUserDir()/skills', () => {
+    class TestAdapter extends BaseAdapter {
+      get toolName() { return 'test'; }
+      getUserDir() { return '/tmp/test-user'; }
+    }
+    const adapter = new TestAdapter();
+    expect(adapter.getSkillsDir()).toBe(join('/tmp/test-user', 'skills'));
   });
 
-  it('provides readAsset()', () => {
-    const adapter = new BaseAdapter();
-    const content = adapter.readAsset('core/pipeline.md');
-    expect(content).toContain('流水线');
+  it('getCommandsDir returns null by default', () => {
+    class TestAdapter extends BaseAdapter {
+      get toolName() { return 'test'; }
+      getUserDir() { return '/tmp/test-user'; }
+    }
+    const adapter = new TestAdapter();
+    expect(adapter.getCommandsDir()).toBeNull();
+  });
+
+  it('supportsPlugin returns false by default', () => {
+    class TestAdapter extends BaseAdapter {
+      get toolName() { return 'test'; }
+      getUserDir() { return '/tmp/test-user'; }
+    }
+    const adapter = new TestAdapter();
+    expect(adapter.supportsPlugin()).toBe(false);
   });
 });
