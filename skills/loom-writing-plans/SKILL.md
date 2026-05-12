@@ -1,5 +1,5 @@
 ---
-name: writing-plans
+name: loom-writing-plans
 description: >
   拆解实现计划。当有 spec 设计文档后，拆分为可执行的 task 列表。
   Use when: a spec design document exists and needs to be broken into bite-sized implementation tasks.
@@ -43,7 +43,7 @@ description: >
 
 保存到 `specs/<date+feature>/plan.md`。
 
-**上下文：** 如果在隔离 worktree 中工作，它应该已经通过 `superpowers:using-git-worktrees` skill 在执行时创建。
+**上下文：** 如果在隔离 worktree 中工作，它应该已经通过 `loom-using-git-worktrees` skill 在执行时创建。
 
 ## 范围检查
 
@@ -59,7 +59,7 @@ description: >
 
 1. 读取 `.loom/memory/constitution.md`（宪章）
 2. 读取 `.loom/rules/project-structure.md`（工程结构）
-3. 如果存在 `.loom/subagent-context.md`，读取它用于后续 task 上下文
+3. 如果存在 `.loom/templates/subagent-context.md`，读取它用于后续 task 上下文
 
 ### Step 3：文件结构
 
@@ -100,8 +100,6 @@ description: >
 
 ```markdown
 # [功能名称] 实现计划
-
-> **对于 agentic workers：** 必需的子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 来逐个 task 执行此计划。步骤使用复选框（`- [ ]`）语法进行跟踪。
 
 **目标：** [一句话描述构建什么]
 
@@ -232,7 +230,7 @@ digraph writing_plans {
     "按分层拆分 task" -> "编写 task 详细内容";
     "编写 task 详细内容" -> "检查清单";
     "检查清单" -> "执行交接";
-    "执行交接" -> "subagent-driven-development" [label="推荐"];
+    "执行交接" -> "loom-subagent-driven-development" [label="推荐"];
     "执行交接" -> "executing-plans" [label="备选"];
 }
 ````

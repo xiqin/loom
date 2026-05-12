@@ -1,9 +1,9 @@
 ---
-name: dispatching-parallel-agents
+name: loom-dispatching-parallel-agents
 description: >
-   并行派发。将独立的任务分发给多个 subagent 并行执行。
-   Use when: multiple independent tasks can be executed in parallel.
-   Trigger keywords: 并行执行, 并发处理, 多任务同时.
+  并行派发。将独立的任务分发给多个 subagent 并行执行。
+  Use when: multiple independent tasks can be executed in parallel.
+  Trigger keywords: 并行执行, 并发处理, 多任务同时.
 ---
 
 # 并行派发
@@ -18,20 +18,20 @@ description: >
 
 ### Step1：分析任务依赖
 
-1. 读取 `specs/<feature>/plan.md` 中的所有 task
+1. 读取 `specs/<date+feature>/plan.md` 中的所有 task
 2. 分析任务之间的依赖关系
 3. 找出可并行的任务组
 
 ```markdown
 ## 依赖关系分析
 
-| Task | 依赖 | 可并行组 | 复杂度 |
-|------|------|---------|--------|
-| Task 1 (Module A) | 无 | 组 1 | 简单 |
-| Task 2 (Module B) | 无 | 组 1 | 简单 |
-| Task 3 (Module C) | Task 1 | 组 2 | 中等 |
-| Task 4 (Module D) | Task 2 | 组 2 | 中等 |
-| Task 5 (Integration) | Task 3, 4 | 组 3 | 复杂 |
+| Task                 | 依赖      | 可并行组 | 复杂度 |
+| -------------------- | --------- | -------- | ------ |
+| Task 1 (Module A)    | 无        | 组 1     | 简单   |
+| Task 2 (Module B)    | 无        | 组 1     | 简单   |
+| Task 3 (Module C)    | Task 1    | 组 2     | 中等   |
+| Task 4 (Module D)    | Task 2    | 组 2     | 中等   |
+| Task 5 (Integration) | Task 3, 4 | 组 3     | 复杂   |
 ```
 
 ### Step2：创建并行组
@@ -59,23 +59,23 @@ description: >
 ```dot
 digraph parallel_execution {
     rankdir=TB;
-    
+
     subgraph cluster_group1 {
         label="组 1 (cheap model)";
         "Task 1 subagent" -> "完成";
         "Task 2 subagent" -> "完成";
     }
-    
+
     "组 1 全部完成" -> "组 2";
-    
+
     subgraph cluster_group2 {
         label="组 2 (standard model)";
         "Task 3 subagent" -> "完成";
         "Task 4 subagent" -> "完成";
     }
-    
+
     "组 2 全部完成" -> "组 3";
-    
+
     "组 3" -> "Task 5 subagent (capable)";
 }
 ```

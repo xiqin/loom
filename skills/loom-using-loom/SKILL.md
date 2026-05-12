@@ -1,5 +1,5 @@
 ---
-name: using-loom
+name: loom-using-loom
 description: >
   loom 框架使用指南。当用户首次使用 loom 或询问如何使用时触发。
   Use when: introducing the loom framework and its capabilities.
@@ -43,33 +43,33 @@ loom 继承了 superpowers 的 skills 系统，并进行了融合增强。
 
 **核心流水线 Skills（融合增强）：**
 
-| Skill                       | 说明                 | 输出                           | 增强点                               |
-| --------------------------- | -------------------- | ------------------------------ | ------------------------------------ |
-| brainstorming               | 需求头脑风暴         | `specs/<date+feature>/spec.md` | +可视化伴侣、设计自检、用户审查 Gate |
-| writing-plans               | 分层拆解 task        | `specs/<date+feature>/plan.md` | +模型选择、类型一致性检查            |
-| git-worktree                | 创建隔离分支         | feature 分支                   | +测试基线验证                        |
-| subagent-driven-development | Subagent 派发 + 审查 | 源码 + 测试报告                | +独立模板文件、4种状态处理           |
-| index-update                | 工程索引同步         | ENGINEERING-INDEX.md           | loom 新增                            |
+| Skill                            | 说明                 | 输出                           | 增强点                               |
+| -------------------------------- | -------------------- | ------------------------------ | ------------------------------------ |
+| loom-brainstorming               | 需求头脑风暴         | `specs/<date+feature>/spec.md` | +可视化伴侣、设计自检、用户审查 Gate |
+| loom-writing-plans               | 分层拆解 task        | `specs/<date+feature>/plan.md` | +模型选择、类型一致性检查            |
+| loom-using-git-worktrees         | 创建隔离分支         | feature 分支                   | +测试基线验证                        |
+| loom-subagent-driven-development | Subagent 派发 + 审查 | 源码 + 测试报告                | +独立模板文件、4种状态处理           |
+| loom-index-update                | 工程索引同步         | ENGINEERING-INDEX.md           | loom 新增                            |
 
 **辅助 Skills（loom 新增）：**
 
-| Skill        | 说明                               |
-| ------------ | ---------------------------------- |
-| init-project | 项目初始化（扫描 + 生成宪章/结构） |
-| using-loom   | loom 框架使用指南（本 skill）      |
+| Skill             | 说明                               |
+| ----------------- | ---------------------------------- |
+| loom-init-project | 项目初始化（扫描 + 生成宪章/结构） |
+| loom-using-loom   | loom 框架使用指南（本 skill）      |
 
 **通用 Skills（继承 superpowers 并融合）：**
 
-| Skill                          | 说明              | 融合点                             |
-| ------------------------------ | ----------------- | ---------------------------------- |
-| test-driven-development        | TDD 测试驱动开发  | +流程图、好/坏示例、常见借口表     |
-| systematic-debugging           | 系统化调试        | +4阶段流程图、条件等待、纵深防御   |
-| verification-before-completion | 完成前验证        | +Spec覆盖检查、类型一致性          |
-| requesting-code-review         | 请求代码审查      | +预审查清单、审查模板              |
-| receiving-code-review          | 接受代码审查      | +响应模板、流程图                  |
-| dispatching-parallel-agents    | 并行 agent 派发   | +模型选择、并发工作流图            |
-| writing-skills                 | 编写自定义 skills | +方法论深度、流程图                |
-| finishing-a-development-branch | 分支完成流程      | +选项展示（Merge/PR/Keep/Discard） |
+| Skill                               | 说明              | 融合点                             |
+| ----------------------------------- | ----------------- | ---------------------------------- |
+| loom-test-driven-development        | TDD 测试驱动开发  | +流程图、好/坏示例、常见借口表     |
+| loom-systematic-debugging           | 系统化调试        | +4阶段流程图、条件等待、纵深防御   |
+| loom-verification-before-completion | 完成前验证        | +Spec覆盖检查、类型一致性          |
+| loom-requesting-code-review         | 请求代码审查      | +预审查清单、审查模板              |
+| loom-receiving-code-review          | 接受代码审查      | +响应模板、流程图                  |
+| loom-dispatching-parallel-agents    | 并行 agent 派发   | +模型选择、并发工作流图            |
+| loom-writing-skills                 | 编写自定义 skills | +方法论深度、流程图                |
+| loom-finishing-a-development-branch | 分支完成流程      | +选项展示（Merge/PR/Keep/Discard） |
 
 **已删除的 Skills：**
 
@@ -84,7 +84,7 @@ loom 继承了 superpowers 的 skills 系统，并进行了融合增强。
 
 **手动调用：**
 
-- 使用 Skill 工具：`Skill("brainstorming")`
+- 使用 Skill 工具：`Skill("loom-brainstorming")`
 - 使用斜杠命令：`/loom-brainstorm`、`/loom-write-plan`、`/loom-execute-plan`
 
 ## 项目规则
@@ -95,7 +95,7 @@ loom 继承了 superpowers 的 skills 系统，并进行了融合增强。
 
 ## 进度追踪
 
-每个功能开发维护 `specs/<date+feature>/progress.md`，可视化流水线状态。
+每个功能开发必须维护 `specs/<date+feature>/progress.md`，可视化流水线状态。
 
 ## 状态横幅
 
@@ -124,8 +124,8 @@ loom 使用 5 维审查替代通用 code review：
 
 loom 继承 superpowers 的插件基础设施，融合增强核心 skills：
 
-- **增强**：brainstorming、writing-plans、subagent-driven-development、test-driven-development 等
-- **新增**：index-update、init-project、using-loom
+- **增强**：loom-brainstorming、loom-writing-plans、loom-subagent-driven-development、loom-test-driven-development 等
+- **新增**：loom-index-update、loom-init-project、loom-using-loom
 - **继承**：所有通用 skills，并融合 superpowers 的优点（流程图、自检清单、反模式等）
 
 ## 常见问题

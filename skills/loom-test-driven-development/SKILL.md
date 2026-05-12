@@ -1,8 +1,8 @@
 ---
-name: test-driven-development
+name: loom-test-driven-development
 description: >
-   测试驱动开发。使用 TDD 的红-绿-重构循环开发功能。
-   Use when: implementing new features with a test-first approach.
+  测试驱动开发。使用 TDD 的红-绿-重构循环开发功能。
+  Use when: implementing new features with a test-first approach.
 ---
 
 # 测试驱动开发（TDD）
@@ -26,6 +26,7 @@ description: >
 **先写了代码？** 删除它。从头开始。
 
 **没有例外：**
+
 - 不要保留作为"参考"
 - 不要"改编"它
 - 不要看它
@@ -36,12 +37,14 @@ description: >
 ## 何时使用
 
 **总是：**
+
 - 新功能
 - Bug 修复
 - 重构
 - 行为变更
 
 **例外（询问你的合作伙伴）：**
+
 - 一次性原型
 - 生成的代码
 - 配置文件
@@ -52,8 +55,8 @@ description: >
 
 ### Step 1：理解需求
 
-1. 读取 `specs/<feature>/spec.md` 获取需求
-2. 读取 `specs/<feature>/plan.md` 获取实现计划
+1. 读取 `specs/<date+feature>/spec.md` 获取需求
+2. 读取 `specs/<date+feature>/plan.md` 获取实现计划
 3. 明确当前 task 的测试范围
 
 ### Step 2：红（写失败测试）
@@ -65,6 +68,7 @@ description: >
 读取宪章 TEST_CMD 并执行单文件测试。
 
 **确认：**
+
 - 测试失败（不是错误）
 - 失败信息是预期的
 - 因为缺少功能而失败（不是拼写错误）
@@ -74,6 +78,7 @@ description: >
 **测试报错？** 修复错误，重新运行直到正确失败。
 
 **好的测试示例：**
+
 ```language
 test('重试失败操作 3 次', async () => {
   let attempts = 0;
@@ -89,9 +94,11 @@ test('重试失败操作 3 次', async () => {
   expect(attempts).toBe(3);
 });
 ```
+
 清晰名称，测试真实行为，一件事
 
 **坏的测试示例：**
+
 ```language
 test('retry works', async () => {
   const mock = jest.fn()
@@ -102,6 +109,7 @@ test('retry works', async () => {
   expect(mock).toHaveBeenCalledTimes(3);
 });
 ```
+
 模糊名称，测试 mock 不是代码
 
 ### Step 3：绿（写最少代码）
@@ -113,6 +121,7 @@ test('retry works', async () => {
 读取宪章 TEST_CMD 并执行单文件测试。
 
 **好的实现示例：**
+
 ```language
 async function retryOperation<T>(fn: () => Promise<T>): Promise<T> {
   for (let i = 0; i < 3; i++) {
@@ -125,9 +134,11 @@ async function retryOperation<T>(fn: () => Promise<T>): Promise<T> {
   throw new Error('unreachable');
 }
 ```
+
 刚好够通过
 
 **坏的实现示例：**
+
 ```language
 async function retryOperation<T>(
   fn: () => Promise<T>,
@@ -140,6 +151,7 @@ async function retryOperation<T>(
   // YAGNI
 }
 ```
+
 过度工程
 
 不要添加功能、重构其他代码，或"改进"超出测试范围的内容。
@@ -147,6 +159,7 @@ async function retryOperation<T>(
 ### Step 4：重构（优化代码）
 
 **仅在变绿后：**
+
 1. 在测试保护下优化代码
 2. 消除重复、改善命名
 3. **运行测试，确认测试仍然通过**
@@ -183,17 +196,18 @@ async function retryOperation<T>(
 
 ## 好测试的标准
 
-| 质量 | 好 | 坏 |
-|---------|------|-----|
-| **极简** | 一件事。"and"在名称中？拆分它。 | `test('validates email and domain and whitespace')` |
-| **清晰** | 名称描述行为 | `test('test1')` |
-| **展示意图** | 演示期望的 API | 模糊代码应该做什么 |
+| 质量         | 好                              | 坏                                                  |
+| ------------ | ------------------------------- | --------------------------------------------------- |
+| **极简**     | 一件事。"and"在名称中？拆分它。 | `test('validates email and domain and whitespace')` |
+| **清晰**     | 名称描述行为                    | `test('test1')`                                     |
+| **展示意图** | 演示期望的 API                  | 模糊代码应该做什么                                  |
 
 ## 为什么顺序很重要
 
 **"我会在之后写测试来验证它是否工作"**
 
 测试后写的代码立即通过。立即通过证明不了什么：
+
 - 可能测试错误的东西
 - 可能测试实现，不是行为
 - 可能错过你忘记的边界情况
@@ -204,6 +218,7 @@ async function retryOperation<T>(
 **"我已经手动测试了所有边界情况"**
 
 手动测试是临时的。你以为测试了一切，但：
+
 - 没有记录你测试了什么
 - 代码更改时无法重新运行
 - 压力下容易忘记情况
@@ -214,6 +229,7 @@ async function retryOperation<T>(
 **"删除 X 小时的工作是浪费"**
 
 沉没成本谬误。时间已经消失了。你现在的选择：
+
 - 删除并从 TDD 重新开始（多 X 小时，高信心）
 - 保留它并在之后添加测试（30 分钟，低信心，可能有 bug）
 
@@ -221,19 +237,19 @@ async function retryOperation<T>(
 
 ## 常见合理化借口
 
-| 借口 | 现实 |
-|--------|---------|
-| "太简单了不需要测试" | 简单的代码也会崩溃。测试需要 30 秒。 |
-| "我之后会测试" | 测试立即通过证明不了什么。 |
-| "测试后达到相同目标" | 测试后 = "这是做什么？" 测试前 = "这应该做什么？" |
-| "已经手动测试了" | 临时 ≠ 系统。没有记录，无法重新运行。 |
-| "删除 X 小时是浪费" | 沉没成本谬误。保留未验证的代码是技术债务。 |
-| "保留作为参考，先写测试" | 你会改编它。那是测试后。删除意味着删除。 |
-| "需要先探索" | 可以。扔掉探索，从 TDD 开始。 |
-| "测试很难 = 设计不清晰" | 听测试。难测试 = 难用。 |
-| "TDD 会拖慢我" | TDD 比调试快。务实 = 测试优先。 |
-| "手动测试更快" | 手动不能证明边界情况。每次更改你都会重新测试。 |
-| "现有代码没有测试" | 你在改进它。为现有代码添加测试。 |
+| 借口                     | 现实                                              |
+| ------------------------ | ------------------------------------------------- |
+| "太简单了不需要测试"     | 简单的代码也会崩溃。测试需要 30 秒。              |
+| "我之后会测试"           | 测试立即通过证明不了什么。                        |
+| "测试后达到相同目标"     | 测试后 = "这是做什么？" 测试前 = "这应该做什么？" |
+| "已经手动测试了"         | 临时 ≠ 系统。没有记录，无法重新运行。             |
+| "删除 X 小时是浪费"      | 沉没成本谬误。保留未验证的代码是技术债务。        |
+| "保留作为参考，先写测试" | 你会改编它。那是测试后。删除意味着删除。          |
+| "需要先探索"             | 可以。扔掉探索，从 TDD 开始。                     |
+| "测试很难 = 设计不清晰"  | 听测试。难测试 = 难用。                           |
+| "TDD 会拖慢我"           | TDD 比调试快。务实 = 测试优先。                   |
+| "手动测试更快"           | 手动不能证明边界情况。每次更改你都会重新测试。    |
+| "现有代码没有测试"       | 你在改进它。为现有代码添加测试。                  |
 
 ## 红旗 — 停止并重新开始
 
@@ -258,6 +274,7 @@ async function retryOperation<T>(
 **Bug：** 接受空邮件
 
 **红**
+
 ```language
 test('拒绝空邮件', async () => {
   const result = await submitForm({ email: '' });
@@ -266,12 +283,14 @@ test('拒绝空邮件', async () => {
 ```
 
 **验证红**
+
 ```bash
 $ npm test
 FAIL: expected 'Email required', got undefined
 ```
 
 **绿**
+
 ```language
 function submitForm(data: FormData) {
   if (!data.email?.trim()) {
@@ -282,6 +301,7 @@ function submitForm(data: FormData) {
 ```
 
 **验证绿**
+
 ```bash
 $ npm test
 PASS
@@ -307,12 +327,12 @@ PASS
 
 ## 卡住了怎么办
 
-| 问题 | 解决方案 |
-|---------|----------|
+| 问题           | 解决方案                                     |
+| -------------- | -------------------------------------------- |
 | 不知道怎么测试 | 写下期望的 API。先写断言。询问你的合作伙伴。 |
-| 测试太复杂 | 设计太复杂。简化接口。 |
-| 必须 mock 一切 | 代码耦合太紧。使用依赖注入。 |
-| 测试设置巨大 | 提取辅助函数。仍然复杂？简化设计。 |
+| 测试太复杂     | 设计太复杂。简化接口。                       |
+| 必须 mock 一切 | 代码耦合太紧。使用依赖注入。                 |
+| 测试设置巨大   | 提取辅助函数。仍然复杂？简化设计。           |
 
 ## 调试集成
 
@@ -323,6 +343,7 @@ PASS
 ## 测试反模式
 
 添加 mock 或测试工具时，阅读 REFERENCE/testing-anti-patterns.md 避免常见陷阱：
+
 - 测试 mock 行为而不是真实行为
 - 向生产类添加仅测试的方法
 - 在不理解依赖关系的情况下 mock

@@ -10,7 +10,7 @@
 
 ## 功能
 
-加载 `skills/brainstorming/SKILL.md`，执行需求头脑风暴：
+加载 `skills/loom-brainstorming/SKILL.md`，执行需求头脑风暴：
 
 1. 读取项目宪章和工程结构
 2. 探索 2-3 种实现方案及 trade-off

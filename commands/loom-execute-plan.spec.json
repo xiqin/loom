@@ -1,7 +1,7 @@
 {
   "name": "loom-execute-plan",
   "description": "执行实现计划。创建隔离分支，派发 subagent 编码，运行测试，更新索引。",
-  "skill": "subagent-driven-development",
+  "skill": "loom-subagent-driven-development",
   "inputs": [
     {
       "name": "feature-name",

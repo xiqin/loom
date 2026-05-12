@@ -1,5 +1,5 @@
 ---
-name: subagent-driven-development
+name: loom-subagent-driven-development
 description: >
   使用 subagent 派发方式执行编码任务。每个 task 派发独立 subagent，
   每轮编码后派发 reviewer subagent 审查（支持合并或拆分模式）。
@@ -67,7 +67,7 @@ digraph when_to_use {
     "有实现计划?" [shape=diamond];
     "task 大多独立?" [shape=diamond];
     "留在这个会话?" [shape=diamond];
-    "subagent-driven-development" [shape=box];
+    "loom-subagent-driven-development" [shape=box];
     "executing-plans" [shape=box];
     "手动执行或先头脑风暴" [shape=box];
 
@@ -75,7 +75,7 @@ digraph when_to_use {
     "有实现计划?" -> "手动执行或先头脑风暴" [label="否"];
     "task 大多独立?" -> "留在这个会话?" [label="是"];
     "task 大多独立?" -> "手动执行或先头脑风暴" [label="否 - 紧密耦合"];
-    "留在这个会话?" -> "subagent-driven-development" [label="是"];
+    "留在这个会话?" -> "loom-subagent-driven-development" [label="是"];
     "留在这个会话?" -> "executing-plans" [label="否 - 并行会话"];
 }
 ```
@@ -174,18 +174,18 @@ digraph process {
 
 ### Step 2：读取项目约束（派发时传入精简上下文）
 
-每个 subagent 注入精简上下文模板：`.loom/subagent-context.md`（约 30-50 行，替代完整宪章 + 工程结构）。
+每个 subagent 必须注入精简上下文模板：`.loom/templates/subagent-context.md`（约 30-50 行，替代完整宪章 + 工程结构）。
 
 同时传入：`specs/<date+feature>/spec.md` — 需求规格
 
-## 每个 Task 的执行循环
+## 每个 Task 的执行循环（必须执行）
 
 ### Phase1：派发 implementer subagent
 
 **输入上下文：**
 
 - task 完整文本（来自 plan.md）
-- `.loom/subagent-context.md`（精简项目约束）
+- `.loom/templates/subagent-context.md`（精简项目约束）
 - `specs/<date+feature>/spec.md` 中相关章节
 
 **implementer 的指令模板：**
@@ -204,14 +204,14 @@ digraph process {
 - `specs/<date+feature>/spec.md`（完整需求）
 - `specs/<date+feature>/plan.md`（当前 task 定义）
 - git diff（仅变更部分）
-- `.loom/subagent-context.md`（精简项目约束）
+- `.loom/templates/subagent-context.md`（精简项目约束）
 
 **判定规则：**
 
 - PASS → 进入下一个 task
 - FAIL → 派回 Phase1 修复，重新走 Phase2
 
-## 全部 task 完成后
+## 全部 task 完成后（必须执行）
 
 ### Phase 3：派发 test-reporter subagent（集成测试验证）
 
@@ -306,18 +306,18 @@ digraph process {
 
 **必需工作流技能：**
 
-- **using-git-worktrees** - 确保隔离工作空间（创建一个或验证现有）
-- **writing-plans** - 创建此技能执行的计划
-- **requesting-code-review** - reviewer subagent 的代码审查模板
-- **finishing-a-development-branch** - 所有 task 后完成开发
+- **loom-using-git-worktrees** - 确保隔离工作空间（创建一个或验证现有）
+- **loom-writing-plans** - 创建此技能执行的计划
+- **loom-requesting-code-review** - reviewer subagent 的代码审查模板
+- **loom-finishing-a-development-branch** - 所有 task 后完成开发
 
 **Subagent 应该使用：**
 
-- **test-driven-development** - Subagent 遵循每个 task 的 TDD
+- **loom-test-driven-development** - Subagent 遵循每个 task 的 TDD
 
 **替代工作流：**
 
-- **executing-plans** - 当相同会话执行不可用时使用并行会话
+- **loom-executing-plans** - 当相同会话执行不可用时使用并行会话
 
 ## 关键规则
 

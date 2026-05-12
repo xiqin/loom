@@ -1,5 +1,5 @@
 ---
-name: index-update
+name: loom-index-update
 description: >
   完成工作后更新索引文件。测试通过后触发，确保工程索引、记忆文件、入口文档与代码保持同步。
   Use when: code changes are complete and indexes need to be synchronized.

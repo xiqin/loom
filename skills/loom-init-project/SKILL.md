@@ -1,5 +1,5 @@
 ---
-name: init-project
+name: loom-init-project
 description: >
   项目初始化。扫描项目源码，自动生成宪章、工程结构、子 agent 上下文等配置文件。
   核心配置存放在 .loom/（工具无关），自动分发到检测到的 AI 编码工具目录。
@@ -149,73 +149,16 @@ pkg/          → 公共工具包
 
 ### Step 4: 生成核心配置文件到 `.loom/`
 
-**4.1 `.loom/memory/constitution.md`**（宪章）
+读取 `templates/` 目录下的模板文件，渲染变量后写入 `.loom/`：
 
-从 `templates/constitution.md` 渲染，包含固定编码准则和项目专属原则：
+| 源模板                                   | 目标文件                              | 说明                |
+| ---------------------------------------- | ------------------------------------- | ------------------- |
+| `templates/constitution.md`              | `.loom/memory/constitution.md`        | 项目宪章            |
+| `templates/project-structure.md`         | `.loom/rules/project-structure.md`    | 工程结构约束        |
+| `templates/memory.md`                    | `.loom/memory/MEMORY.md`              | 记忆文件（空模板）  |
+| 从 constitution + project-structure 提取 | `.loom/templates/subagent-context.md` | 子 agent 精简上下文 |
 
-```markdown
-# 项目宪章
-
-## 编码行为准则
-
-...
-
-## 核心原则（由扫描结果填充）
-
-1. **{{ARCH_PRINCIPLE}}**：{{ARCH_DESC}}
-2. **{{DI_PRINCIPLE}}**：{{DI_DESC}}
-3. **{{CONFIG_PRINCIPLE}}**：{{CONFIG_DESC}}
-4. **{{ERROR_PRINCIPLE}}**：{{ERROR_DESC}}
-5. **{{CODEGEN_PRINCIPLE}}**：{{CODEGEN_DESC}}
-
-## 技术栈
-
-...
-
-## 编码红线
-
-...
-
-## 项目约束
-
-...
-
-## 开发流程
-
-...
-
-## 治理规则
-
-...
-```
-
-**4.2 `.loom/rules/project-structure.md`**（工程结构）
-
-从 `templates/project-structure.md` 渲染：
-
-```markdown
-# 工程结构约束
-
-## 目录结构
-
-{{DIRECTORY_TREE}}
-
-## 架构模式
-
-{{ARCH_PATTERN}}
-
-## 编码要求
-
-...
-```
-
-**4.3 `.loom/memory/MEMORY.md`**（记忆文件）
-
-从 `templates/memory.md` 渲染，初始化为空模板。
-
-**4.4 `.loom/templates/subagent-context.md`**（子 agent 上下文模板）
-
-从`.loom/memory/constitution.md`和`.loom/rules/project-structure.md`的内容中生成精简版项目约束。
+渲染时用 Step 1-3 扫描结果替换模板中的 `{{变量}}`。详见「模板变量」节。
 
 ### Step 5: 检测工具目录并分发
 
@@ -242,11 +185,15 @@ pkg/          → 公共工具包
 | 工具        | 分发目标                              | 格式    | 内容                                       |
 | ----------- | ------------------------------------- | ------- | ------------------------------------------ |
 | Claude Code | `.claude/CLAUDE.md`                   | wrapper | 指引读取 `.loom/memory/constitution.md` 等 |
+| Claude Code | `.claudeignore`                       | ignore  | 过滤 node_modules、vendor 等目录           |
 | OpenCode    | `AGENTS.md`                           | wrapper | 指引读取 `.loom/memory/constitution.md` 等 |
+| OpenCode    | `opencode.json` 的 `watcher.ignore`   | config  | 过滤 node_modules、vendor 等目录           |
 | Cursor      | `.cursor/rules/constitution.mdc`      | mdc     | 完整复制 + frontmatter                     |
 | Cursor      | `.cursor/rules/project-structure.mdc` | mdc     | 完整复制 + frontmatter                     |
+| Cursor      | `.cursorignore`                       | ignore  | 过滤 node_modules、vendor 等目录           |
 | Copilot     | `.github/copilot-instructions.md`     | wrapper | 指引读取 `.loom/memory/constitution.md` 等 |
 | Codex       | `AGENTS.md`                           | wrapper | 同 OpenCode，共享文件                      |
+| Codex       | `.codexignore`                        | ignore  | 过滤 node_modules、vendor 等目录           |
 
 **分发原则：**
 
@@ -301,6 +248,95 @@ alwaysApply: true
 - **Copilot** (`copilot-instructions.md`)：使用上述 wrapper 模板。Copilot 会自动加载 `.github/copilot-instructions.md`。
 - **Cursor** (`.cursor/rules/*.mdc`)：完整复制 `.loom/` 内容 + frontmatter。Cursor 不支持跨目录引用。
 
+**5.3.1 忽略配置模板**
+
+通用忽略列表（所有工具共享）：
+
+```
+node_modules/
+vendor/
+dist/
+build/
+.cache/
+.git/
+*.lock
+*.log
+__pycache__/
+.venv/
+venv/
+.coverage/
+*.pyc
+*.pyo
+*.egg-info/
+.tox/
+```
+
+**Claude Code** (`.claudeignore`)：
+
+```
+# 由 loom init-project 自动生成
+node_modules/
+vendor/
+dist/
+build/
+.cache/
+.git/
+*.lock
+*.log
+__pycache__/
+.venv/
+venv/
+.coverage/
+*.pyc
+*.pyo
+*.egg-info/
+.tox/
+```
+
+**OpenCode** (`opencode.json` 的 `watcher.ignore`)：
+
+在已有的 `opencode.json` 中合并 `watcher.ignore` 字段，不覆盖用户已有配置。
+
+**Cursor** (`.cursorignore`)：
+
+```
+# 由 loom init-project 自动生成
+node_modules/
+vendor/
+dist/
+build/
+.cache/
+.git/
+*.lock
+*.log
+__pycache__/
+.venv/
+venv/
+```
+
+**Codex** (`.codexignore`)：
+
+```
+# 由 loom init-project 自动生成
+node_modules/
+vendor/
+dist/
+build/
+.cache/
+.git/
+*.lock
+*.log
+__pycache__/
+.venv/
+venv/
+```
+
+**生成规则：**
+
+- 根据项目语言追加特定忽略项（如 Python 追加 `__pycache__/`、`.venv/`）
+- 已有忽略文件时，检查是否包含 `loom` 标记，有则覆盖，无则跳过并提示
+- OpenCode 的 `watcher.ignore` 合并到已有 `opencode.json`，不覆盖其他字段
+
 **5.4 分发执行**
 
 - 已有目标文件时，提示用户确认是否覆盖
@@ -317,22 +353,25 @@ alwaysApply: true
 
 ### 核心配置文件（`.loom/`）
 
-| 文件                             | 状态      | 说明                   |
-| -------------------------------- | --------- | ---------------------- |
-| .loom/memory/constitution.md     | ✅ 已生成 | 项目宪章，5 项核心原则 |
-| .loom/rules/project-structure.md | ✅ 已生成 | 工程结构约束           |
-| .loom/memory.md                  | ✅ 已生成 | 记忆文件（空模板）     |
-| .loom/subagent-context.md        | ✅ 已生成 | 子 agent 精简上下文    |
+| 文件                                | 状态      | 说明                   |
+| ----------------------------------- | --------- | ---------------------- |
+| .loom/memory/constitution.md        | ✅ 已生成 | 项目宪章，5 项核心原则 |
+| .loom/rules/project-structure.md    | ✅ 已生成 | 工程结构约束           |
+| .loom/memory.md                     | ✅ 已生成 | 记忆文件（空模板）     |
+| .loom/templates/subagent-context.md | ✅ 已生成 | 子 agent 精简上下文    |
 
 ### 工具适配分发
 
-| 工具           | 检测结果                 | 分发文件                             | 状态      |
-| -------------- | ------------------------ | ------------------------------------ | --------- |
-| Claude Code    | ✅ 检测到 .claude/       | `.claude/CLAUDE.md` (wrapper)        | ✅ 已分发 |
-| OpenCode       | ✅ 检测到 .opencode/     | `AGENTS.md` (wrapper)                | ✅ 已分发 |
-| Cursor         | ✅ 检测到 .cursor/       | `.cursor/rules/constitution.mdc` + 1 | ✅ 已分发 |
-| GitHub Copilot | ✅ 检测到 .github/       | `.github/copilot-instructions.md`    | ✅ 已分发 |
-| Codex          | ⬜ 未检测到              | —                                    | ⬜ 跳过   |
+| 工具           | 检测结果             | 分发文件                             | 状态      |
+| -------------- | -------------------- | ------------------------------------ | --------- |
+| Claude Code    | ✅ 检测到 .claude/   | `.claude/CLAUDE.md` (wrapper)        | ✅ 已分发 |
+| Claude Code    |                      | `.claudeignore`                      | ✅ 已生成 |
+| OpenCode       | ✅ 检测到 .opencode/ | `AGENTS.md` (wrapper)                | ✅ 已分发 |
+| OpenCode       |                      | `opencode.json` watcher.ignore       | ✅ 已合并 |
+| Cursor         | ✅ 检测到 .cursor/   | `.cursor/rules/constitution.mdc` + 1 | ✅ 已分发 |
+| Cursor         |                      | `.cursorignore`                      | ✅ 已生成 |
+| GitHub Copilot | ✅ 检测到 .github/   | `.github/copilot-instructions.md`    | ✅ 已分发 |
+| Codex          | ⬜ 未检测到          | —                                    | ⬜ 跳过   |
 
 ### 需人工完善的 [TODO]
 

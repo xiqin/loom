@@ -7,7 +7,7 @@
   "states": {
     "brainstorming": {
       "step": 1,
-      "skill": "brainstorming",
+      "skill": "loom-brainstorming",
       "command": "loom-brainstorm",
       "description": "需求头脑风暴，探索 2-3 种实现方案",
       "allowedTransitions": ["planning", "failed"],
@@ -29,7 +29,7 @@
     },
     "planning": {
       "step": 2,
-      "skill": "writing-plans",
+      "skill": "loom-writing-plans",
       "command": "loom-write-plan",
       "description": "按项目架构分层拆解 task",
       "allowedTransitions": ["approved", "failed"],
@@ -69,7 +69,7 @@
     },
     "executing": {
       "step": "3-4",
-      "skill": "subagent-driven-development",
+      "skill": "loom-subagent-driven-development",
       "command": "loom-execute-plan",
       "description": "创建隔离分支，派发 subagent 编码，运行测试",
       "allowedTransitions": ["reviewing", "failed"],
@@ -107,7 +107,7 @@
     },
     "reviewing": {
       "step": "4-5",
-      "skill": "subagent-driven-development",
+      "skill": "loom-subagent-driven-development",
       "command": null,
       "description": "代码审查（spec 合规 + 代码质量）",
       "allowedTransitions": ["synced", "executing", "failed"],
@@ -136,7 +136,7 @@
     },
     "synced": {
       "step": 5,
-      "skill": "index-update",
+      "skill": "loom-index-update",
       "command": null,
       "description": "工程索引同步，功能开发完成",
       "allowedTransitions": [],

@@ -1,5 +1,5 @@
 ---
-name: writing-skills
+name: loom-writing-skills
 description: >
    编写新 skill。创建自定义 skill 文件。
    Use when: creating a new skill or modifying existing skills.
@@ -22,7 +22,7 @@ skills/
 
 ```markdown
 ---
-name: <skill-name>
+name: loom-<skill-name>
 description: >
   简短描述。说明何时使用此 skill。
   Use when: <触发条件描述>.

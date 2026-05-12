@@ -1,5 +1,5 @@
 ---
-name: requesting-code-review
+name: loom-requesting-code-review
 description: >
    请求代码审查。准备审查请求，整理变更摘要。
    Use when: requesting code review from team members or preparing PR for review.

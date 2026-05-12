@@ -1,5 +1,5 @@
 ---
-name: finishing-a-development-branch
+name: loom-finishing-a-development-branch
 description: >
   开发分支收尾。完成开发后，整理分支并准备合并。
   Use when: feature development is complete and branch needs to be cleaned up.

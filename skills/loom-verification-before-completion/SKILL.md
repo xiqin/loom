@@ -1,5 +1,5 @@
 ---
-name: verification-before-completion
+name: loom-verification-before-completion
 description: >
   完成前验证。在宣布任务完成前，执行完整性检查确保所有工作已完成。
   Use when: before declaring a task or feature complete.
@@ -123,7 +123,7 @@ description: >
 
 ### Step 6：对照 spec 验证
 
-读取 `specs/<feature>/spec.md`，确认所有功能已实现。
+读取 `specs/<date+feature>/spec.md`，确认所有功能已实现。
 
 ### Step 7：确认文档同步
 

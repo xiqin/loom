@@ -1,7 +1,7 @@
 {
   "name": "loom-init-project",
   "description": "项目初始化。扫描项目源码，自动生成宪章、工程结构、记忆文件等配置。",
-  "skill": "init-project",
+  "skill": "loom-init-project",
   "inputs": [],
   "outputs": [
     {

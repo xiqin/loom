@@ -1,7 +1,7 @@
 {
   "name": "loom-write-plan",
   "description": "拆解实现计划。将 spec.md 拆分为可执行的 task 列表，输出 plan.md。",
-  "skill": "writing-plans",
+  "skill": "loom-writing-plans",
   "inputs": [
     {
       "name": "feature-name",

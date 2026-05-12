@@ -1,5 +1,5 @@
 ---
-name: systematic-debugging
+name: loom-systematic-debugging
 description: >
    系统化调试。当遇到 bug、测试失败、运行异常时触发，使用结构化方法定位和修复问题。
    Use when: debugging issues, test failures, or unexpected behavior.

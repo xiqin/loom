@@ -1,5 +1,5 @@
 ---
-name: receiving-code-review
+name: loom-receiving-code-review
 description: >
    接受代码审查。处理审查反馈，按要求修复问题。
    Use when: receiving and responding to code review feedback.

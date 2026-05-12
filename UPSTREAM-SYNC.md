@@ -44,7 +44,7 @@ git subtree pull --prefix=upstream/superpowers https://github.com/superpowers/su
 2. **对比差异**
    ```bash
    # 对比每个 skill
-   diff upstream/superpowers/skills/brainstorming/SKILL.md skills/brainstorming/SKILL.md
+   diff upstream/superpowers/skills/brainstorming/SKILL.md skills/loom-brainstorming/SKILL.md
    ```
 
 3. **评估变更**

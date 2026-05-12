@@ -10,7 +10,7 @@
 
 ## 功能
 
-加载 `skills/init-project/SKILL.md`，执行项目初始化：
+加载 `skills/loom-init-project/SKILL.md`，执行项目初始化：
 
 1. 扫描项目根目录（语言、框架、目录结构）
 2. 深度分析源码（错误处理、响应格式、日志、DI 模式）

@@ -1,5 +1,5 @@
 ---
-name: brainstorming
+name: loom-brainstorming
 description: >
   需求头脑风暴。当用户提出需求、功能描述、PRD 时触发，探索 2-3 种实现方案及 trade-off。
   Use when: starting any feature development to explore design options.
@@ -84,7 +84,7 @@ description: >
 - **使用终端**：内容是文本的 — 需求问题、概念选择、权衡列表、A/B/C/D 文本选项、范围决策
 
 如果用户同意，读取详细指南：
-`skills/brainstorming/REFERENCE/visual-companion.md`
+`skills/loom-brainstorming/REFERENCE/visual-companion.md`
 
 ### Step 4：需求澄清
 
@@ -229,6 +229,6 @@ digraph brainstorming {
 
 ## 完成条件与下一步
 
-spec.md 保存并自审完毕后，同时更新 `specs/<date+feature>/progress.md`，**等待用户确认方案**。
+spec.md 保存并自审完毕后，必须同时更新 `specs/<date+feature>/progress.md`，**等待用户确认方案**。
 
 用户确认后，**必须立即触发 writing-plans**（writing-plans skill）。

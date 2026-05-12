@@ -1,5 +1,5 @@
 ---
-name: using-git-worktrees
+name: loom-using-git-worktrees
 description: >
   Git 工作树隔离。创建隔离的 git 分支进行开发，避免污染主分支。
   Use when: starting a new feature development to create an isolated branch.
@@ -47,6 +47,7 @@ git status
 ### Step 2：创建隔离工作空间
 
 **优先使用平台原生工具：**
+
 - 优先使用 AI 工具的工作空间管理功能
 - 其他平台：检查是否有 `WorktreeCreate` 类工具
 - 兜底：手动 `git worktree add`
@@ -60,12 +61,13 @@ feature/<date>-<feature-name>
 ```
 
 示例：
+
 - `feature/2026-04-26-passport-list`
 - `feature/2026-04-26-user-auth`
 
 ```bash
 # 兜底方案（原生工具不可用时）
-git worktree add ../<project>-feature-<name> -b feature/<date>-<feature-name>
+git worktree add .worktree/<date>-<feature-name> -b feature/<date>-<feature-name>
 ```
 
 ### Step 3：安装依赖并验证基线
@@ -122,7 +124,7 @@ git branch --show-current
 
 ## 完成条件与下一步
 
-分支创建并验证测试基线后，**触发 subagent-driven-development** 进行编码执行。
+分支创建并验证测试基线后，**触发 loom-subagent-driven-development** 进行编码执行。
 
 ## 流程图
 

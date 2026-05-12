@@ -18,6 +18,7 @@ export class OpenCodeAdapter extends BaseAdapter {
     const log = [];
     log.push(`Installing loom@${version} → ${this.toolName} (user-level)`);
     this._addNpmPlugin(loomRoot, log);
+    this._copySkills(loomRoot, log);
     this._copyCommands(loomRoot, log);
     this._postInstall(loomRoot, version, log);
     return log;
@@ -26,6 +27,7 @@ export class OpenCodeAdapter extends BaseAdapter {
   uninstall(loomRoot) {
     const log = [];
     this._removeNpmPlugin(log);
+    this._removeSkills(log);
     this._removeCommands(log);
     return log;
   }

@@ -105,6 +105,42 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 **严令禁止跳过任何步骤。每个步骤完成后必须显式触发下一步，不可自行终止。**
 **每个 skill 执行完毕后，必须读取自身的"完成条件与下一步"节并严格遵守。跳过串联视为严重错误。**
 
+### progress.md 追踪文件
+
+每个功能开发过程中，维护 `specs/<date+feature>/progress.md`，格式如下：
+
+```markdown
+# <feature> — 开发流水线
+
+**开始时间：** YYYY-MM-DD HH:mm
+**当前阶段：** Step N/5
+
+| Step | 阶段          | 状态     | 开始时间 | 完成时间 | 备注              |
+| ---- | ------------- | -------- | -------- | -------- | ----------------- |
+| 1    | brainstorming | ✅ 完成  | HH:mm    | HH:mm    |                   |
+| 2    | writing-plans | ✅ 完成  | HH:mm    | HH:mm    |                   |
+| 3    | git-worktree  | ✅ 完成  | HH:mm    | HH:mm    | 分支: feature/xxx |
+| 4    | subagent-dev  | ▶ 进行中 | HH:mm    | —        | task 3/8          |
+| 5    | index-update  | ⏳ 等待  | —        | —        |                   |
+
+[//]: # "| 6 | 提交 | ⏳ 等待 | — | — | |"
+
+## Skill 调用记录
+
+| 时间  | Skill         | 触发原因              | 结果      |
+| ----- | ------------- | --------------------- | --------- |
+| HH:mm | brainstorming | 用户提出需求          | ✅ 已完成 |
+| HH:mm | writing-plans | 设计确认，开始拆 plan | ✅ 已完成 |
+| HH:mm | subagent-dev  | plan 确认，开始编码   | ▶ 执行中  |
+```
+
+**更新规则：**
+
+- 每个 skill 开始执行时：更新对应行状态为 `▶ 进行中`，填写开始时间
+- 每个 skill 执行结束时：更新状态为 `✅ 完成`，填写完成时间
+- 在 Skill 调用记录中追加一行
+- 如果某步骤失败：状态改为 `❌ 失败`，备注写失败原因
+
 ## 治理规则
 
 本章程高于所有其他开发规范。

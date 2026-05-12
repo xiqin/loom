@@ -1,7 +1,7 @@
 {
   "name": "loom-brainstorm",
   "description": "需求头脑风暴。探索 2-3 种实现方案及 trade-off，输出 spec.md。",
-  "skill": "brainstorming",
+  "skill": "loom-brainstorming",
   "inputs": [
     {
       "name": "requirement",
