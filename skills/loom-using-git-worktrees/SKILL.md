@@ -122,10 +122,6 @@ git branch --show-current
 - **只清理自己创建的 worktree**（验证路径在 superpower 管理目录下）
 - 目录创建前必须确认 `.gitignore` 规则
 
-## 完成条件与下一步
-
-分支创建并验证测试基线后，**触发 loom-subagent-driven-development** 进行编码执行。
-
 ## 流程图
 
 ```dot
@@ -136,3 +132,7 @@ digraph git_worktrees {
     "确认分支状态" -> "触发 subagent-dev";
 }
 ```
+
+## 完成条件与下一步
+
+分支创建并验证测试基线后，必须同时更新 `specs/<date+feature>/progress.md`，**触发 subagent-driven-development（loom-subagent-driven-development skill）** 进行编码执行。

@@ -93,8 +93,8 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 
 ### 第四步：编码执行（subagent-dev）
 
-- **硬性前置条件**：`specs/<date+feature>/spec.md` 必须存在，git worktree 已创建
-- **如果不存在，必须停止，提示用户先执行第二步和第三步**
+- **硬性前置条件**：`specs/<date+feature>/spec.md`,`specs/<date+feature>/plan.md` 必须存在，git worktree 已创建
+- **如果不存在，必须停止，提示用户先执行前三步**
 - Subagent 隔离派发 + 双审查
 
 ### 第五步：索引更新（index-update）
@@ -105,9 +105,9 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 **严令禁止跳过任何步骤。每个步骤完成后必须显式触发下一步，不可自行终止。**
 **每个 skill 执行完毕后，必须读取自身的"完成条件与下一步"节并严格遵守。跳过串联视为严重错误。**
 
-### progress.md 追踪文件
+## progress.md 追踪文件
 
-每个功能开发过程中，维护 `specs/<date+feature>/progress.md`，格式如下：
+每个功能开发过程中，必须维护 `specs/<date+feature>/progress.md`，格式如下：
 
 ```markdown
 # <feature> — 开发流水线

@@ -2,8 +2,8 @@
 name: loom-init-project
 description: >
   项目初始化。扫描项目源码，自动生成宪章、工程结构、子 agent 上下文等配置文件。
-  核心配置存放在 .loom/（工具无关），自动分发到检测到的 AI 编码工具目录。
-  Use when: first setting up loom in a project, or when project structure has significantly changed.
+  核心配置存放在 .loom/，自动分发到检测到的 AI 编码工具目录。
+  适用场景: 首次使用loom框架；项目结构发生重大变更；需要重新生成配置文件。
   Trigger keywords: init-project, 初始化项目, 扫描项目, 生成配置
 ---
 
@@ -49,10 +49,6 @@ description: >
     project-structure.md           ← 工程结构约束
   templates/
     subagent-context.md            ← 子 agent 上下文
-  skills/                          ← Skills
-  commands/                        ← Commands
-  hooks/                           ← Hooks
-  core/                            ← 核心框架定义
 
 .claude/CLAUDE.md                  ← Claude Code 入口（wrapper → .loom/）
 AGENTS.md                          ← OpenCode / Codex 入口（wrapper → .loom/）
@@ -149,7 +145,7 @@ pkg/          → 公共工具包
 
 ### Step 4: 生成核心配置文件到 `.loom/`
 
-读取 `templates/` 目录下的模板文件，渲染变量后写入 `.loom/`：
+必须读取 `templates/` 目录下的模板文件，渲染变量后写入 `.loom/`, 禁止擅自删减内容：
 
 | 源模板                                   | 目标文件                              | 说明                |
 | ---------------------------------------- | ------------------------------------- | ------------------- |
@@ -210,7 +206,7 @@ pkg/          → 公共工具包
 ```markdown
 # {{PROJECT_NAME}} — AI 编码指令
 
-> 本文件由 loom init-project 自动生成。修改请编辑 `.loom/` 源文件，重新运行 `/loom-init-project` 重新分发。
+> 本文件由 loom init-project 自动生成。修改请编辑 `.loom/` 源文件。重新运行 `/loom-init-project` 将重新分发。
 
 ## 必读规则
 
@@ -442,4 +438,3 @@ venv/
 1. 输出报告，列出已生成文件和分发状态
 2. 提示用户检查 `.loom/` 下的核心文件并完善 [TODO]
 3. 提示用户：修改配置应只改 `.loom/`，wrapper 文件会自动引用最新内容
-4. 后续可使用 `/loom-import-rules` 导入已有项目规则

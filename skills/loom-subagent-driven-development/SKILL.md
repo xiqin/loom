@@ -174,9 +174,7 @@ digraph process {
 
 ### Step 2：读取项目约束（派发时传入精简上下文）
 
-每个 subagent 必须注入精简上下文模板：`.loom/templates/subagent-context.md`（约 30-50 行，替代完整宪章 + 工程结构）。
-
-同时传入：`specs/<date+feature>/spec.md` — 需求规格
+每个 subagent 必须注入精简上下文模板：`.loom/templates/subagent-context.md`, 同时传入：`specs/<date+feature>/spec.md` — 需求规格
 
 ## 每个 Task 的执行循环（必须执行）
 
@@ -184,105 +182,64 @@ digraph process {
 
 **输入上下文：**
 
-- task 完整文本（来自 plan.md）
-- `.loom/templates/subagent-context.md`（精简项目约束）
 - `specs/<date+feature>/spec.md` 中相关章节
+- `specs/<date+feature>/plan.md`（当前 task 完整文本）
+- `.loom/templates/subagent-context.md`（精简项目约束）
 
 **implementer 的指令模板：**
 参见 `implementer-prompt.md`
 
-### Phase2：派发 reviewer subagent（支持两种模式）
+### Phase2：派发 reviewer subagent
 
-**审查模式选项：**
-
-- **合并模式**（loom 当前）：spec + quality 一次审查，参见 `combined-reviewer-prompt.md`
-- **拆分模式**（superpowers）：先 spec → 通过后 quality，参见 `spec-reviewer-prompt.md` 和 `code-quality-reviewer-prompt.md`
+**审查模式**：spec + quality 一次审查，参见 `combined-reviewer-prompt.md`
 
 **输入上下文（合并模式）：**
 
 - implementer 的输出（创建/修改的文件列表 + 代码）
 - `specs/<date+feature>/spec.md`（完整需求）
 - `specs/<date+feature>/plan.md`（当前 task 定义）
-- git diff（仅变更部分）
 - `.loom/templates/subagent-context.md`（精简项目约束）
+- git diff（仅变更部分）
 
 **判定规则：**
 
 - PASS → 进入下一个 task
 - FAIL → 派回 Phase1 修复，重新走 Phase2
 
-## 全部 task 完成后（必须执行）
+## 全部 task 完成后
 
-### Phase 3：派发 test-reporter subagent（集成测试验证）
+### Phase 3：派发 test-reporter subagent（集成测试验证, 必须执行）
 
-全部 task 通过审查后，派发一个 test-reporter subagent 生成集成测试报告。
+全部 task 通过审查后，必须派发一个 test-reporter subagent 生成集成测试报告。
 
 **test-reporter 的指令模板：**
 参见 `test-reporter-prompt.md`
 
-### Phase 3 判定规则
+**判定规则：**
 
 - **全部 PASS** → 通过，触发 index-update skill
 - **存在 FAIL** → 不通过，派回 implementer 修复后重新走 Phase 3
 - **存在 WARN** → 警告，等用户选择跳过或修复
 
-### 最终验证
+## 最终验证
 
-在 test-reporter 之前，先执行全量编译和测试。全部通过后方可派发 test-reporter 生成报告。同时更新 `specs/<date+feature>/progress.md`。
-
-## 优势
-
-**vs. 手动执行：**
-
-- Subagent 自然遵循 TDD
-- 每个 task 新鲜上下文（无混淆）
-- 并行安全（subagent 不干扰）
-- Subagent 可以问问题（之前和工作中）
-
-**vs. Executing Plans：**
-
-- 同一会话（无交接）
-- 持续进度（无等待）
-- 审查检查点自动
-
-**效率提升：**
-
-- 无文件读取开销（controller 提供完整文本）
-- Controller 精确策划所需上下文
-- Subagent 获得完整信息 upfront
-- 问题在工作开始前浮现（不是之后）
-
-**质量门禁：**
-
-- 自检在交接前捕获问题
-- 两阶段审查：spec 合规，然后代码质量
-- 审查循环确保修复实际工作
-- Spec 合规防止过度/不足构建
-- 代码质量确保实现构建良好
-
-**成本：**
-
-- 更多 subagent 调用（每个 task 的 implementer + 2 个 reviewer）
-- Controller 做更多准备工作（提前提取所有 task）
-- 审查循环增加迭代
-- 但早期捕获问题（比以后调试更便宜）
+**在 test-reporter 之前，先执行全量编译和测试。全部通过后方可派发 test-reporter 生成报告。同时更新 `specs/<date+feature>/progress.md`。**
 
 ## 红线（Red Flags）
 
 **永远不要：**
 
-- 在没有明确用户同意的情况下在主/主分支上开始实现
-- 跳过审查（spec 合规 OR 代码质量）
-- 在有未修复问题的情况下继续
-- 并行派发多个实现 subagent（冲突）
-- 让 subagent 读取计划文件（改为提供完整文本）
-- 跳过场景设置上下文（subagent 需要理解 task 适合的位置）
-- 忽略 subagent 问题（在让他们继续之前回答）
-- 接受 spec 合规的"足够接近"（spec reviewer 发现问题 = 未完成）
-- 跳过审查循环（reviewer 发现问题 = 实现者修复 = 再次审查）
-- 让实现者自检替代实际审查（两者都需要）
-- **在 spec 合规为 ✅ 之前开始代码质量审查**（顺序错误）
-- 任一审查有未解决问题时移动到下一个 task
+- 禁止在没有明确用户同意的情况下在主/主分支上开始实现
+- 禁止跳过审查（spec 合规 OR 代码质量）
+- 禁止在有未修复问题的情况下继续
+- 禁止并行派发多个实现 subagent（冲突）
+- 禁止跳过场景设置上下文（subagent 需要理解 task 适合的位置）
+- 禁止忽略 subagent 问题（在让他们继续之前回答）
+- 禁止接受 spec 合规的"足够接近"（spec reviewer 发现问题 = 未完成）
+- 禁止跳过审查循环（reviewer 发现问题 = 实现者修复 = 再次审查）
+- 禁止让实现者自检替代实际审查（两者都需要）
+- **禁止在 spec 合规为 ✅ 之前开始代码质量审查**（顺序错误）
+- 任一审查有未解决问题时禁止移动到下一个 task
 
 **如果 subagent 问问题：**
 
@@ -295,7 +252,7 @@ digraph process {
 - 实现者（相同 subagent）修复它们
 - Reviewer 再次审查
 - 重复直到批准
-- 不要跳过重新审查
+- 禁止跳过重新审查
 
 **如果 subagent 失败 task：**
 
@@ -315,10 +272,6 @@ digraph process {
 
 - **loom-test-driven-development** - Subagent 遵循每个 task 的 TDD
 
-**替代工作流：**
-
-- **loom-executing-plans** - 当相同会话执行不可用时使用并行会话
-
 ## 关键规则
 
 1. **subagent 互不继承上下文** — 每个 subagent 是全新会话，必须完整传入所需上下文
@@ -327,3 +280,7 @@ digraph process {
 4. **TDD 验证** — implementer 必须编写并运行单元测试，测试失败等同 BLOCKER
 5. **测试报告必须生成** — 全部 task 完成后必须派发 test-reporter，报告有 FAIL 则禁止进入 index-update
 6. **停止条件** — 遇到 plan 不清晰、重复修复无效、spec 有歧义时，立即停止并询问用户
+
+## 完成条件与下一步
+
+所有步骤完成后，必须同时更新 `specs/<date+feature>/progress.md`。

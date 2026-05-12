@@ -115,7 +115,7 @@ description: >
 ````markdown
 ### Task N: <功能点名称>
 
-- **层级**: 从 project-structure.md 中提取的项目分层名称
+- **层级**: 从 `.loom/rules/project-structure.md` 中提取的项目分层名称
 - **复杂度**: 简单 / 中等 / 复杂
 - **依赖**: Task X, Task Y（无则写"无"）
 - **涉及文件**:
@@ -134,7 +134,7 @@ def test_specific_behavior():
 
 - [ ] **步骤 2：运行测试验证失败**
 
-运行：`pytest tests/path/test.py::test_name -v`
+运行测试用例
 预期：FAIL，显示 "function not defined"
 
 - [ ] **步骤 3：写最小实现**
@@ -146,23 +146,15 @@ def function(input):
 
 - [ ] **步骤 4：运行测试验证通过**
 
-运行：`pytest tests/path/test.py::test_name -v`
+运行测试用例
 预期：PASS
-
-- [ ] **步骤 5：提交**
-
-```bash
-git add tests/path/test.py src/path/file.py
-git commit -m "feat: add specific feature"
-```
-
-````
 
 ### Step 6：检查清单（No Placeholders）
 
 输出 plan 后，自检：
 
 **每个步骤必须包含工程师需要的实际内容。这些是 plan 失败 — 永远不要写：**
+
 - "TBD"、"TODO"、"implement later"、"fill in details"
 - "Add appropriate error handling" / "add validation" / "handle edge cases"
 - "Write tests for the above"（没有实际测试代码）
@@ -171,6 +163,7 @@ git commit -m "feat: add specific feature"
 - 引用在任何 task 中未定义的类型、函数或方法
 
 **其他检查项：**
+
 - [ ] 所有 task 的依赖关系无循环
 - [ ] 每个 task 可独立编译验证
 - [ ] 代码示例可直接复制运行（无占位符）
@@ -189,6 +182,7 @@ git commit -m "feat: add specific feature"
 **架构、设计和审查任务**：使用可用的最强模型。
 
 **任务复杂度信号：**
+
 - 触及 1-2 个文件且完整规范 → 便宜模型
 - 触及多个文件且有集成问题 → 标准模型
 - 需要设计判断或广泛的代码库理解 → 最强模型
@@ -206,15 +200,17 @@ git commit -m "feat: add specific feature"
 
 ## 技术上下文（task 中必须参考）
 
-从宪章和工程结构中提取——不同项目关注点不同，按实际提取：
+从`.loom/memory/constitution.md`和`.loom/rules/project-structure.md`中提取——不同项目关注点不同，按实际提取：
 
 **通用关注点：**
+
 - **测试基础设施**：如何编写和运行测试
 - **错误处理**：项目统一错误处理方式
 - **日志**：日志使用方式
 - **配置**：配置管理方式
 
 **按项目类型可能存在的关注点：**
+
 - **接口/响应格式**：API 项目有统一响应格式
 - **路由**：Web 项目有路由注册规范
 - **缓存**：有缓存策略的项目
@@ -233,32 +229,10 @@ digraph writing_plans {
     "执行交接" -> "loom-subagent-driven-development" [label="推荐"];
     "执行交接" -> "executing-plans" [label="备选"];
 }
-````
+```
 
 ## 完成条件与下一步
 
-plan.md 保存并自检完毕后，同时更新 `specs/<date+feature>/progress.md`，**等待用户确认 plan**。
+plan.md 保存并自检完毕后，必须同时更新 `specs/<date+feature>/progress.md`，**等待用户确认 plan**。
 
-用户确认后，**必须立即触发 git-worktree**（using-git-worktrees skill）。
-
-## 执行交接
-
-保存 plan 后，提供执行选项：
-
-**"计划完成并保存到 `specs/<date+feature>/plan.md`。两种执行选项：**
-
-**1. Subagent-Driven（推荐）** - 我每个 task 派发一个 fresh subagent，task 之间审查，快速迭代
-
-**2. Inline Execution** - 使用 executing-plans 在当前会话执行任务，带检查点的批处理执行
-
-**选择哪种方式？"**
-
-**如果选择 Subagent-Driven：**
-
-- **必需子技能：** 使用 subagent-driven-development
-- 每个 task 一个 fresh subagent + 两阶段审查
-
-**如果选择 Inline Execution：**
-
-- **必需子技能：** 使用 executing-plans
-- 带检查点的批处理执行
+用户确认后，**必须立即触发 git-worktree**（loom-using-git-worktrees skill）。

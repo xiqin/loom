@@ -61,9 +61,9 @@ git diff --stat
 **如果选择 Merge：**
 
 ```bash
-git checkout main
+git checkout <branch>
 git merge --no-ff feature/<date>-<feature-name>
-git push origin main
+git push origin <branch>
 ```
 
 **如果选择 Pull Request：**
@@ -91,7 +91,7 @@ EOF
 **如果选择 Discard：**
 
 ```bash
-git checkout main
+git checkout <branch>
 git branch -D feature/<date>-<feature-name>
 ```
 

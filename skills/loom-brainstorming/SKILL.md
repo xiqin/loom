@@ -41,8 +41,8 @@ description: >
 
 ### Step 1：理解需求
 
-1. 读取 `.loom/memory/constitution.md`（宪章）了解项目约束
-2. 读取 `.loom/rules/project-structure.md`（工程结构）了解技术栈和分层
+1. 必须先读取 `.loom/memory/constitution.md`（宪章）了解项目约束
+2. 必须先读取 `.loom/rules/project-structure.md`（工程结构）了解技术栈和分层
 3. 如果是修改类需求，先分析现有代码的实现方式和影响范围
 4. 明确需求边界：做什么、不做什么
 
@@ -231,4 +231,4 @@ digraph brainstorming {
 
 spec.md 保存并自审完毕后，必须同时更新 `specs/<date+feature>/progress.md`，**等待用户确认方案**。
 
-用户确认后，**必须立即触发 writing-plans**（writing-plans skill）。
+用户确认后，**必须立即触发 writing-plans**（loom-writing-plans skill）。

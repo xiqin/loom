@@ -14,7 +14,7 @@ description: >
 
 ## 前置条件
 
-1. 代码变更已完成（coding + review + test 全部通过）
+1. 代码变更已完成（subagent-driven-development 全部通过）
 2. 或用户明确要求更新索引
 
 ## 状态输出
