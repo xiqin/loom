@@ -3,6 +3,7 @@ name: loom-writing-plans
 description: >
   拆解实现计划。当有 spec 设计文档后，拆分为可执行的 task 列表。
   Use when: a spec design document exists and needs to be broken into bite-sized implementation tasks.
+  Trigger keywords: 写计划, 拆分任务, 计划拆解, writing plan
 ---
 
 # 实现计划拆解
@@ -18,7 +19,7 @@ description: >
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- pipeline [■■□□□] Step 2/5 — 计划拆解 (writing-plans)
+ pipeline [■■□□□□] Step 2/6 — 计划拆解 (writing-plans)
  skill:   writing-plans
  功能:    <功能名>
  status:  ▶ 开始执行
@@ -29,7 +30,7 @@ description: >
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- pipeline [■■□□□] Step 2/5 — 计划拆解 (writing-plans)
+ pipeline [■■□□□□] Step 2/6 — 计划拆解 (writing-plans)
  status:  ✅ 完成 (N 个 task)
  下一步:  等待用户确认 → Step 3: git-worktree
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -84,13 +85,11 @@ description: >
 - 没有依赖的 task 先做
 - 有循环依赖的 task 拆开或合并
 
-**每个步骤是一个动作（2-5 分钟）：**
+**每个步骤是一个可独立验证的交付物（一个文件或一个功能点）：**
 
-- "写失败的测试" - 步骤
-- "运行它确保失败" - 步骤
-- "实现最小代码让测试通过" - 步骤
-- "运行测试确保通过" - 步骤
-- "提交" - 步骤
+- "创建数据模型并编写测试" - 步骤
+- "实现服务层方法并编写测试" - 步骤
+- "创建 API 接口并编写测试" - 步骤
 
 ### Step 5：为每个 task 编写详细内容
 
@@ -112,7 +111,7 @@ description: >
 
 **Task 结构：**
 
-````markdown
+~~~markdown
 ### Task N: <功能点名称>
 
 - **层级**: 从 `.loom/rules/project-structure.md` 中提取的项目分层名称
@@ -130,7 +129,7 @@ def test_specific_behavior():
     result = function(input)
     assert result == expected
 ```
-````
+~~~
 
 - [ ] **步骤 2：运行测试验证失败**
 

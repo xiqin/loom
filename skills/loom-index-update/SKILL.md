@@ -3,6 +3,7 @@ name: loom-index-update
 description: >
   完成工作后更新索引文件。测试通过后触发，确保工程索引、记忆文件、入口文档与代码保持同步。
   Use when: code changes are complete and indexes need to be synchronized.
+  Trigger keywords: 更新索引, 同步索引, 更新文档, index update
 ---
 
 # 索引更新 Skill
@@ -15,7 +16,8 @@ description: >
 ## 前置条件
 
 1. 代码变更已完成（subagent-driven-development 全部通过）
-2. 或用户明确要求更新索引
+2. verification-before-completion 已通过
+3. 或用户明确要求更新索引
 
 ## 状态输出
 
@@ -23,7 +25,7 @@ description: >
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- pipeline [■■■■■] Step 5/5 — 索引更新 (index-update)
+ pipeline [■■■■■■] Step 6/6 — 索引更新 (index-update)
  skill:   index-update
  status:  ▶ 开始执行
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -33,7 +35,7 @@ description: >
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- pipeline [■■■■■] Step 5/5 — 索引更新 (index-update)
+ pipeline [■■■■■■] Step 6/6 — 索引更新 (index-update)
  status:  ✅ 完成
  下一步:  → 工作完成，可以提交
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

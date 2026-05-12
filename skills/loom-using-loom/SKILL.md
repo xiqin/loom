@@ -3,34 +3,38 @@ name: loom-using-loom
 description: >
   loom 框架使用指南。当用户首次使用 loom 或询问如何使用时触发。
   Use when: introducing the loom framework and its capabilities.
+  Trigger keywords: loom 使用指南, loom 入门, 如何使用 loom
 ---
 
 # Using loom — AI 工程化框架
 
-loom 是一个 AI 工程化框架，提供 5 步流水线、项目宪章、5 维审查、进度追踪等能力。
+loom 是一个 AI 工程化框架，提供 6 步流水线、项目宪章、5 维审查、进度追踪等能力。
 
 ## 核心流水线
 
 ```
-brainstorming → writing-plans → git-worktree → subagent-dev → index-update
+brainstorming → writing-plans → git-worktree → subagent-dev → verification → index-update
 ```
 
 ### 流水线阶段
 
-| Step | 阶段                        | 说明                              | 输出                           |
-| ---- | --------------------------- | --------------------------------- | ------------------------------ |
-| 1    | brainstorming               | 需求头脑风暴，探索 2-3 种实现方案 | `specs/<date+feature>/spec.md` |
-| 2    | writing-plans               | 按分层拆解 task                   | `specs/<date+feature>/plan.md` |
-| 3    | git-worktree                | 创建隔离分支                      | feature 分支                   |
-| 4    | subagent-driven-development | Subagent 隔离派发 + 双审查        | 源码 + 测试报告                |
-| 5    | index-update                | 工程索引同步                      | ENGINEERING-INDEX.md           |
+| Step | 阶段                        | 说明                                     | 输出                           |
+| ---- | --------------------------- | ---------------------------------------- | ------------------------------ |
+| 1    | brainstorming               | 需求头脑风暴，探索 2-3 种实现方案        | `specs/<date+feature>/spec.md` |
+| 2    | writing-plans               | 按分层拆解 task                          | `specs/<date+feature>/plan.md` |
+| 3    | git-worktree                | 创建隔离分支                             | feature 分支                   |
+| 4    | subagent-driven-development | Subagent 隔离派发 + 双审查               | 源码 + 测试报告                |
+| 5    | verification                | 完成前验证，Spec覆盖/类型一致性/编译测试 | 验证报告                       |
+| 6    | index-update                | 工程索引同步                             | ENGINEERING-INDEX.md           |
 
 ### 阶段串联规则
 
 - brainstorming 完成 → 等待用户确认 → writing-plans
 - writing-plans 完成 → 等待用户确认 → git-worktree
 - git-worktree 完成 → 触发 subagent-dev
-- subagent-dev 完成 → 触发 index-update
+- subagent-dev 完成 → 触发 verification
+- verification 通过 → 触发 index-update
+- verification 未通过 → 修复后重新验证
 - index-update 完成 → 通知可以提交
 
 **严令禁止跳过任何步骤。**
@@ -41,13 +45,14 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 
 **核心流水线 Skills：**
 
-| Skill                                 | 输出                           | 说明                                               |
-| ------------------------------------- | ------------------------------ | -------------------------------------------------- |
-| loom-brainstorming                    | `specs/<date+feature>/spec.md` | 需求头脑风暴, +可视化伴侣、设计自检、用户审查 Gate |
-| loom-writing-plans                    | `specs/<date+feature>/plan.md` | 分层拆解 task, +模型选择、类型一致性检查           |
-| loom-using-git-worktrees feature 分支 | 创建隔离分支, +测试基线验证    |
-| loom-subagent-driven-development      | 源码 + 测试报告                | Subagent 派发 + 双重审查,独立模板文件、4种状态处理 |
-| loom-index-update                     | ENGINEERING-INDEX.md           | 工程索引同步                                       |
+| Skill                               | 输出                           | 说明                                               |
+| ----------------------------------- | ------------------------------ | -------------------------------------------------- |
+| loom-brainstorming                  | `specs/<date+feature>/spec.md` | 需求头脑风暴, +可视化伴侣、设计自检、用户审查 Gate |
+| loom-writing-plans                  | `specs/<date+feature>/plan.md` | 分层拆解 task, +模型选择、类型一致性检查           |
+| loom-using-git-worktrees            | feature 分支                   | 创建隔离分支, +测试基线验证                        |
+| loom-subagent-driven-development    | 源码 + 测试报告                | Subagent 派发 + 双重审查,独立模板文件、4种状态处理 |
+| loom-verification-before-completion | 验证报告                       | 完成前验证, +Spec覆盖、类型一致性、编译测试        |
+| loom-index-update                   | ENGINEERING-INDEX.md           | 工程索引同步                                       |
 
 **辅助 Skills：**
 
@@ -62,7 +67,6 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 | ----------------------------------- | ------------------------------------------------- |
 | loom-test-driven-development        | TDD 测试驱动开发，+流程图、好/坏示例、常见借口表  |
 | loom-systematic-debugging           | 系统化调试, +4阶段流程图、条件等待、纵深防御      |
-| loom-verification-before-completion | 完成前验证, +Spec覆盖检查、类型一致性             |
 | loom-requesting-code-review         | 请求代码审查, +预审查清单、审查模板               |
 | loom-receiving-code-review          | 接受代码审查, +响应模板、流程图                   |
 | loom-dispatching-parallel-agents    | 并行 agent 派发, +模型选择、并发工作流图          |
@@ -97,7 +101,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- pipeline [<进度条>] Step N/5 — <阶段名称>
+ pipeline [<进度条>] Step N/6 — <阶段名称>
  功能:    <功能名>
  status:  ▶ 开始执行 | ✅ 完成 | ❌ 失败
  下一步:  → Step N+1: <下一阶段>
@@ -135,7 +139,8 @@ digraph loom_workflow {
     "brainstorming" -> "writing-plans";
     "writing-plans" -> "git-worktree";
     "git-worktree" -> "subagent-dev";
-    "subagent-dev" -> "index-update";
+    "subagent-dev" -> "verification";
+    "verification" -> "index-update";
     "index-update" -> "完成";
 }
 ```

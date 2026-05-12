@@ -8,6 +8,17 @@ description: >
 
 # 请求代码审查
 
+## 触发条件
+
+- verification-before-completion 通过后，需要人工代码审查时
+- 用户主动要求发起代码审查
+- 分支开发完成、准备合并前
+
+## 完成条件与下一步
+
+- 审查请求已生成并发送
+- 下一步：等待审查反馈 → 使用 `loom-receiving-code-review` 处理反馈
+
 ## 预审查清单
 
 在请求审查前，确保：

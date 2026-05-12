@@ -2,8 +2,9 @@
 name: loom-subagent-driven-development
 description: >
   使用 subagent 派发方式执行编码任务。每个 task 派发独立 subagent，
-  每轮编码后派发 reviewer subagent 审查（支持合并或拆分模式）。
+  每轮编码后派发 reviewer subagent 审查（合并模式）。
   Use when: executing a plan with isolated subagents and review checkpoints.
+  Trigger keywords: subagent 派发, 编码执行, 执行计划
 ---
 
 # Subagent 编码执行
@@ -20,7 +21,7 @@ description: >
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- pipeline [■■■■□] Step 4/5 — 编码执行 (subagent-dev)
+ pipeline [■■■■□□] Step 4/6 — 编码执行 (subagent-dev)
  skill:   subagent-driven-development
  功能:    <功能名>
  status:  ▶ 开始执行 (N 个 task)
@@ -31,9 +32,9 @@ description: >
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- pipeline [■■■■□] Step 4/5 — 编码执行 (subagent-dev)
+ pipeline [■■■■□□] Step 4/6 — 编码执行 (subagent-dev)
  status:  ✅ 完成 (N/N task PASS, 测试报告已生成)
- 下一步:  → Step 5: index-update
+ 下一步:  → Step 5: verification
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -56,7 +57,7 @@ Task N ──→ implementer ──→ reviewer ──→ PASS/FAIL
 
 **为什么使用 subagent：** 你将任务委托给具有隔离上下文的专门 agent。通过精确构建他们的指令和上下文，确保他们保持专注并成功完成任务。他们永远不应该继承你会话的上下文或历史 — 你精确构建他们需要什么。这也保留了你自己的上下文用于协调工作。
 
-**核心原则：** 每个 task 一个 fresh subagent + 审查（spec 然后 quality）= 高质量、快速迭代
+**核心原则：** 每个 task 一个 fresh subagent + 合并审查（spec 合规 + 代码质量）= 高质量、快速迭代
 
 **持续执行：** 不要在 task 之间暂停与你的合作伙伴交流。在没有停止的情况下执行计划中的所有 task。停止的唯一原因是：你无法解决的 BLOCKED 状态、真正阻碍进度的歧义，或所有 task 完成。"我应该继续吗？"提示和进度摘要浪费他们的时间 — 他们要求你执行计划，所以执行它。
 
@@ -84,7 +85,7 @@ digraph when_to_use {
 
 - 同一会话（无上下文切换）
 - 每个 task 一个 fresh subagent（无上下文污染）
-- 每个 task 后两阶段审查：先 spec 合规，然后代码质量
+- 每个 task 后合并审查：spec 合规 + 代码质量一次完成
 - 更快迭代（task 之间没有人工环节）
 
 ## 模型选择
@@ -107,7 +108,7 @@ digraph when_to_use {
 
 Implementer subagent 报告四种状态之一。适当处理每一种：
 
-**DONE：** 继续 spec 合规审查。
+**DONE：** 继续合并审查。
 
 **DONE_WITH_CONCERNS：** 实现者完成了工作但标记了疑虑。在继续审查之前阅读疑虑。如果疑虑是关于正确性或范围，在审查前解决它们。如果它们是观察（例如，"这个文件越来越大"），注意它们并继续审查。
 
@@ -135,8 +136,7 @@ digraph process {
         "实现者问问题?" [shape=diamond];
         "回答问题和提供上下文" [shape=box];
         "实现者实现、测试、提交、自检" [shape=box];
-        "派发 spec reviewer subagent" [shape=diamond];
-        "派发 reviewer subagent" [shape=box];
+        "派发 combined reviewer subagent" [shape=box];
         "审查通过?" [shape=diamond];
         "实现者修复问题" [shape=box];
         "标记 task 完成" [shape=box];
@@ -152,12 +152,10 @@ digraph process {
     "实现者问问题?" -> "回答问题和提供上下文" [label="是"];
     "回答问题和提供上下文" -> "派发 implementer subagent";
     "实现者问问题?" -> "实现者实现、测试、提交、自检" [label="否"];
-    "实现者实现、测试、提交、自检" -> "派发 spec reviewer subagent";
-    "派发 spec reviewer subagent" -> "审查通过?" [label="使用拆分模式"];
-    "审查通过?" -> "派发 reviewer subagent" [label="spec 通过"];
-    "派发 reviewer subagent" -> "审查通过?" [label="使用合并模式"];
+    "实现者实现、测试、提交、自检" -> "派发 combined reviewer subagent";
+    "派发 combined reviewer subagent" -> "审查通过?";
     "审查通过?" -> "实现者修复问题" [label="否"];
-    "实现者修复问题" -> "派发 reviewer subagent" [label="重新审查"];
+    "实现者修复问题" -> "派发 combined reviewer subagent" [label="重新审查"];
     "审查通过?" -> "标记 task 完成" [label="是"];
     "标记 task 完成" -> "还有更多 task?";
     "还有更多 task?" -> "派发 implementer subagent" [label="是"];
@@ -168,17 +166,17 @@ digraph process {
 
 ## 派发前准备
 
-### Step 1：读取 plan
+### 准备：读取 plan
 
 从 `specs/<date+feature>/plan.md` 读取所有 task，创建任务追踪列表。
 
-### Step 2：读取项目约束（派发时传入精简上下文）
+### 准备：读取项目约束（派发时传入精简上下文）
 
 每个 subagent 必须注入精简上下文模板：`.loom/templates/subagent-context.md`, 同时传入：`specs/<date+feature>/spec.md` — 需求规格
 
 ## 每个 Task 的执行循环（必须执行）
 
-### Phase1：派发 implementer subagent
+### Step 1：派发 implementer subagent
 
 **输入上下文：**
 
@@ -189,11 +187,11 @@ digraph process {
 **implementer 的指令模板：**
 参见 `implementer-prompt.md`
 
-### Phase2：派发 reviewer subagent
+### Step 2：派发 combined reviewer subagent
 
-**审查模式**：spec + quality 一次审查，参见 `combined-reviewer-prompt.md`
+**审查模式**：合并审查（spec 合规 + 代码质量一次完成），参见 `combined-reviewer-prompt.md`
 
-**输入上下文（合并模式）：**
+**输入上下文：**
 
 - implementer 的输出（创建/修改的文件列表 + 代码）
 - `specs/<date+feature>/spec.md`（完整需求）
@@ -204,11 +202,11 @@ digraph process {
 **判定规则：**
 
 - PASS → 进入下一个 task
-- FAIL → 派回 Phase1 修复，重新走 Phase2
+- FAIL → 派回 implementer 修复，重新审查
 
 ## 全部 task 完成后
 
-### Phase 3：派发 test-reporter subagent（集成测试验证, 必须执行）
+### Step 3：派发 test-reporter subagent（集成测试验证, 必须执行）
 
 全部 task 通过审查后，必须派发一个 test-reporter subagent 生成集成测试报告。
 
@@ -217,8 +215,8 @@ digraph process {
 
 **判定规则：**
 
-- **全部 PASS** → 通过，触发 index-update skill
-- **存在 FAIL** → 不通过，派回 implementer 修复后重新走 Phase 3
+- **全部 PASS** → 通过，触发 verification-before-completion skill
+- **存在 FAIL** → 不通过，派回 implementer 修复后重新走 Step 3
 - **存在 WARN** → 警告，等用户选择跳过或修复
 
 ## 最终验证
@@ -230,15 +228,15 @@ digraph process {
 **永远不要：**
 
 - 禁止在没有明确用户同意的情况下在主/主分支上开始实现
-- 禁止跳过审查（spec 合规 OR 代码质量）
+- 禁止在 spec 未获得用户批准、plan 未确认前开始任何代码实现
+- 禁止跳过审查（spec 合规 + 代码质量）
 - 禁止在有未修复问题的情况下继续
-- 禁止并行派发多个实现 subagent（冲突）
+- 默认禁止并行派发多个实现 subagent。如需并行，必须使用 `loom-dispatching-parallel-agents skill`，且确认任务间无依赖和文件冲突
 - 禁止跳过场景设置上下文（subagent 需要理解 task 适合的位置）
 - 禁止忽略 subagent 问题（在让他们继续之前回答）
 - 禁止接受 spec 合规的"足够接近"（spec reviewer 发现问题 = 未完成）
 - 禁止跳过审查循环（reviewer 发现问题 = 实现者修复 = 再次审查）
 - 禁止让实现者自检替代实际审查（两者都需要）
-- **禁止在 spec 合规为 ✅ 之前开始代码质量审查**（顺序错误）
 - 任一审查有未解决问题时禁止移动到下一个 task
 
 **如果 subagent 问问题：**
@@ -283,4 +281,4 @@ digraph process {
 
 ## 完成条件与下一步
 
-所有步骤完成后，必须同时更新 `specs/<date+feature>/progress.md`。
+所有步骤完成后，必须同时更新 `specs/<date+feature>/progress.md`。验证通过后，触发 verification-before-completion（loom-verification-before-completion skill）。

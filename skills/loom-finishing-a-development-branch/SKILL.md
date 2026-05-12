@@ -8,9 +8,20 @@ description: >
 
 # 开发分支收尾
 
+## 触发条件
+
+- `loom-verification-before-completion` 验证通过
+- `loom-index-update` 索引已更新
+- 用户确认所有开发工作已完成
+
+## 完成条件与下一步
+
+- 分支已合并到主分支 / PR 已创建 / 分支已保留
+- 功能开发流程结束
+
 ## 公告
 
-开始时宣布："我正在使用 finishing-a-development-branch skill 来完成这项工作。"
+开始时宣布："我正在使用 loom-finishing-a-development-branch skill 来完成这项工作。"
 
 ## 执行流程
 
@@ -56,7 +67,24 @@ git diff --stat
 请选择？
 ```
 
-### Step 5：执行用户选择
+### Step 5：提交变更（如有未提交的变更）
+
+如果分支上还有未提交的变更，先提交：
+
+```bash
+git add <specific-files>
+git commit -m "$(cat <<'EOF'
+feat: <功能描述>
+
+- 变更 1
+- 变更 2
+
+Co-Authored-By: AI Assistant
+EOF
+)"
+```
+
+### Step 6：执行用户选择
 
 **如果选择 Merge：**
 
@@ -93,21 +121,6 @@ EOF
 ```bash
 git checkout <branch>
 git branch -D feature/<date>-<feature-name>
-```
-
-### Step 6：提交变更（如需要）
-
-```bash
-git add <specific-files>
-git commit -m "$(cat <<'EOF'
-feat: <功能描述>
-
-- 变更 1
-- 变更 2
-
-Co-Authored-By: AI Assistant
-EOF
-)"
 ```
 
 ## 提交信息规范

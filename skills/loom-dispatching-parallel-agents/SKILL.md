@@ -12,11 +12,13 @@ description: >
 
 当多个任务之间没有依赖关系时，可以并行执行以提高效率。
 
+**限制条件：** 仅当多个 task 之间**无依赖、无共享文件修改**时才可并行。若 task 间有文件冲突，必须退回到 loom-subagent-driven-development 的串行模式。
+
 **模型选择：** 并行任务通常使用便宜模型（cheap model），因为它们大多是机械实现任务。
 
 ## 执行流程
 
-### Step1：分析任务依赖
+### Step 1：分析任务依赖
 
 1. 读取 `specs/<date+feature>/plan.md` 中的所有 task
 2. 分析任务之间的依赖关系
@@ -34,7 +36,7 @@ description: >
 | Task 5 (Integration) | Task 3, 4 | 组 3     | 复杂   |
 ```
 
-### Step2：创建并行组
+### Step 2：创建并行组
 
 将可并行的任务分组：
 
@@ -44,7 +46,7 @@ description: >
 组 3: [Task 5] → 等组 2 完成后执行（使用 capable model）
 ```
 
-### Step3：并行派发
+### Step 3：并行派发
 
 对同一组的任务，同时派发 subagent：
 
@@ -80,14 +82,14 @@ digraph parallel_execution {
 }
 ```
 
-### Step4：等待并收集结果
+### Step 4：等待并收集结果
 
 1. 等待所有并行 subagent 完成
 2. 收集每个 subagent 的输出
 3. 验证所有任务成功
 4. 如有失败，按顺序重新执行失败任务
 
-### Step5：处理冲突
+### Step 5：处理冲突
 
 如果并行任务有潜在冲突（如修改同一文件）：
 

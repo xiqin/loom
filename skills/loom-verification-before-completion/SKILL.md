@@ -3,9 +3,32 @@ name: loom-verification-before-completion
 description: >
   完成前验证。在宣布任务完成前，执行完整性检查确保所有工作已完成。
   Use when: before declaring a task or feature complete.
+  Trigger keywords: 完成验证, 验证检查, 完成前检查
 ---
 
 # 完成前验证
+
+## 状态输出
+
+执行开始时：
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ pipeline [■■■■■□] Step 5/6 — 完成前验证 (verification)
+ skill:   verification-before-completion
+ status:  ▶ 开始执行
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+执行结束时：
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ pipeline [■■■■■□] Step 5/6 — 完成前验证 (verification)
+ status:  ✅ 完成
+ 下一步:  → Step 6: index-update
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
 
 ## 铁律
 
@@ -131,6 +154,8 @@ description: >
 
 ### Step 8：输出验证报告
 
+保存到 `specs/<date+feature>/verify-report.md`。
+
 ```markdown
 ## 完成前验证报告
 
@@ -159,6 +184,12 @@ description: >
 - 所有检查必须通过才能提交
 - 任何一项失败都需要先修复
 - 不允许跳过检查
+
+## 完成条件与下一步
+
+**验证通过后：** 触发 index-update（loom-index-update skill）
+
+**验证未通过：** 修复问题后重新执行验证
 
 ## 流程图
 

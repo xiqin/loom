@@ -3,7 +3,7 @@
 ## 核心流水线
 
 ```
-brainstorming → writing-plans → git-worktree → subagent-dev → index-update
+brainstorming → writing-plans → git-worktree → subagent-dev → verification → index-update
 ```
 
 ## 项目规则
@@ -24,41 +24,37 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 
 ## Skills 清单
 
-所有 skills 通过 `/` 命令或 Skill 工具调用。详见 `.loom/skills/` 目录（完整定义），通过 `.claude/skills/` 中的包装器发现。
+所有 skills 通过 `/` 命令或 Skill 工具调用。详见 `.loom/skills/` 目录（完整定义）
 
-**融合说明：** loom 继承 superpowers 并融合两者优点，包含流程图、自检清单、反模式、常见误区等增强特性。
+**核心流水线 Skills：**
 
-### 核心流水线 Skills（融合增强）
+| Skill                               | 输出                           | 说明                                               |
+| ----------------------------------- | ------------------------------ | -------------------------------------------------- |
+| loom-brainstorming                  | `specs/<date+feature>/spec.md` | 需求头脑风暴, +可视化伴侣、设计自检、用户审查 Gate |
+| loom-writing-plans                  | `specs/<date+feature>/plan.md` | 分层拆解 task, +模型选择、类型一致性检查           |
+| loom-using-git-worktrees            | feature 分支                   | 创建隔离分支, +测试基线验证                        |
+| loom-subagent-driven-development    | 源码 + 测试报告                | Subagent 派发 + 双重审查,独立模板文件、4种状态处理 |
+| loom-verification-before-completion | 验证报告                       | 完成前验证, +Spec覆盖、类型一致性、编译测试        |
+| loom-index-update                   | ENGINEERING-INDEX.md           | 工程索引同步                                       |
 
-| Skill                            | 说明                 | 输出                           | 增强点                                   |
-| -------------------------------- | -------------------- | ------------------------------ | ---------------------------------------- |
-| loom-brainstorming               | 需求头脑风暴         | `specs/<date+feature>/spec.md` | +可视化伴侣、设计自检、用户审查 Gate     |
-| loom-writing-plans               | 分层拆解 task        | `specs/<date+feature>/plan.md` | +模型选择、类型一致性检查、执行选项      |
-| loom-using-git-worktree          | 创建隔离分支         | feature 分支                   | +测试基线验证                            |
-| loom-subagent-driven-development | Subagent 派发 + 审查 | 源码 + 测试报告                | +独立模板文件、4种状态处理、审查模式选项 |
-| loom-index-update                | 工程索引同步         | ENGINEERING-INDEX.md           | loom 新增                                |
+**辅助 Skills：**
 
-### 辅助 Skills（loom 新增）
+| Skill             | 说明                               |
+| ----------------- | ---------------------------------- |
+| loom-init-project | 项目初始化（扫描 + 生成宪章/结构） |
+| loom-using-loom   | loom 框架使用指南（本 skill）      |
 
-| Skill             | 说明                                    |
-| ----------------- | --------------------------------------- |
-| loom-init-project | 项目初始化（扫描 + 生成宪章/结构）      |
-| loom-using-loom   | loom 框架使用指南（含常见问题、流程图） |
+**通用 Skills：**
 
-### 通用 Skills（融合 superpowers 优点）
-
-| Skill                               | 说明              | 融合点                                            |
-| ----------------------------------- | ----------------- | ------------------------------------------------- |
-| loom-test-driven-development        | TDD 测试驱动开发  | +流程图、好/坏示例、常见借口表、验证清单          |
-| loom-systematic-debugging           | 系统化调试        | +4阶段流程图、条件等待、纵深防御                  |
-| loom-verification-before-completion | 完成前验证        | +Spec覆盖检查、类型一致性、流程图                 |
-| loom-using-git-worktrees            | Git worktree 管理 | +测试基线验证、流程图                             |
-| loom-finishing-a-development-branch | 分支完成流程      | +选项展示（Merge/PR/Keep/Discard）、流程图        |
-| loom-requesting-code-review         | 请求代码审查      | +预审查清单、审查模板、流程图                     |
-| loom-receiving-code-review          | 接收代码审查      | +响应模板、流程图                                 |
-| loom-dispatching-parallel-agents    | 并行 agent 派发   | +模型选择、并发工作流图、流程图                   |
-| loom-writing-skills                 | 编写自定义 skills | +方法论深度、流程图、REFERENCE 目录               |
-| loom-executing-plans                | 执行计划          | **已删除**，已被 subagent-driven-development 替代 |
+| Skill                               | 说明                                              |
+| ----------------------------------- | ------------------------------------------------- |
+| loom-test-driven-development        | TDD 测试驱动开发，+流程图、好/坏示例、常见借口表  |
+| loom-systematic-debugging           | 系统化调试, +4阶段流程图、条件等待、纵深防御      |
+| loom-requesting-code-review         | 请求代码审查, +预审查清单、审查模板               |
+| loom-receiving-code-review          | 接受代码审查, +响应模板、流程图                   |
+| loom-dispatching-parallel-agents    | 并行 agent 派发, +模型选择、并发工作流图          |
+| loom-writing-skills                 | 编写自定义 skills, +方法论深度、流程图            |
+| loom-finishing-a-development-branch | 分支完成流程 , +选项展示（Merge/PR/Keep/Discard） |
 
 ## 流水线状态横幅
 
