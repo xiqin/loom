@@ -70,7 +70,7 @@
 本项目使用 loom (loom-engineering) 插件。
 
 ```
-brainstorming → writing-plans → git-worktree → subagent-dev → index-update
+brainstorming → writing-plans → git-worktree → subagent-dev → verification → index-update
 ```
 
 ### 第一步：需求设计（brainstorming）
@@ -147,5 +147,3 @@ brainstorming → writing-plans → git-worktree → subagent-dev → index-upda
 
 - 修订章程必须记录变更内容、获得审批。
 - 所有合并请求必须验证是否符合本章程。
-
-详见 {{ENTRY_FILE}}。

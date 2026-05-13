@@ -202,29 +202,7 @@ pkg/          → 公共工具包
 
 **Wrapper 模板（Claude Code / OpenCode / Copilot / Codex）：**
 
-所有 wrapper 文件使用统一模板，根据工具特性微调：
-
-```markdown
-# {{PROJECT_NAME}} — AI 编码指令
-
-> 本文件由 loom init-project 自动生成。修改请编辑 `.loom/` 源文件。重新运行 `/loom-init-project` 将重新分发。
-
-## 必读规则
-
-在开始任何编码任务前，必须先读取以下文件：
-
-1. `.loom/memory/constitution.md` — 项目宪章（编码准则、红线、技术栈）
-2. `.loom/rules/project-structure.md` — 工程结构约束（目录分层、架构模式）
-3. `.loom/memory/MEMORY.md` — 项目记忆（踩坑记录、用户偏好）
-
-## 快速参考
-
-- **语言**：{{LANGUAGE}}
-- **框架**：{{WEB_FRAMEWORK}}
-- **构建**：`{{BUILD_CMD}}`
-- **测试**：`{{TEST_CMD}}`
-- **检查**：`{{VET_CMD}}`
-```
+从 `templates/loom.md` 读取内容，渲染变量后写入 wrapper 文件
 
 **Cursor mdc 模板（完整复制）：**
 
@@ -235,7 +213,7 @@ globs:
 alwaysApply: true
 ---
 
-[.loom/ 源文件的完整内容]
+从 `templates/loom.md` 读取内容，渲染变量后写入 `.loom/`
 ```
 
 **工具特定适配：**
