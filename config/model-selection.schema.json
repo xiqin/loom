@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/xiqin/loom/config/model-selection.schema.json",
+  "title": "loom Model Selection Strategy",
+  "description": "模型选择策略定义 — 驱动 generate-model-selection.mjs 生成 SKILL.md 中的模型选择章节",
+  "version": 1,
+  "sectionTitle": "模型选择策略",
+  "intro": "使用最强大的模型来处理每个角色，以节省成本并提高效率：",
+  "tiers": [
+    {
+      "id": "mechanical",
+      "label": "机械实现任务",
+      "scope": "隔离函数、清晰规范、1-2 个文件",
+      "model": "快速、便宜的模型",
+      "rationale": "当计划明确时，大多数实现任务都是机械的"
+    },
+    {
+      "id": "integration",
+      "label": "集成和判断任务",
+      "scope": "多文件协调、模式匹配、调试",
+      "model": "标准模型"
+    },
+    {
+      "id": "architecture",
+      "label": "架构、设计和审查任务",
+      "scope": null,
+      "model": "可用的最强模型"
+    }
+  ],
+  "signals": [
+    { "condition": "触及 1-2 个文件且有完整规范", "tier": "mechanical" },
+    { "condition": "触及多个文件且有集成问题", "tier": "integration" },
+    { "condition": "需要设计判断或广泛的代码库理解", "tier": "architecture" }
+  ]
+}

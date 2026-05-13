@@ -46,11 +46,11 @@ git diff --stat
 
 ### Step 3：运行最终验证
 
-读取 `.loom/memory/constitution.md` 中的 BUILD_CMD、VET_CMD、TEST_CMD，依次执行。
+<!-- loom:generate:rule:build-vet-test-cmd -->
+**构建/检查/测试命令**
 
-- [ ] 编译通过
-- [ ] vet 通过
-- [ ] 测试全部通过
+读取 `.loom/memory/constitution.md` 中的 BUILD_CMD/VET_CMD/TEST_CMD 并执行验证。
+<!-- /loom:generate:rule:build-vet-test-cmd -->
 
 ### Step 4：展示选项
 
@@ -125,29 +125,29 @@ git branch -D feature/<date>-<feature-name>
 
 ## 提交信息规范
 
-```
-<type>(<scope>): <subject>
+<!-- loom:generate:rule:conventional-commits -->
+**Conventional Commits 格式**
 
-<body>
+提交信息必须遵循 Conventional Commits 格式：`<type>(<scope>): <subject>`
 
-Co-Authored-By: AI Assistant
-```
-
-**Type：**
-
-- `feat`：新功能
-- `fix`：修复
-- `refactor`：重构
-- `docs`：文档
-- `test`：测试
-- `chore`：杂项
+- **feat**: 新功能
+- **fix**: Bug 修复
+- **refactor**: 重构（不改变行为）
+- **docs**: 文档
+- **test**: 测试
+- **chore**: 构建/工具变更
+<!-- /loom:generate:rule:conventional-commits -->
 
 ## 约束
 
 - 提交前必须运行完整验证
 - 提交信息必须清晰描述变更内容
 - 禁止提交敏感信息（密钥、密码等）
-- 没有明确用户同意，永远不要在主/主分支上开始实现
+<!-- loom:generate:rule:no-main-branch -->
+**禁止在主分支实现**
+
+没有明确用户同意，永远不要在 main/master 分支上开始实现。
+<!-- /loom:generate:rule:no-main-branch -->
 
 ## 流程图
 

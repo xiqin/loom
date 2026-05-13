@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/xiqin/loom/config/shared-rules.json",
+  "title": "loom Shared Rules",
+  "description": "跨 Skill 共享的规则定义 — 驱动 generate-shared-rules.mjs 注入到各 SKILL.md",
+  "version": 1,
+  "rules": [
+    {
+      "id": "no-skip-step",
+      "heading": "严令禁止跳步",
+      "content": "严令禁止跳过任何步骤。每个步骤完成后必须显式触发下一步，不可自行终止。",
+      "injectTo": ["loom-using-loom"],
+      "notes": "verification SKILL.md 中的'门禁函数'概念更具体，保持手动维护"
+    },
+    {
+      "id": "no-main-branch",
+      "heading": "禁止在主分支实现",
+      "content": "没有明确用户同意，永远不要在 main/master 分支上开始实现。",
+      "injectTo": ["loom-using-git-worktrees", "loom-finishing-a-development-branch"],
+      "notes": "subagent-dev 中的红线列表条目太嵌入，保持手动维护"
+    },
+    {
+      "id": "conventional-commits",
+      "heading": "Conventional Commits 格式",
+      "content": "提交信息必须遵循 Conventional Commits 格式：`<type>(<scope>): <subject>`\n\n- **feat**: 新功能\n- **fix**: Bug 修复\n- **refactor**: 重构（不改变行为）\n- **docs**: 文档\n- **test**: 测试\n- **chore**: 构建/工具变更",
+      "injectTo": ["loom-finishing-a-development-branch"]
+    },
+    {
+      "id": "placeholder-scan-ban",
+      "heading": "占位符扫描禁止",
+      "content": "禁止使用以下占位符，发现即视为未完成：TBD、TODO、implement later、fill in details、Similar to Task N、\"add appropriate error handling\"",
+      "injectTo": ["loom-writing-plans"],
+      "notes": "verification/brainstorming 中的占位符引用是步骤描述的一部分，保持手动维护"
+    },
+    {
+      "id": "git-branch-naming",
+      "heading": "Git 分支命名规范",
+      "content": "分支命名格式：`feature/<date>-<feature-name>`（如 `feature/2025-01-15-user-auth`）\n\n其他前缀：`fix/<date>-<name>`、`refactor/<date>-<name>`、`docs/<date>-<name>`",
+      "injectTo": ["loom-using-git-worktrees"],
+      "notes": "requesting-review/finishing-branch 中的分支名是 git 命令模板的一部分，保持手动维护"
+    },
+    {
+      "id": "build-vet-test-cmd",
+      "heading": "构建/检查/测试命令",
+      "content": "读取 `.loom/memory/constitution.md` 中的 BUILD_CMD/VET_CMD/TEST_CMD 并执行验证。",
+      "injectTo": ["loom-verification-before-completion", "loom-finishing-a-development-branch"],
+      "notes": "worktrees/TDD 中的命令引用是步骤描述的一部分，保持手动维护"
+    }
+  ]
+}

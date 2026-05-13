@@ -97,7 +97,13 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 - **如果不存在，必须停止，提示用户先执行前三步**
 - Subagent 隔离派发 + 双审查
 
-### 第五步：索引更新（index-update）
+### 第五步：完成前验证（verification）
+
+- **硬性前置条件**：所有测试通过（构建 + 静态检查 + 单元测试）
+- Spec 覆盖检查、类型一致性检查、编译测试
+- 验证未通过 → 修复后重新验证
+
+### 第六步：索引更新（index-update）
 
 - 同步工程索引
 - 索引内容必须与实际代码一致
@@ -113,7 +119,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 # <feature> — 开发流水线
 
 **开始时间：** YYYY-MM-DD HH:mm
-**当前阶段：** Step N/5
+**当前阶段：** Step N/6
 
 | Step | 阶段          | 状态     | 开始时间 | 完成时间 | 备注              |
 | ---- | ------------- | -------- | -------- | -------- | ----------------- |
@@ -121,9 +127,8 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 | 2    | writing-plans | ✅ 完成  | HH:mm    | HH:mm    |                   |
 | 3    | git-worktree  | ✅ 完成  | HH:mm    | HH:mm    | 分支: feature/xxx |
 | 4    | subagent-dev  | ▶ 进行中 | HH:mm    | —        | task 3/8          |
-| 5    | index-update  | ⏳ 等待  | —        | —        |                   |
-
-[//]: # "| 6 | 提交 | ⏳ 等待 | — | — | |"
+| 5    | verification  | ⏳ 等待  | —        | —        |                   |
+| 6    | index-update  | ⏳ 等待  | —        | —        |                   |
 
 ## Skill 调用记录
 

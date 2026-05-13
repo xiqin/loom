@@ -152,14 +152,11 @@ def function(input):
 
 输出 plan 后，自检：
 
-**每个步骤必须包含工程师需要的实际内容。这些是 plan 失败 — 永远不要写：**
+<!-- loom:generate:rule:placeholder-scan-ban -->
+**占位符扫描禁止**
 
-- "TBD"、"TODO"、"implement later"、"fill in details"
-- "Add appropriate error handling" / "add validation" / "handle edge cases"
-- "Write tests for the above"（没有实际测试代码）
-- "Similar to Task N"（重复代码 — 工程师可能乱序阅读任务）
-- 描述要做什么但没有展示如何做的步骤（代码步骤需要代码块）
-- 引用在任何 task 中未定义的类型、函数或方法
+禁止使用以下占位符，发现即视为未完成：TBD、TODO、implement later、fill in details、Similar to Task N、"add appropriate error handling"
+<!-- /loom:generate:rule:placeholder-scan-ban -->
 
 **其他检查项：**
 
@@ -172,19 +169,23 @@ def function(input):
 
 ## 模型选择策略
 
+<!-- loom:generate:model-selection -->
+## 模型选择策略
+
 使用最强大的模型来处理每个角色，以节省成本并提高效率：
 
-**机械实现任务**（隔离函数、清晰规范、1-2 个文件）：使用快速、便宜的模型。当计划明确时，大多数实现任务都是机械的。
+**机械实现任务**（隔离函数、清晰规范、1-2 个文件）：使用快速、便宜的模型。当计划明确时，大多数实现任务都是机械的
 
-**集成和判断任务**（多文件协调、模式匹配、调试）：使用标准模型。
+**集成和判断任务**（多文件协调、模式匹配、调试）：使用标准模型
 
-**架构、设计和审查任务**：使用可用的最强模型。
+**架构、设计和审查任务**：使用可用的最强模型
 
 **任务复杂度信号：**
 
-- 触及 1-2 个文件且完整规范 → 便宜模型
+- 触及 1-2 个文件且有完整规范 → 便宜模型
 - 触及多个文件且有集成问题 → 标准模型
 - 需要设计判断或广泛的代码库理解 → 最强模型
+<!-- /loom:generate:model-selection -->
 
 ## 编码红线（task 中绝对禁止）
 

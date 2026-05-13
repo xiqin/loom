@@ -25,7 +25,7 @@
       "interactive": true,
       "autoTransition": false,
       "nextOnSuccess": "等待用户确认 spec 后转 planning",
-      "banner": "Step 1/5 — brainstorming"
+      "banner": "Step 1/6 — brainstorming"
     },
     "planning": {
       "step": 2,
@@ -48,7 +48,7 @@
       "interactive": true,
       "autoTransition": false,
       "nextOnSuccess": "等待用户确认 plan 后转 approved",
-      "banner": "Step 2/5 — writing-plans"
+      "banner": "Step 2/6 — writing-plans"
     },
     "approved": {
       "step": null,
@@ -67,20 +67,44 @@
       "nextOnSuccess": "用户触发 loom-execute-plan 后转 executing",
       "banner": null
     },
-    "executing": {
-      "step": "3-4",
-      "skill": "loom-subagent-driven-development",
+    "git-worktree": {
+      "step": 3,
+      "skill": "loom-using-git-worktrees",
       "command": "loom-execute-plan",
-      "description": "创建隔离分支，派发 subagent 编码，运行测试",
-      "allowedTransitions": ["reviewing", "failed"],
+      "description": "创建隔离分支",
+      "allowedTransitions": ["executing", "failed"],
       "preconditions": [
         { "type": "file", "description": "plan.md 存在", "check": "specs/<date+feature>/plan.md 存在" },
         { "type": "git", "description": "工作目录干净或可创建 worktree", "check": "git worktree add 成功" }
       ],
       "outputs": [
         { "path": "feature/<date>-<name> 分支", "action": "created" },
+        { "path": "specs/<date+feature>/progress.md", "action": "modified" }
+      ],
+      "reads": [
+        "specs/<date+feature>/plan.md",
+        "specs/<date+feature>/spec.md",
+        ".loom/memory/constitution.md"
+      ],
+      "interactive": false,
+      "autoTransition": true,
+      "nextOnSuccess": "自动触发 subagent-dev",
+      "banner": "Step 3/6 — git-worktree"
+    },
+    "executing": {
+      "step": 4,
+      "skill": "loom-subagent-driven-development",
+      "command": null,
+      "description": "派发 subagent 编码，运行测试",
+      "allowedTransitions": ["verification", "failed"],
+      "preconditions": [
+        { "type": "file", "description": "plan.md 存在", "check": "specs/<date+feature>/plan.md 存在" },
+        { "type": "git", "description": "worktree 已创建", "check": "git worktree 存在" }
+      ],
+      "outputs": [
         { "path": "源码文件", "action": "created/modified" },
         { "path": "测试文件", "action": "created/modified" },
+        { "path": "specs/<date+feature>/test-report.md", "action": "created" },
         { "path": "specs/<date+feature>/progress.md", "action": "modified" }
       ],
       "reads": [
@@ -92,8 +116,8 @@
       ],
       "interactive": true,
       "autoTransition": false,
-      "nextOnSuccess": "所有 task 完成后转 reviewing",
-      "banner": "Step 3-4/5 — git-worktree + subagent-dev",
+      "nextOnSuccess": "所有 task 完成后转 verification",
+      "banner": "Step 4/6 — subagent-dev",
       "subStates": {
         "implementer": {
           "description": "Subagent 编码实现",
@@ -105,17 +129,19 @@
         }
       }
     },
-    "reviewing": {
-      "step": "4-5",
-      "skill": "loom-subagent-driven-development",
+    "verification": {
+      "step": 5,
+      "skill": "loom-verification-before-completion",
       "command": null,
-      "description": "代码审查（spec 合规 + 代码质量）",
+      "description": "完成前验证（Spec覆盖、类型一致性、编译测试）",
       "allowedTransitions": ["synced", "executing", "failed"],
       "preconditions": [
         { "type": "test", "description": "所有测试通过", "check": "测试套件 exit code 0" },
         { "type": "build", "description": "编译通过", "check": "编译 exit code 0" }
       ],
       "outputs": [
+        { "path": "验证报告", "action": "created" },
+        { "path": "specs/<date+feature>/verify-report.md", "action": "created" },
         { "path": "specs/<date+feature>/progress.md", "action": "modified" }
       ],
       "reads": [
@@ -127,44 +153,44 @@
       ],
       "interactive": true,
       "autoTransition": false,
-      "nextOnSuccess": "审查通过后转 synced",
-      "banner": "Step 4-5/5 — reviewing",
+      "nextOnSuccess": "验证通过后转 synced",
+      "banner": "Step 5/6 — verification",
       "retryOnFail": {
         "target": "executing",
         "condition": "BLOCKER 存在时派回 implementer 修复"
       }
     },
     "synced": {
-      "step": 5,
+      "step": 6,
       "skill": "loom-index-update",
       "command": null,
       "description": "工程索引同步，功能开发完成",
       "allowedTransitions": [],
       "preconditions": [
-        { "type": "review", "description": "审查通过", "check": "review 结果为 PASS" },
+        { "type": "review", "description": "验证通过", "check": "verification 结果为 PASS" },
         { "type": "test", "description": "所有测试通过", "check": "测试套件 exit code 0" }
       ],
       "outputs": [
-        { "path": "ENGINEERING-INDEX.md", "action": "modified" },
+        { "path": ".loom/ENGINEERING-INDEX.md", "action": "modified" },
         { "path": ".loom/memory/MEMORY.md", "action": "modified" },
         { "path": "specs/<date+feature>/progress.md", "action": "modified" }
       ],
       "reads": [
-        "ENGINEERING-INDEX.md",
+        ".loom/ENGINEERING-INDEX.md",
         ".loom/memory/MEMORY.md",
         "源码文件"
       ],
       "interactive": false,
       "autoTransition": false,
       "nextOnSuccess": "通知用户可以提交 PR",
-      "banner": "Step 5/5 — index-update (synced)"
+      "banner": "Step 6/6 — index-update (synced)"
     },
     "failed": {
       "step": null,
       "skill": null,
       "command": null,
       "description": "流水线失败（任意阶段）",
-      "allowedTransitions": ["brainstorming", "executing", "reviewing"],
+      "allowedTransitions": ["brainstorming", "executing", "verification"],
       "preconditions": [],
       "outputs": [
         { "path": "specs/<date+feature>/progress.md", "action": "modified" }
@@ -178,7 +204,7 @@
         "fromBrainstorming": "重新执行 loom-brainstorm",
         "fromPlanning": "重新执行 loom-write-plan",
         "fromExecuting": "修复问题后重新执行 loom-execute-plan",
-        "fromReviewing": "修复 BLOCKER 后重新进入 reviewing"
+        "fromVerification": "修复 BLOCKER 后重新验证"
       }
     }
   },
@@ -187,16 +213,18 @@
     { "from": "brainstorming", "to": "failed", "trigger": "error", "description": "brainstorming 失败" },
     { "from": "planning", "to": "approved", "trigger": "user_confirms_plan", "description": "用户确认 plan.md" },
     { "from": "planning", "to": "failed", "trigger": "error", "description": "planning 失败" },
-    { "from": "approved", "to": "executing", "trigger": "user_triggers_execute", "description": "用户执行 loom-execute-plan" },
+    { "from": "approved", "to": "git-worktree", "trigger": "user_triggers_execute", "description": "用户执行 loom-execute-plan" },
     { "from": "approved", "to": "failed", "trigger": "error", "description": "执行前检查失败" },
-    { "from": "executing", "to": "reviewing", "trigger": "all_tasks_done", "description": "所有 task 完成，进入审查" },
+    { "from": "git-worktree", "to": "executing", "trigger": "worktree_created", "description": "worktree 创建成功，触发 subagent" },
+    { "from": "git-worktree", "to": "failed", "trigger": "error", "description": "worktree 创建失败" },
+    { "from": "executing", "to": "verification", "trigger": "all_tasks_done", "description": "所有 task 完成，进入验证" },
     { "from": "executing", "to": "failed", "trigger": "test_failure|blocker", "description": "测试失败或 BLOCKED 状态" },
-    { "from": "reviewing", "to": "synced", "trigger": "review_pass", "description": "spec 合规 + 质量通过" },
-    { "from": "reviewing", "to": "executing", "trigger": "blocker_found", "description": "BLOCKER 派回 implementer 修复" },
-    { "from": "reviewing", "to": "failed", "trigger": "critical_failure", "description": "审查发现 Critical 偏差" },
+    { "from": "verification", "to": "synced", "trigger": "verification_pass", "description": "验证通过" },
+    { "from": "verification", "to": "executing", "trigger": "blocker_found", "description": "BLOCKER 派回 implementer 修复" },
+    { "from": "verification", "to": "failed", "trigger": "critical_failure", "description": "验证发现 Critical 偏差" },
     { "from": "failed", "to": "brainstorming", "trigger": "user_restarts", "description": "从头重新开始" },
     { "from": "failed", "to": "executing", "trigger": "user_retries", "description": "修复后重试执行" },
-    { "from": "failed", "to": "reviewing", "trigger": "user_retries_review", "description": "修复后重试审查" }
+    { "from": "failed", "to": "verification", "trigger": "user_retries_verification", "description": "修复后重试验证" }
   ],
   "progressFileFormat": {
     "path": "specs/<date+feature>/progress.md",
@@ -209,7 +237,7 @@
     "progressBar": {
       "filled": "■",
       "empty": "□",
-      "totalSteps": 5
+      "totalSteps": 6
     }
   }
 }

@@ -82,23 +82,11 @@ description: >
 
 ### 4. 编译验证
 
-读取 `.loom/memory/constitution.md` 中的 `BUILD_CMD` 并执行。
+<!-- loom:generate:rule:build-vet-test-cmd -->
+**构建/检查/测试命令**
 
-- [ ] 编译通过，无错误
-- [ ] 无编译警告
-
-### 5. 静态分析
-
-读取 `.loom/memory/constitution.md` 中的 `VET_CMD` 并执行。
-
-- [ ] vet 通过，无警告
-
-### 6. 测试验证
-
-读取 `.loom/memory/constitution.md` 中的 `TEST_CMD` 并执行。
-
-- [ ] 所有测试通过
-- [ ] 无跳过的测试（除非有正当理由）
+读取 `.loom/memory/constitution.md` 中的 BUILD_CMD/VET_CMD/TEST_CMD 并执行验证。
+<!-- /loom:generate:rule:build-vet-test-cmd -->
 
 ### 7. 代码审查
 

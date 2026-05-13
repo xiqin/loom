@@ -106,10 +106,13 @@ git branch --show-current
 
 ## 分支命名规则
 
-- 功能分支：`feature/<date>-<name>`
-- 修复分支：`fix/<date>-<name>`
-- 重构分支：`refactor/<date>-<name>`
-- 文档分支：`docs/<date>-<name>`
+<!-- loom:generate:rule:git-branch-naming -->
+**Git 分支命名规范**
+
+分支命名格式：`feature/<date>-<feature-name>`（如 `feature/2025-01-15-user-auth`）
+
+其他前缀：`fix/<date>-<name>`、`refactor/<date>-<name>`、`docs/<date>-<name>`
+<!-- /loom:generate:rule:git-branch-naming -->
 
 ## 约束
 
@@ -117,7 +120,11 @@ git branch --show-current
 - 每个功能使用独立分支
 - 分支名使用小写字母和连字符
 - 分支名应简洁明了
-- 没有明确用户同意，永远不要在主/主分支上开始实现
+<!-- loom:generate:rule:no-main-branch -->
+**禁止在主分支实现**
+
+没有明确用户同意，永远不要在 main/master 分支上开始实现。
+<!-- /loom:generate:rule:no-main-branch -->
 - **禁止创建嵌套 worktree**（worktree 中再建 worktree）
 - **只清理自己创建的 worktree**（验证路径在 superpower 管理目录下）
 - 目录创建前必须确认 `.gitignore` 规则

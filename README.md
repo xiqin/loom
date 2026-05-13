@@ -128,13 +128,25 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 
 ### 代码审查（5 维）
 
-1. 架构合规 — 分层正确性、循环依赖
-2. 代码质量 — 编码规范、错误处理、日志
-3. 安全风险 — SQL 注入、认证、输入验证
-4. 性能隐患 — N+1 查询、缓存策略
-5. 规范一致性 — 命名、响应格式、数据模型
+<!-- loom:generate:review-summary -->
+
+### 5 维审查
+
+| 维度       | 关键检查项                                                             |
+| ---------- | ---------------------------------------------------------------------- |
+| 架构合规   | 是否遵循项目架构分层（从 project-structure.md 读取）、是否存在跨层调用 |
+| 代码质量   | 是否使用了项目禁止的调试函数、SQL 是否参数化（防注入）                 |
+| 安全风险   | SQL 注入检查、认证/授权是否正确                                        |
+| 性能隐患   | N+1 查询检查、分页查询是否使用框架分页组件                             |
+| 规范一致性 | 命名是否符合项目规范、响应格式是否统一                                 |
+
+<!-- /loom:generate:review-summary -->
 
 ## Skills（15 个）
+
+<!-- loom:generate:skills-catalog -->
+
+6 流水线 + 2 辅助 + 7 通用 Skill，共 15 个
 
 **核心流水线 Skills：**
 
@@ -165,6 +177,10 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 | loom-dispatching-parallel-agents    | 并行 agent 派发, +模型选择、并发工作流图          |
 | loom-writing-skills                 | 编写自定义 skills, +方法论深度、流程图            |
 | loom-finishing-a-development-branch | 分支完成流程 , +选项展示（Merge/PR/Keep/Discard） |
+
+> 完整定义详见 `skills/loom-using-loom/SKILL.md` 或 `.loom/skills/` 目录
+
+<!-- /loom:generate:skills-catalog -->
 
 ## License
 
