@@ -46,6 +46,7 @@ export class BaseAdapter {
     const dest = this.getSkillsDir();
     mkdirSync(dest, { recursive: true });
 
+    const srcNames = new Set();
     let count = 0;
     const entries = readdirSync(src, { withFileTypes: true });
     for (const entry of entries) {
@@ -53,9 +54,21 @@ export class BaseAdapter {
       const skillDir = join(src, entry.name);
       const skillMd = join(skillDir, 'SKILL.md');
       if (!existsSync(skillMd)) continue;
+      srcNames.add(entry.name);
       this._copyDir(skillDir, join(dest, entry.name));
       count++;
     }
+
+    // Remove stale skills
+    if (existsSync(dest)) {
+      for (const entry of readdirSync(dest, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        if (srcNames.has(entry.name)) continue;
+        rmSync(join(dest, entry.name), { recursive: true, force: true });
+        log.push(`  skills: removed stale ${entry.name}`);
+      }
+    }
+
     log.push(`  skills: ${count} copied → ${dest}`);
   }
 
@@ -81,13 +94,26 @@ export class BaseAdapter {
     if (!existsSync(src)) return;
     mkdirSync(cmdDir, { recursive: true });
 
+    const srcNames = new Set();
     let count = 0;
     const entries = readdirSync(src, { withFileTypes: true });
     for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+      if (!entry.isFile()) continue;
+      srcNames.add(entry.name);
       cpSync(join(src, entry.name), join(cmdDir, entry.name), { force: true });
       count++;
     }
+
+    // Remove stale command files
+    if (existsSync(cmdDir)) {
+      for (const entry of readdirSync(cmdDir, { withFileTypes: true })) {
+        if (!entry.isFile()) continue;
+        if (srcNames.has(entry.name)) continue;
+        rmSync(join(cmdDir, entry.name), { force: true });
+        log.push(`  commands: removed stale ${entry.name}`);
+      }
+    }
+
     log.push(`  commands: ${count} copied → ${cmdDir}`);
   }
 

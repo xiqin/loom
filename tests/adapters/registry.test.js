@@ -46,10 +46,15 @@ describe('user adapter registry', () => {
     }
   });
 
-  it('each adapter has getSkillsDir returning a string', async () => {
+  it('each adapter has getSkillsDir returning a string (except cursor which uses rules)', async () => {
     for (const tool of USER_TOOL_IDS) {
       const adapter = await getUserAdapter(tool);
-      expect(typeof adapter.getSkillsDir()).toBe('string');
+      const result = adapter.getSkillsDir();
+      if (tool === 'cursor') {
+        expect(result).toBeNull();
+      } else {
+        expect(typeof result).toBe('string');
+      }
     }
   });
 });

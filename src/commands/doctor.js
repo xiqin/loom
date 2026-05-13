@@ -22,11 +22,19 @@ export default async function doctor(options) {
 
     const adapter = await getUserAdapter(tool);
     const userDir = adapter.getUserDir();
-    const skillsDir = adapter.getSkillsDir();
-    const cmdDir = adapter.getCommandsDir();
 
-    const hasSkills = existsSync(skillsDir) && readdirSync(skillsDir, { withFileTypes: true }).some(e => e.isDirectory());
-    const hasCommands = cmdDir && existsSync(cmdDir) && readdirSync(cmdDir, { withFileTypes: true }).some(e => e.isFile() && e.name.endsWith('.md'));
+    let hasSkills = false;
+    let hasCommands = false;
+
+    if (tool === 'cursor') {
+      hasSkills = checkCursorMdc(adapter);
+    } else {
+      const skillsDir = adapter.getSkillsDir();
+      const cmdDir = adapter.getCommandsDir();
+
+      hasSkills = skillsDir && existsSync(skillsDir) && readdirSync(skillsDir, { withFileTypes: true }).some(e => e.isDirectory());
+      hasCommands = cmdDir && existsSync(cmdDir) && readdirSync(cmdDir, { withFileTypes: true }).some(e => e.isFile() && e.name.endsWith('.md'));
+    }
 
     if (!hasSkills && !hasCommands) continue;
     foundAny = true;
@@ -34,19 +42,31 @@ export default async function doctor(options) {
     console.log(`  [${tool}]`);
     console.log(`    user dir:  ${userDir}`);
 
-    if (hasSkills) {
-      const count = countSkillDirs(skillsDir);
-      console.log(`    skills:    ${skillsDir} (${count} skill(s))`);
+    if (tool === 'cursor') {
+      const rulesDir = adapter.getRulesDir();
+      if (existsSync(rulesDir)) {
+        const mdcFiles = readdirSync(rulesDir).filter(f => f.startsWith('loom-') && f.endsWith('.mdc'));
+        const skillCount = mdcFiles.filter(f => !f.startsWith('loom-cmd-')).length;
+        const cmdCount = mdcFiles.filter(f => f.startsWith('loom-cmd-')).length;
+        console.log(`    rules:     ${rulesDir}`);
+        console.log(`    skills:    ${skillCount} skill(s) as .mdc`);
+        if (cmdCount > 0) console.log(`    commands:  ${cmdCount} command(s) as .mdc`);
+      }
     } else {
-      console.log(`    skills:    (none)`);
-    }
+      const skillsDir = adapter.getSkillsDir();
+      if (skillsDir && existsSync(skillsDir)) {
+        const count = countSkillDirs(skillsDir);
+        console.log(`    skills:    ${skillsDir} (${count} skill(s))`);
+      }
 
-    if (cmdDir) {
-      if (hasCommands) {
-        const count = readdirSync(cmdDir).filter(f => f.endsWith('.md')).length;
-        console.log(`    commands:  ${cmdDir} (${count} command(s))`);
-      } else {
-        console.log(`    commands:  (none)`);
+      const cmdDir = adapter.getCommandsDir();
+      if (cmdDir) {
+        if (existsSync(cmdDir)) {
+          const count = readdirSync(cmdDir).filter(f => f.endsWith('.md')).length;
+          console.log(`    commands:  ${cmdDir} (${count} command(s))`);
+        } else {
+          console.log(`    commands:  (none)`);
+        }
       }
     }
 
@@ -74,4 +94,14 @@ function countSkillDirs(dir) {
     }
   } catch {}
   return count;
+}
+
+function checkCursorMdc(adapter) {
+  try {
+    const rulesDir = adapter.getRulesDir();
+    if (!rulesDir || !existsSync(rulesDir)) return false;
+    return readdirSync(rulesDir).some(f => f.startsWith('loom-') && f.endsWith('.mdc'));
+  } catch {
+    return false;
+  }
 }

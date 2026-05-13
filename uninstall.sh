@@ -12,12 +12,15 @@ set -euo pipefail
 
 REPO="xiqin/loom"
 VERSION="1.3.2"
+# AUTO-SYNC: updated by scripts/generate-tooling.mjs and scripts/sync-version.mjs
+SUPPORTED_TOOLS=("claude-code" "cursor" "copilot" "opencode" "codex")
 
 # ── Flags ──────────────────────────────────────────────────────────────
 DRY=0
 FROM_RELEASE=0
 TOOLS=()
 NO_COLOR=0
+FAILURE_COUNT=0
 
 # ── Color ──────────────────────────────────────────────────────────────
 if [ ! -t 1 ]; then NO_COLOR=1; fi
@@ -52,13 +55,14 @@ FLAGS
   --dry-run           预览删除文件，不实际执行
   --from-release      从 GitHub release tag 下载（可重现卸载）
                       默认：本地模式（需 clone 仓库）
+  --version <ver>     指定下载版本（需配合 --from-release 使用）
   --no-color          禁用颜色输出
   -h, --help          显示帮助信息
 
 示例
   bash uninstall.sh --tool claude-code
   bash uninstall.sh --tool claude-code --dry-run
-  bash uninstall.sh --tool claude-code --from-release
+  bash uninstall.sh --tool claude-code --from-release --version 1.0.0
 EOF
 }
 
@@ -72,6 +76,10 @@ while [ $# -gt 0 ]; do
     --dry-run)       DRY=1 ;;
     --from-release)  FROM_RELEASE=1 ;;
     --no-color)      NO_COLOR=1 ;;
+    --version)
+      shift
+      if [ $# -eq 0 ]; then err "error: --version requires an argument"; exit 2; fi
+      VERSION="$1" ;;
     -h|--help)       print_help; exit 0 ;;
     *)
       err "error: unknown flag: $1"; echo "run 'uninstall.sh --help' for usage"; exit 2 ;;
@@ -80,7 +88,6 @@ while [ $# -gt 0 ]; do
 done
 
 # ── Validate ───────────────────────────────────────────────────────────
-SUPPORTED_TOOLS=("claude-code" "cursor" "copilot" "opencode" "codex")
 if [ ${#TOOLS[@]} -eq 0 ]; then
   err "error: --tool is required"
   echo "  Supported: ${SUPPORTED_TOOLS[*]}"
@@ -142,10 +149,16 @@ resolve_source() {
 
   note "  extracting..."
   tar xzf "$tarball" -C "$CLEANUP_DIR"
+  if [ $? -ne 0 ]; then
+    err "error: extraction failed"
+    rm -rf "$CLEANUP_DIR"
+    exit 1
+  fi
 
   local extracted="$CLEANUP_DIR/loom-$VERSION"
   if [ ! -d "$extracted" ]; then
-    extracted=$(find "$CLEANUP_DIR" -maxdepth 1 -type d | tail -1)
+    extracted="$(ls -d "$CLEANUP_DIR"/*/ 2>/dev/null | head -1)"
+    extracted="${extracted%/}"
   fi
 
   if [ ! -f "$extracted/bin/loom.js" ]; then
@@ -204,6 +217,7 @@ main() {
       ok "  ✔ $tool 卸载完成"
     else
       warn "  ✘ $tool 卸载失败"
+      FAILURE_COUNT=$((FAILURE_COUNT + 1))
     fi
   done
 
@@ -211,6 +225,10 @@ main() {
   say "  done"
   note "  若需要重新安装: bash install.sh --tool <target>"
   say ""
+
+  if [ "$FAILURE_COUNT" -gt 0 ]; then
+    exit 1
+  fi
 }
 
 main

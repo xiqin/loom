@@ -1,4 +1,4 @@
-import { readdirSync, existsSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import { readdirSync, existsSync, writeFileSync, mkdirSync, rmSync, readFileSync, cpSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { BaseAdapter } from './base.js';
@@ -12,13 +12,48 @@ export class CopilotAdapter extends BaseAdapter {
 
   getCommandsDir() { return join(this.getUserDir(), 'instructions'); }
 
+  install(loomRoot, version) {
+    const log = [];
+    log.push(`Installing loom@${version} → ${this.toolName} (user-level)`);
+    this._copySkills(loomRoot, log);
+    this._copyTemplates(loomRoot, log);
+    this._copyCommands(loomRoot, log);
+    this._postInstall(loomRoot, version, log);
+    return log;
+  }
+
   uninstall(loomRoot) {
     const log = [];
     log.push(`Uninstalling loom → ${this.toolName} (user-level)`);
     this._removeSkills(log);
+    this._removeTemplates(log);
     this._removeCommands(log);
     this._removeGlobalInstructions(log);
     return log;
+  }
+
+  _copyTemplates(loomRoot, log) {
+    const src = join(loomRoot, 'templates');
+    if (!existsSync(src)) return;
+
+    const initProjectDir = join(this.getSkillsDir(), 'loom-init-project');
+    if (!existsSync(initProjectDir)) {
+      log.push('  templates: loom-init-project skill not found, skipped');
+      return;
+    }
+
+    const dest = join(initProjectDir, 'templates');
+    mkdirSync(dest, { recursive: true });
+    cpSync(src, dest, { recursive: true, force: true });
+    log.push('  templates: copied to loom-init-project skill dir');
+  }
+
+  _removeTemplates(log) {
+    const initProjectDir = join(this.getSkillsDir(), 'loom-init-project', 'templates');
+    if (existsSync(initProjectDir)) {
+      rmSync(initProjectDir, { recursive: true, force: true });
+      log.push('  templates: removed from loom-init-project skill dir');
+    }
   }
 
   _removeGlobalInstructions(log) {

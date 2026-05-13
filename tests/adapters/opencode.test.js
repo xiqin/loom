@@ -49,21 +49,37 @@ describe('OpenCodeAdapter', () => {
     expect(adapter.supportsPlugin()).toBe(true);
   });
 
-  it('install adds plugin to opencode.json and copies commands', () => {
+  it('install adds plugin to opencode.json and copies skills', () => {
     vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.config', 'opencode'));
 
     const loomRoot = join(TEST_DIR, 'loom-root');
-    mkdirSync(join(loomRoot, 'commands'), { recursive: true });
-    writeFileSync(join(loomRoot, 'commands', 'test-cmd.md'), '# Test');
+    mkdirSync(join(loomRoot, 'skills', 'test-skill'), { recursive: true });
+    writeFileSync(join(loomRoot, 'skills', 'test-skill', 'SKILL.md'), '# Test');
 
     const log = adapter.install(loomRoot, '1.0.0');
     expect(log.some(l => l.includes('plugin'))).toBe(true);
-    expect(log.some(l => l.includes('commands'))).toBe(true);
+    expect(log.some(l => l.includes('skills'))).toBe(true);
 
     const configPath = join(TEST_DIR, '.config', 'opencode', 'opencode.json');
     expect(existsSync(configPath)).toBe(true);
     const config = JSON.parse(readFileSync(configPath, 'utf-8'));
     expect(config.plugin).toContain('loom-engineering');
+  });
+
+  it('install copies skills to target directory', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.config', 'opencode'));
+
+    const loomRoot = join(TEST_DIR, 'loom-root');
+    mkdirSync(join(loomRoot, 'skills', 'test-skill'), { recursive: true });
+    writeFileSync(join(loomRoot, 'skills', 'test-skill', 'SKILL.md'), '# Test');
+
+    const log = adapter.install(loomRoot, '1.0.0');
+    expect(log.some(l => l.includes('skills'))).toBe(true);
+    expect(log.some(l => l.includes('1 copied'))).toBe(true);
+
+    const skillsDir = join(TEST_DIR, '.config', 'opencode', 'skills');
+    expect(existsSync(join(skillsDir, 'test-skill'))).toBe(true);
+    expect(existsSync(join(skillsDir, 'test-skill', 'SKILL.md'))).toBe(true);
   });
 
   it('uninstall removes plugin from opencode.json', () => {
@@ -76,5 +92,31 @@ describe('OpenCodeAdapter', () => {
     const config = JSON.parse(readFileSync(configPath, 'utf-8'));
     expect(config.plugin).not.toContain('loom-engineering');
     expect(config.plugin).toContain('other');
+  });
+
+  it('uninstall cleans up previously copied skills', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.config', 'opencode'));
+    mkdirSync(join(TEST_DIR, '.config', 'opencode', 'skills', 'loom-test'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.config', 'opencode', 'skills', 'loom-test', 'SKILL.md'), '# Test');
+    mkdirSync(join(TEST_DIR, '.config', 'opencode'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.config', 'opencode', 'opencode.json'), JSON.stringify({ plugin: ['loom-engineering'] }));
+
+    adapter.uninstall(TEST_DIR);
+
+    const config = JSON.parse(readFileSync(join(TEST_DIR, '.config', 'opencode', 'opencode.json'), 'utf-8'));
+    expect(config.plugin).not.toContain('loom-engineering');
+    expect(existsSync(join(TEST_DIR, '.config', 'opencode', 'skills', 'loom-test'))).toBe(false);
+  });
+
+  it('_addNpmPlugin does not duplicate existing plugin', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.config', 'opencode'));
+    mkdirSync(join(TEST_DIR, '.config', 'opencode'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.config', 'opencode', 'opencode.json'), JSON.stringify({ plugin: ['loom-engineering'] }));
+
+    const log = [];
+    adapter._addNpmPlugin(TEST_DIR, log);
+    expect(log.some(l => l.includes('already'))).toBe(true);
+    const config = JSON.parse(readFileSync(join(TEST_DIR, '.config', 'opencode', 'opencode.json'), 'utf-8'));
+    expect(config.plugin.filter(p => p === 'loom-engineering').length).toBe(1);
   });
 });

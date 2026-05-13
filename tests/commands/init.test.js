@@ -55,6 +55,7 @@ describe('install command', () => {
     const mockAdapter = {
       toolName: 'cursor',
       getUserDir: () => join(TEST_DIR, '.cursor'),
+      getRulesDir: () => join(TEST_DIR, '.cursor', 'rules'),
       getSkillsDir: () => join(TEST_DIR, '.cursor', 'skills'),
       getCommandsDir: () => join(TEST_DIR, '.cursor', 'commands'),
       supportsPlugin: () => false,

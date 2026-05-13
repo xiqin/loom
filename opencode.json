@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "watcher": {
+    "ignore": [
+      "node_modules",
+      "vendor",
+      "dist",
+      "build",
+      ".cache",
+      ".git",
+      "*.lock",
+      "*.log",
+      "__pycache__",
+      ".venv",
+      "venv",
+      ".coverage",
+      "*.pyc",
+      "*.pyo",
+      "*.egg-info",
+      ".tox"
+    ]
+  }
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { CursorAdapter } from '../../src/adapters/cursor.js';
 
@@ -25,46 +25,98 @@ describe('CursorAdapter', () => {
     expect(adapter.getUserDir()).toContain('.cursor');
   });
 
-  it('getSkillsDir returns ~/.cursor/skills', () => {
-    expect(adapter.getSkillsDir()).toContain(join('.cursor', 'skills'));
+  it('getRulesDir returns ~/.cursor/rules', () => {
+    expect(adapter.getRulesDir()).toContain(join('.cursor', 'rules'));
   });
 
-  it('getCommandsDir returns ~/.cursor/commands', () => {
-    expect(adapter.getCommandsDir()).toContain(join('.cursor', 'commands'));
+  it('getSkillsDir returns null (uses .mdc rules)', () => {
+    expect(adapter.getSkillsDir()).toBeNull();
+  });
+
+  it('getCommandsDir returns null (uses .mdc rules)', () => {
+    expect(adapter.getCommandsDir()).toBeNull();
   });
 
   it('supportsPlugin returns false', () => {
     expect(adapter.supportsPlugin()).toBe(false);
   });
 
-  it('install copies skills and commands to user dir', () => {
+  it('install converts skills to .mdc files', () => {
     vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.cursor'));
 
     const loomRoot = join(TEST_DIR, 'loom-root');
     mkdirSync(join(loomRoot, 'skills', 'test-skill'), { recursive: true });
-    writeFileSync(join(loomRoot, 'skills', 'test-skill', 'SKILL.md'), '# Test');
-    mkdirSync(join(loomRoot, 'commands'), { recursive: true });
-    writeFileSync(join(loomRoot, 'commands', 'test-cmd.md'), '# Test Cmd');
+    writeFileSync(join(loomRoot, 'skills', 'test-skill', 'SKILL.md'), `---
+name: test-skill
+description: A test skill
+---
+# Test Skill
+
+This is a test skill body.
+`);
 
     const log = adapter.install(loomRoot, '1.0.0');
     expect(log.some(l => l.includes('skills'))).toBe(true);
-    expect(log.some(l => l.includes('commands'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.cursor', 'skills', 'test-skill', 'SKILL.md'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.cursor', 'commands', 'test-cmd.md'))).toBe(true);
+    expect(log.some(l => l.includes('converted'))).toBe(true);
+
+    const rulesDir = join(TEST_DIR, '.cursor', 'rules');
+    expect(existsSync(join(rulesDir, 'loom-test-skill.mdc'))).toBe(true);
+
+    const mdcContent = readFileSync(join(rulesDir, 'loom-test-skill.mdc'), 'utf-8');
+    expect(mdcContent).toContain('description:');
+    expect(mdcContent).toContain('alwaysApply: false');
+    expect(mdcContent).toContain('Test Skill');
   });
 
-  it('uninstall removes installed skills and commands', () => {
+  it('install converts commands to .mdc files', () => {
     vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.cursor'));
 
-    // Set up installed files
-    mkdirSync(join(TEST_DIR, '.cursor', 'skills', 'my-skill'), { recursive: true });
-    writeFileSync(join(TEST_DIR, '.cursor', 'skills', 'my-skill', 'SKILL.md'), '# My Skill');
-    mkdirSync(join(TEST_DIR, '.cursor', 'commands'), { recursive: true });
-    writeFileSync(join(TEST_DIR, '.cursor', 'commands', 'my-cmd.md'), '# My Cmd');
+    const loomRoot = join(TEST_DIR, 'loom-root');
+    mkdirSync(join(loomRoot, 'commands'), { recursive: true });
+    writeFileSync(join(loomRoot, 'commands', 'test-cmd.md'), '# /test-cmd\n\nTest command.');
+
+    const log = adapter.install(loomRoot, '1.0.0');
+    expect(log.some(l => l.includes('commands'))).toBe(true);
+    expect(log.some(l => l.includes('converted'))).toBe(true);
+
+    const rulesDir = join(TEST_DIR, '.cursor', 'rules');
+    expect(existsSync(join(rulesDir, 'loom-cmd-test-cmd.mdc'))).toBe(true);
+  });
+
+  it('uninstall removes loom-*.mdc files', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.cursor'));
+
+    const rulesDir = join(TEST_DIR, '.cursor', 'rules');
+    mkdirSync(rulesDir, { recursive: true });
+    writeFileSync(join(rulesDir, 'loom-test-skill.mdc'), 'test');
+    writeFileSync(join(rulesDir, 'loom-cmd-test-cmd.mdc'), 'test');
+    writeFileSync(join(rulesDir, 'other-rule.mdc'), 'other');
 
     const log = adapter.uninstall(TEST_DIR);
     expect(log.some(l => l.includes('removed'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.cursor', 'skills', 'my-skill'))).toBe(false);
-    expect(existsSync(join(TEST_DIR, '.cursor', 'commands', 'my-cmd.md'))).toBe(false);
+
+    expect(existsSync(join(rulesDir, 'loom-test-skill.mdc'))).toBe(false);
+    expect(existsSync(join(rulesDir, 'loom-cmd-test-cmd.mdc'))).toBe(false);
+    expect(existsSync(join(rulesDir, 'other-rule.mdc'))).toBe(true);
+  });
+
+  it('uninstall handles missing rules dir', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.cursor'));
+
+    const log = adapter.uninstall(TEST_DIR);
+    expect(log.some(l => l.includes('no .cursor/rules'))).toBe(true);
+  });
+
+  it('convertSkillToMdc handles SKILL.md without frontmatter', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.cursor'));
+
+    const loomRoot = join(TEST_DIR, 'loom-root');
+    mkdirSync(join(loomRoot, 'skills', 'plain-skill'), { recursive: true });
+    writeFileSync(join(loomRoot, 'skills', 'plain-skill', 'SKILL.md'), '# Plain Skill\n\nNo frontmatter.');
+
+    const log = adapter.install(loomRoot, '1.0.0');
+
+    const rulesDir = join(TEST_DIR, '.cursor', 'rules');
+    expect(existsSync(join(rulesDir, 'loom-plain-skill.mdc'))).toBe(true);
   });
 });

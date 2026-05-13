@@ -80,3 +80,36 @@ mkdirSync(OUT_DIR, { recursive: true });
 writeFileSync(OUT_PATH, code, 'utf-8');
 
 console.log(`✔ Generated ${OUT_PATH} (${schema.tools.length} tools, schema v${schema.version})`);
+
+// ── Sync SUPPORTED_TOOLS to install/uninstall scripts ───────────────────
+const shellList = ids.map(id => `"${id}"`).join(' ');
+const psList = ids.map(id => `"${id}"`).join(', ');
+
+const SHELL_TOOL_TARGETS = [
+  { path: 'install.sh',    pattern: /^SUPPORTED_TOOLS=\([^)]*\)/m,  replacement: `SUPPORTED_TOOLS=(${shellList})` },
+  { path: 'uninstall.sh',  pattern: /^SUPPORTED_TOOLS=\([^)]*\)/m,  replacement: `SUPPORTED_TOOLS=(${shellList})` },
+  { path: 'install.ps1',   pattern: /^\$SupportedTools = @\([^)]*\)/m, replacement: `$SupportedTools = @(${psList})` },
+  { path: 'uninstall.ps1', pattern: /^\$SupportedTools = @\([^)]*\)/m, replacement: `$SupportedTools = @(${psList})` },
+];
+
+let toolSyncCount = 0;
+for (const target of SHELL_TOOL_TARGETS) {
+  const fullPath = join(ROOT, target.path);
+  const content = readFileSync(fullPath, 'utf-8');
+  if (!target.pattern.test(content)) {
+    console.error(`  ✘ ${target.path} — SUPPORTED_TOOLS pattern not found`);
+    continue;
+  }
+  const updated = content.replace(target.pattern, target.replacement);
+  if (content !== updated) {
+    writeFileSync(fullPath, updated, 'utf-8');
+    console.log(`  ✔ ${target.path} → ${ids.length} tools synced`);
+    toolSyncCount++;
+  } else {
+    console.log(`  · ${target.path} — already up to date`);
+  }
+}
+
+if (toolSyncCount > 0) {
+  console.log(`\n  Tool IDs synced to ${toolSyncCount} script(s).`);
+}

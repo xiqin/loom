@@ -5,6 +5,7 @@ import { join } from 'node:path';
 const TEST_DIR = join(import.meta.dirname, '__test_doctor__');
 
 beforeEach(() => {
+  vi.resetModules();
   mkdirSync(TEST_DIR, { recursive: true });
 });
 
@@ -57,6 +58,32 @@ describe('doctor command', () => {
     const sp = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { default: doctor } = await import('../../src/commands/doctor.js');
     await doctor({ tool: 'claude-code' });
+    const output = sp.mock.calls.map(c => c[0]).join('\n');
+    expect(output).toContain('loom doctor');
+    expect(output).toContain('1 skill(s)');
+    sp.mockRestore();
+  });
+
+  it('reports cursor mdc files as skills', async () => {
+    const rulesDir = join(TEST_DIR, '.cursor', 'rules');
+    mkdirSync(rulesDir, { recursive: true });
+    writeFileSync(join(rulesDir, 'loom-test-skill.mdc'), 'test');
+
+    const mockAdapter = {
+      toolName: 'cursor',
+      getUserDir: () => join(TEST_DIR, '.cursor'),
+      getRulesDir: () => rulesDir,
+      supportsPlugin: () => false,
+    };
+
+    vi.doMock('../../src/core/installer.js', () => ({
+      getUserAdapter: async () => mockAdapter,
+      USER_TOOL_IDS: ['cursor'],
+    }));
+
+    const sp = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { default: doctor } = await import('../../src/commands/doctor.js');
+    await doctor({ tool: 'cursor' });
     const output = sp.mock.calls.map(c => c[0]).join('\n');
     expect(output).toContain('loom doctor');
     expect(output).toContain('1 skill(s)');

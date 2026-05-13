@@ -10,6 +10,7 @@
 [CmdletBinding()]
 param(
   [string[]]$Tool = @(),
+  [string]$Version,
   [switch]$DryRun,
   [switch]$FromRelease,
   [switch]$NoColor,
@@ -17,8 +18,9 @@ param(
 )
 
 $Repo = "xiqin/loom"
-$Version = "1.3.2"
-# TODO: replace hardcoded list — import from config/tools.schema.json via generate-tooling.mjs
+# AUTO-SYNC: updated by scripts/generate-tooling.mjs and scripts/sync-version.mjs
+$DefaultVersion = "1.3.2"
+if (-not $Version) { $Version = $DefaultVersion }
 $SupportedTools = @("claude-code", "cursor", "copilot", "opencode", "codex")
 
 # ── Help ────────────────────────────────────────────────────────────────
@@ -35,13 +37,14 @@ FLAGS
   -DryRun             预览删除文件，不实际执行
   -FromRelease        从 GitHub release tag 下载（可重现卸载）
                        默认：本地模式（需 clone 仓库）
+  -Version <ver>      指定下载版本（需配合 -FromRelease 使用）
   -NoColor            禁用颜色输出
   -Help               显示帮助信息
 
 示例
   .\uninstall.ps1 -Tool claude-code
   .\uninstall.ps1 -Tool claude-code -DryRun
-  .\uninstall.ps1 -Tool claude-code -FromRelease
+  .\uninstall.ps1 -Tool claude-code -FromRelease -Version 1.0.0
 "@
   exit 0
 }
@@ -52,7 +55,7 @@ function Say($msg)   { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc
 function Note($msg)  { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc[2m$msg$Esc[0m" } }
 function Ok($msg)    { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc[32m$msg$Esc[0m" } }
 function Warn($msg)  { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc[33m$msg$Esc[0m" } }
-function Err($msg)   { if ($NoColor) { Write-Host $msg } else { Write-Host "$Esc[31m$msg$Esc[0m" } }
+function Err($msg)   { if ($NoColor) { [Console]::Error.WriteLine($msg) } else { [Console]::Error.WriteLine("$Esc[31m$msg$Esc[0m") } }
 
 # ── Validate tool ───────────────────────────────────────────────────────
 $Tools = @()
@@ -105,13 +108,21 @@ function Resolve-Source {
   # Remote: download from release tag
   Note "  mode: release (v$Version)"
 
-  $curlCmd = if (Get-Command "curl.exe" -ErrorAction SilentlyContinue) { "curl.exe" } else { "curl" }
-  if (-not (Get-Command $curlCmd -ErrorAction SilentlyContinue)) {
+  $curlCmd = $null
+  if (Get-Command "curl.exe" -ErrorAction SilentlyContinue) {
+    $curlCmd = "curl.exe"
+  } elseif (Get-Command "curl" -ErrorAction SilentlyContinue) {
+    $curlPath = (Get-Command "curl" -ErrorAction SilentlyContinue).Source
+    if ($curlPath -and -not $curlPath.EndsWith("\WindowsPowerShell\v1.0\curl.exe", [StringComparison]::OrdinalIgnoreCase)) {
+      $curlCmd = "curl"
+    }
+  }
+  if (-not $curlCmd) {
     Err "error: curl is required for -FromRelease"
     exit 1
   }
 
-  $script:CleanupDir = Join-Path $env:TEMP "loom-install-$([Guid]::NewGuid())"
+  $script:CleanupDir = Join-Path $env:TEMP "loom-uninstall-$([Guid]::NewGuid())"
   New-Item -ItemType Directory -Path $CleanupDir -Force | Out-Null
   $script:Cleanup = $true
 
@@ -130,6 +141,10 @@ function Resolve-Source {
     & tar xzf $tarball -C $CleanupDir
   } else {
     Err "error: tar is required for extraction"
+    exit 1
+  }
+  if ($LASTEXITCODE -ne 0) {
+    Err "error: extraction failed"
     exit 1
   }
 
@@ -186,6 +201,8 @@ try {
   $cliArgs = @("uninstall")
   if ($DryRun) { $cliArgs += "--dry-run" }
 
+  $failureCount = 0
+
   foreach ($t in $Tools) {
     Say "→ $t"
     $fullArgs = $cliArgs + @("--tool", $t)
@@ -197,9 +214,11 @@ try {
         Ok "  ✔ $t 卸载完成"
       } else {
         Warn "  ✘ $t 卸载失败"
+        $failureCount++
       }
     } catch {
       Warn "  ✘ $t 卸载失败: $($_.Exception.Message)"
+      $failureCount++
     }
   }
 
@@ -211,3 +230,5 @@ try {
 } finally {
   Cleanup-Temp
 }
+
+if ($failureCount -gt 0) { exit 1 }

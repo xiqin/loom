@@ -25,13 +25,17 @@ export default async function install(options) {
   if (dryRun) {
     console.log(`  [dry-run] Would install loom@${version} for ${tool}\n`);
     console.log(`    user dir:  ${adapter.getUserDir()}`);
-    if (adapter.supportsPlugin()) {
-      console.log('    plugin:    will register via tool plugin system');
+    if (tool === 'cursor') {
+      console.log(`    rules:     ${adapter.getRulesDir()} (loom-*.mdc)`);
     } else {
-      console.log(`    skills:    ${adapter.getSkillsDir()}`);
+      if (adapter.supportsPlugin()) {
+        console.log('    plugin:    will register via tool plugin system');
+      } else {
+        console.log(`    skills:    ${adapter.getSkillsDir()}`);
+      }
+      const cmdDir = adapter.getCommandsDir();
+      if (cmdDir) console.log(`    commands:  ${cmdDir}`);
     }
-    const cmdDir = adapter.getCommandsDir();
-    if (cmdDir) console.log(`    commands:  ${cmdDir}`);
     console.log('');
     return;
   }
