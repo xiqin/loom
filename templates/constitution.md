@@ -73,78 +73,30 @@
 brainstorming → writing-plans → git-worktree → subagent-dev → verification → index-update
 ```
 
-### 第一步：需求设计（brainstorming）
+### 第一步：需求设计（brainstorming）→ 产出 `specs/<date+feature>/spec.md`，用户确认后继续
 
-- 头脑风暴设计方案
-- 产出 `specs/<date+feature>/spec.md`
-- 用户确认 spec 后方可进入下一步
+### 第二步：计划拆解（writing-plans）→ 产出 `specs/<date+feature>/plan.md`，用户确认后继续
 
-### 第二步：计划拆解（writing-plans）
+### 第三步：环境隔离（git-worktree）→ 创建 `feature/<date>-<feature>` 隔离分支
 
-- **硬性前置条件**：`specs/<date+feature>/spec.md` 必须存在
-- **如果不存在，必须停止，提示用户先执行第一步**
-- 按分层拆分 task
-- 产出 `specs/<date+feature>/plan.md`
-- 用户确认 spec 后方可进入下一步
+### 第四步：编码执行（subagent-dev）→ Subagent 隔离派发 + 双审查
 
-### 第三步：环境隔离（git-worktree）
+### 第五步：完成前验证（verification）→ Spec 覆盖/类型一致性/编译测试
 
-- 创建`feature/<date+feature>`隔离分支
-
-### 第四步：编码执行（subagent-dev）
-
-- **硬性前置条件**：`specs/<date+feature>/spec.md`,`specs/<date+feature>/plan.md` 必须存在，git worktree 已创建
-- **如果不存在，必须停止，提示用户先执行前三步**
-- Subagent 隔离派发 + 双审查
-
-### 第五步：完成前验证（verification）
-
-- **硬性前置条件**：所有测试通过（构建 + 静态检查 + 单元测试）
-- Spec 覆盖检查、类型一致性检查、编译测试
-- 验证未通过 → 修复后重新验证
-
-### 第六步：索引更新（index-update）
-
-- 同步工程索引
-- 索引内容必须与实际代码一致
+### 第六步：索引更新（index-update）→ 同步工程索引
 
 **严令禁止跳过任何步骤。每个步骤完成后必须显式触发下一步，不可自行终止。**
 **每个 skill 执行完毕后，必须读取自身的"完成条件与下一步"节并严格遵守。跳过串联视为严重错误。**
 
 ## progress.md 追踪文件
 
-每个功能开发过程中，必须维护 `specs/<date+feature>/progress.md`，格式如下：
+维护 `specs/<date+feature>/progress.md`，格式：
 
-```markdown
-# <feature> — 开发流水线
+| Step | 阶段          | 状态 | 开始  | 完成  | 备注 |
+| ---- | ------------- | ---- | ----- | ----- | ---- |
+| 1    | brainstorming | ✅   | HH:mm | HH:mm |      |
 
-**开始时间：** YYYY-MM-DD HH:mm
-**当前阶段：** Step N/6
-
-| Step | 阶段          | 状态     | 开始时间 | 完成时间 | 备注              |
-| ---- | ------------- | -------- | -------- | -------- | ----------------- |
-| 1    | brainstorming | ✅ 完成  | HH:mm    | HH:mm    |                   |
-| 2    | writing-plans | ✅ 完成  | HH:mm    | HH:mm    |                   |
-| 3    | git-worktree  | ✅ 完成  | HH:mm    | HH:mm    | 分支: feature/xxx |
-| 4    | subagent-dev  | ▶ 进行中 | HH:mm    | —        | task 3/8          |
-| 5    | verification  | ⏳ 等待  | —        | —        |                   |
-| 6    | index-update  | ⏳ 等待  | —        | —        |                   |
-
-## Skill 调用记录
-
-| 时间  | Skill         | 触发原因              | 结果      |
-| ----- | ------------- | --------------------- | --------- |
-| HH:mm | brainstorming | 用户提出需求          | ✅ 已完成 |
-| HH:mm | writing-plans | 设计确认，开始拆 plan | ✅ 已完成 |
-| HH:mm | subagent-dev  | plan 确认，开始编码   | ▶ 执行中  |
-```
-
-**更新规则：**
-
-- 每个 skill 开始执行时：更新对应行状态为 `▶ 进行中`，填写开始时间
-- 每个 skill 执行结束时：更新状态为 `✅ 完成`，填写完成时间
-- 在 Skill 调用记录中追加一行
-- 如果某步骤失败：状态改为 `❌ 失败`，备注写失败原因
+更新规则：开始→▶进行中，完成→✅+时间，失败→❌+原因
 
 ## 治理规则
 

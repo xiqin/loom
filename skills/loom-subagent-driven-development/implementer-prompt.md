@@ -25,11 +25,12 @@
 
 ## 代码风格
 
-- 遵循项目现有代码风格（命名约定、错误处理方式、日志格式等）
-- 新增代码与项目风格保持一致，不引入新的风格变体
-- 使用项目统一的错误处理模式（从 subagent-context.md 中读取 ERROR_PATTERN）
-- 使用项目统一的日志组件（从 subagent-context.md 中读取 LOGGING_PATTERN），禁止使用语言默认的调试打印
-- 使用项目统一的响应格式（从 subagent-context.md 中读取 RESPONSE_PATTERN）
+遵循 `.loom/rules/project-structure.md` 中的编码要求，与项目现有代码风格保持一致。
+
+重点遵守：
+- 使用项目统一错误处理模式（从 subagent-context.md 读取 ERROR_PATTERN）
+- 使用项目统一日志组件（从 subagent-context.md 读取 LOGGING_PATTERN），禁止语言默认调试打印
+- 使用项目统一响应格式（从 subagent-context.md 读取 RESPONSE_PATTERN）
 
 ## TDD 要求
 

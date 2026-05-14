@@ -17,26 +17,8 @@ description: >
 
 ## 状态输出
 
-执行开始时：
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- pipeline [■■■■□□] Step 4/6 — 编码执行 (subagent-dev)
- skill:   subagent-driven-development
- 功能:    <功能名>
- status:  ▶ 开始执行 (N 个 task)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-执行结束时：
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- pipeline [■■■■□□] Step 4/6 — 编码执行 (subagent-dev)
- status:  ✅ 完成 (N/N task PASS, 测试报告已生成)
- 下一步:  → Step 5: verification
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+- 开始：`▶ pipeline [■■■■□□] Step 4/6 — 编码执行 (subagent-dev) | 功能: <功能名> | N 个 task`
+- 完成：`✅ pipeline [■■■■□□] Step 4/6 — 编码执行 | 完成 (N/N task PASS, 测试报告已生成) | → Step 5: verification`
 
 ## 公告
 
@@ -90,23 +72,11 @@ digraph when_to_use {
 
 ## 模型选择
 
-<!-- loom:generate:model-selection -->
-## 模型选择策略
-
-使用最强大的模型来处理每个角色，以节省成本并提高效率：
-
-**机械实现任务**（隔离函数、清晰规范、1-2 个文件）：使用快速、便宜的模型。当计划明确时，大多数实现任务都是机械的
-
-**集成和判断任务**（多文件协调、模式匹配、调试）：使用标准模型
-
-**架构、设计和审查任务**：使用可用的最强模型
-
-**任务复杂度信号：**
-
-- 触及 1-2 个文件且有完整规范 → 便宜模型
+<!-- 模型选择策略详见 writing-plans SKILL.md -->
+机械实现任务→便宜模型，集成判断→标准模型，架构审查→最强模型。
+- 触及1-2个文件且有完整规范 → 便宜模型
 - 触及多个文件且有集成问题 → 标准模型
-- 需要设计判断或广泛的代码库理解 → 最强模型
-<!-- /loom:generate:model-selection -->
+- 需要设计判断或广泛代码库理解 → 最强模型
 
 ## 处理 Implementer 状态
 
@@ -129,43 +99,16 @@ Implementer subagent 报告四种状态之一。适当处理每一种：
 
 ## 执行流程
 
-```dot
-digraph process {
-    rankdir=TB;
-
-    subgraph cluster_per_task {
-        label="每个 Task";
-
-        "派发 implementer subagent" [shape=box];
-        "实现者问问题?" [shape=diamond];
-        "回答问题和提供上下文" [shape=box];
-        "实现者实现、测试、提交、自检" [shape=box];
-        "派发 combined reviewer subagent" [shape=box];
-        "审查通过?" [shape=diamond];
-        "实现者修复问题" [shape=box];
-        "标记 task 完成" [shape=box];
-    }
-
-    "读取计划，提取所有 task，创建 TodoWrite" [shape=box];
-    "还有更多 task?" [shape=diamond];
-    "派发最终代码审查 subagent" [shape=box];
-    "使用 finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
-
-    "读取计划，提取所有 task，创建 TodoWrite" -> "派发 implementer subagent";
-    "派发 implementer subagent" -> "实现者问问题?";
-    "实现者问问题?" -> "回答问题和提供上下文" [label="是"];
-    "回答问题和提供上下文" -> "派发 implementer subagent";
-    "实现者问问题?" -> "实现者实现、测试、提交、自检" [label="否"];
-    "实现者实现、测试、提交、自检" -> "派发 combined reviewer subagent";
-    "派发 combined reviewer subagent" -> "审查通过?";
-    "审查通过?" -> "实现者修复问题" [label="否"];
-    "实现者修复问题" -> "派发 combined reviewer subagent" [label="重新审查"];
-    "审查通过?" -> "标记 task 完成" [label="是"];
-    "标记 task 完成" -> "还有更多 task?";
-    "还有更多 task?" -> "派发 implementer subagent" [label="是"];
-    "还有更多 task?" -> "派发最终代码审查 subagent" [label="否"];
-    "派发最终代码审查 subagent" -> "使用 finishing-a-development-branch";
-}
+```
+读取plan → 对每个task循环:
+  派发implementer → 实现者问问题？
+    ├→ 是 → 回答并提供上下文 → 重新派发
+    └→ 否 → implementer实现/测试/提交/自检
+      → 派发combined reviewer → 审查通过？
+        ├→ 否 → implementer修复 → 重新审查（循环）
+        └→ 是 → 标记task完成 → 还有更多task？
+              ├→ 是 → 下一个task
+              └→ 否 → 派发test-reporter → 全部PASS → finishing-branch
 ```
 
 ## 派发前准备
@@ -227,45 +170,41 @@ digraph process {
 
 **在 test-reporter 之前，先执行全量编译和测试。全部通过后方可派发 test-reporter 生成报告。同时更新 `specs/<date+feature>/progress.md`。**
 
-## 红线（Red Flags）
+## 红线与关键规则
 
 **永远不要：**
 
 - 禁止在没有明确用户同意的情况下在主/主分支上开始实现
-- 禁止在 spec 未获得用户批准、plan 未确认前开始任何代码实现
+- 禁止在 spec 未获用户批准、plan 未确认前开始任何代码实现
 - 禁止跳过审查（spec 合规 + 代码质量）
 - 禁止在有未修复问题的情况下继续
-- 默认禁止并行派发多个实现 subagent。如需并行，必须使用 `loom-dispatching-parallel-agents skill`，且确认任务间无依赖和文件冲突
+- 禁止默认并行派发多个实现 subagent（如需并行，必须使用 `loom-dispatching-parallel-agents skill`且确认任务间无依赖和文件冲突）
 - 禁止跳过场景设置上下文（subagent 需要理解 task 适合的位置）
 - 禁止忽略 subagent 问题（在让他们继续之前回答）
-- 禁止接受 spec 合规的"足够接近"（spec reviewer 发现问题 = 未完成）
+- 禁止接受 spec 合规的"足够接近"
 - 禁止跳过审查循环（reviewer 发现问题 = 实现者修复 = 再次审查）
-- 禁止让实现者自检替代实际审查（两者都需要）
+- 禁止让实现者自检替代实际审查
 - 任一审查有未解决问题时禁止移动到下一个 task
 
-**如果 subagent 问问题：**
+**关键规则：**
 
-- 清晰完整地回答
-- 如果需要，提供额外上下文
-- 不要催促他们实现
+1. subagent 互不继承上下文 — 每个 subagent 是全新会话，必须完整传入所需上下文
+2. BLOCKER 阻断 — 任一审查有 BLOCKER 或 Critical 偏差则不进入下一个 task
+3. TDD 验证 — implementer 必须编写并运行单元测试，测试失败等同 BLOCKER
+4. 测试报告必须生成 — 全部 task 完成后必须派发 test-reporter
+5. 停止条件 — 遇到 plan 不清晰、重复修复无效、spec 有歧义时立即停止并询问用户
 
-**如果 reviewer 发现问题：**
+**如果 subagent 问问题：** 清晰完整地回答，提供额外上下文，不催促实现。
 
-- 实现者（相同 subagent）修复它们
-- Reviewer 再次审查
-- 重复直到批准
-- 禁止跳过重新审查
+**如果 reviewer 发现问题：** 实现者修复→再次审查→直到批准，禁止跳过重新审查。
 
-**如果 subagent 失败 task：**
-
-- 使用特定指令派发修复 subagent
-- 不要尝试手动修复（上下文污染）
+**如果 subagent 失败 task：** 使用特定指令派发修复 subagent，不手动修复（上下文污染）。
 
 ## 集成
 
 **必需工作流技能：**
 
-- **loom-using-git-worktrees** - 确保隔离工作空间（创建一个或验证现有）
+- **loom-using-git-worktrees** - 确保隔离工作空间
 - **loom-writing-plans** - 创建此技能执行的计划
 - **loom-requesting-code-review** - reviewer subagent 的代码审查模板
 - **loom-finishing-a-development-branch** - 所有 task 后完成开发
@@ -273,15 +212,6 @@ digraph process {
 **Subagent 应该使用：**
 
 - **loom-test-driven-development** - Subagent 遵循每个 task 的 TDD
-
-## 关键规则
-
-1. **subagent 互不继承上下文** — 每个 subagent 是全新会话，必须完整传入所需上下文
-2. **绝不跳过审查** — implementer 完成后必须过 reviewer
-3. **BLOCKER 阻断** — 任一审查有 BLOCKER 或 Critical 偏差则不进入下一个 task
-4. **TDD 验证** — implementer 必须编写并运行单元测试，测试失败等同 BLOCKER
-5. **测试报告必须生成** — 全部 task 完成后必须派发 test-reporter，报告有 FAIL 则禁止进入 index-update
-6. **停止条件** — 遇到 plan 不清晰、重复修复无效、spec 有歧义时，立即停止并询问用户
 
 ## 完成条件与下一步
 

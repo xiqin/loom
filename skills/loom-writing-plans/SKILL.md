@@ -15,26 +15,8 @@ description: >
 
 ## 状态输出
 
-执行开始时：
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- pipeline [■■□□□□] Step 2/6 — 计划拆解 (writing-plans)
- skill:   writing-plans
- 功能:    <功能名>
- status:  ▶ 开始执行
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-执行结束时：
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- pipeline [■■□□□□] Step 2/6 — 计划拆解 (writing-plans)
- status:  ✅ 完成 (N 个 task)
- 下一步:  等待用户确认 → Step 3: git-worktree
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+- 开始：`▶ pipeline [■■□□□□] Step 2/6 — 计划拆解 (writing-plans) | 功能: <功能名> | status: 开始`
+- 完成：`✅ pipeline [■■□□□□] Step 2/6 — 计划拆解 | 完成 (N 个 task) | → Step 3: git-worktree`
 
 ## 公告
 
@@ -218,17 +200,11 @@ def function(input):
 
 ## 流程图
 
-```dot
-digraph writing_plans {
-    "读取 spec" -> "读取项目约束";
-    "读取项目约束" -> "规划文件结构";
-    "规划文件结构" -> "按分层拆分 task";
-    "按分层拆分 task" -> "编写 task 详细内容";
-    "编写 task 详细内容" -> "检查清单";
-    "检查清单" -> "执行交接";
-    "执行交接" -> "loom-subagent-driven-development" [label="推荐"];
-    "执行交接" -> "executing-plans" [label="备选"];
-}
+```
+读取spec → 读取项目约束 → 规划文件结构 → 按分层拆分task → 编写task详细内容 → 检查清单
+                                                                      │
+                                              推荐路径 → subagent-dev
+                                              备选路径 → executing-plans
 ```
 
 ## 完成条件与下一步

@@ -24,16 +24,7 @@ description: >
 没有失败的测试在先 → 不写生产代码
 ```
 
-**先写了代码？** 删除它。从头开始。
-
-**没有例外：**
-
-- 不要保留作为"参考"
-- 不要"改编"它
-- 不要看它
-- 删除意味着删除
-
-从测试开始重新实现。句号。
+**先写了代码？** 删除它。从头开始。TDD 无例外。
 
 ## 何时使用
 
@@ -98,20 +89,7 @@ test('重试失败操作 3 次', async () => {
 
 清晰名称，测试真实行为，一件事
 
-**坏的测试示例：**
-
-```language
-test('retry works', async () => {
-  const mock = jest.fn()
-    .mockRejectedValueOnce(new Error())
-    .mockRejectedValueOnce(new Error())
-    .mockResolvedValueOnce('success');
-  await retryOperation(mock);
-  expect(mock).toHaveBeenCalledTimes(3);
-});
-```
-
-模糊名称，测试 mock 不是代码
+**坏的测试示例：** 详见 `REFERENCE/testing-anti-patterns.md` 反模式1 — 测试mock行为而非真实行为
 
 ### Step 3：绿（写最少代码）
 
@@ -205,40 +183,11 @@ async function retryOperation<T>(
 
 ## 为什么顺序很重要
 
-**"我会在之后写测试来验证它是否工作"**
+详见 `REFERENCE/common-excuses.md`。核心观点：
 
-测试后写的代码立即通过。立即通过证明不了什么：
-
-- 可能测试错误的东西
-- 可能测试实现，不是行为
-- 可能错过你忘记的边界情况
-- 你从没看到它抓住 bug
-
-测试优先迫使你看到测试失败，证明它确实测试了什么。
-
-**"我已经手动测试了所有边界情况"**
-
-手动测试是临时的。你以为测试了一切，但：
-
-- 没有记录你测试了什么
-- 代码更改时无法重新运行
-- 压力下容易忘记情况
-- "我试的时候能用" ≠ 全面
-
-自动化测试是系统的。它们每次都以相同的方式运行。
-
-**"删除 X 小时的工作是浪费"**
-
-沉没成本谬误。时间已经消失了。你现在的选择：
-
-- 删除并从 TDD 重新开始（多 X 小时，高信心）
-- 保留它并在之后添加测试（30 分钟，低信心，可能有 bug）
-
-"浪费"是保留你无法信任的代码。没有真实测试的可用代码是技术债务。
-
-## 常见合理化借口
-
-详见 `REFERENCE/common-excuses.md`。核心原则：生产代码 → 测试存在且先失败，否则不是 TDD。
+- 测试后通过≠验证 — 可能测试了错误的东西
+- 手动测试不可重演 — 自动化才能系统验证
+- 保留未验证代码是沉没成本谬误 — 删除并从TDD重新开始
 
 ## 红旗 — 停止并重新开始
 
@@ -348,24 +297,8 @@ PASS
 
 ## 流程图
 
-```dot
-digraph tdd_cycle {
-    rankdir=LR;
-    red [label="红\n写失败测试", shape=box, style=filled, fillcolor="#ffcccc"];
-    verify_red [label="验证失败\n是否正确", shape=diamond];
-    green [label="绿\n最小代码", shape=box, style=filled, fillcolor="#ccffcc"];
-    verify_green [label="验证通过\n全绿", shape=diamond];
-    refactor [label="重构\n清理", shape=box, style=filled, fillcolor="#ccccff"];
-    next [label="下一个", shape=ellipse];
-
-    red -> verify_red;
-    verify_red -> green [label="是"];
-    verify_red -> red [label="失败\n不正确"];
-    green -> verify_green;
-    verify_green -> refactor [label="是"];
-    verify_green -> green [label="否"];
-    refactor -> verify_green [label="保持\n绿色"];
-    verify_green -> next;
-    next -> red;
-}
+```
+红(写失败测试) → 验证失败? ─是→ 绿(写最小代码) → 验证通过? ─是→ 重构(优化) → 验证通过? ─是→ 下一个
+                     │否                         │否                    │否
+                     └→ 修复测试                  └→ 继续实现             └→ 回到绿
 ```

@@ -21,9 +21,8 @@ description: >
 
 ## 状态输出
 
-执行开始时：
-
-```
+- 开始：`▶ pipeline [■■■■■■] Step 6/6 — 索引更新 (index-update) | status: 开始`
+- 完成：`✅ pipeline [■■■■■■] Step 6/6 — 索引更新 | 完成 | → 工作完成，可以提交`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  pipeline [■■■■■■] Step 6/6 — 索引更新 (index-update)
  skill:   index-update

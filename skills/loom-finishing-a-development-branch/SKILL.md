@@ -86,42 +86,10 @@ EOF
 
 ### Step 6：执行用户选择
 
-**如果选择 Merge：**
-
-```bash
-git checkout <branch>
-git merge --no-ff feature/<date>-<feature-name>
-git push origin <branch>
-```
-
-**如果选择 Pull Request：**
-
-```bash
-git push -u origin feature/<date>-<feature-name>
-gh pr create --title "feat: <功能描述>" --body "$(cat <<'EOF'
-## Summary
-- 变更 1
-- 变更 2
-
-## Test plan
-- [x] 编译通过
-- [x] 测试通过
-- [x] 代码审查通过
-EOF
-)"
-```
-
-**如果选择 Keep：**
-
-- 保持当前状态
-- 提醒用户稍后继续
-
-**如果选择 Discard：**
-
-```bash
-git checkout <branch>
-git branch -D feature/<date>-<feature-name>
-```
+1. **Merge**: `git checkout <branch> && git merge --no-ff feature/<date>-<name> && git push origin <branch>`
+2. **Pull Request**: `git push -u origin feature/<date>-<name>` → `gh pr create --title "feat: <描述>" --body "..."`
+3. **Keep**: 保持分支状态，提醒用户稍后继续
+4. **Discard**: `git checkout <branch> && git branch -D feature/<date>-<name>`
 
 ## 提交信息规范
 
@@ -151,14 +119,10 @@ git branch -D feature/<date>-<feature-name>
 
 ## 流程图
 
-```dot
-digraph finishing {
-    "确认开发完成" -> "检查分支状态";
-    "检查分支状态" -> "运行最终验证";
-    "运行最终验证" -> "展示选项";
-    "展示选项" -> "Merge" [label="选择 1"];
-    "展示选项" -> "Pull Request" [label="选择 2"];
-    "展示选项" -> "Keep" [label="选择 3"];
-    "展示选项" -> "Discard" [label="选择 4"];
-}
+```
+确认开发 → 检查分支 → 运行验证 → 展示选项
+                                      ├→ Merge（合并到主分支）
+                                      ├→ Pull Request（创建PR）
+                                      ├→ Keep（保持分支）
+                                      └→ Discard（丢弃变更）
 ```

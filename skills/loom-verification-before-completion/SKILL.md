@@ -10,9 +10,8 @@ description: >
 
 ## 状态输出
 
-执行开始时：
-
-```
+- 开始：`▶ pipeline [■■■■■□] Step 5/6 — 完成前验证 (verification) | status: 开始`
+- 完成：`✅ pipeline [■■■■■□] Step 5/6 — 完成前验证 | 完成 | → Step 6: index-update`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  pipeline [■■■■■□] Step 5/6 — 完成前验证 (verification)
  skill:   verification-before-completion
@@ -60,27 +59,25 @@ description: >
 
 **发现Red Flag？** 立即停止，运行实际命令，读取输出，然后才声称。
 
-## 验证清单
+## 执行流程
 
-在宣布任务完成前，必须执行以下检查：
-
-### 1. Spec 覆盖检查
+### Step 1：Spec 覆盖检查
 
 - [ ] 浏览 spec 中的每个部分/需求
 - [ ] 可以指向实现它的 task
 - [ ] 列出任何缺口
 
-### 2. 占位符扫描
+### Step 2：占位符扫描
 
-- [ ] 搜索计划中的Red Flag — "TBD"、"TODO"、"implement later"
-- [ ] 修复它们
+- [ ] 搜索 "TBD"、"TODO"、"implement later"、"fill in details"
+- [ ] 修复所有占位符
 
-### 3. 类型一致性
+### Step 3：类型一致性检查
 
-- [ ] 后面 task 中使用的类型、方法签名和属性名与早期 task 中定义的匹配
-- [ ] 函数在 Task 3 中叫 `clearLayers()` 但在 Task 7 中叫 `clearFullLayers()` 是 bug
+- [ ] 后续 task 中使用的类型、方法签名和属性名与早期 task 定义匹配
+- [ ] 函数命名一致（如 clearLayers vs clearFullLayers）
 
-### 4. 编译验证
+### Step 4：运行编译和测试
 
 <!-- loom:generate:rule:build-vet-test-cmd -->
 **构建/检查/测试命令**
@@ -88,57 +85,31 @@ description: >
 读取 `.loom/memory/constitution.md` 中的 BUILD_CMD/VET_CMD/TEST_CMD 并执行验证。
 <!-- /loom:generate:rule:build-vet-test-cmd -->
 
-### 7. 代码审查
+- [ ] BUILD_CMD 通过
+- [ ] VET_CMD 通过
+- [ ] TEST_CMD 通过
+
+### Step 5：代码质量检查
 
 - [ ] 遵守编码红线（读取 constitution.md，逐一检查）
 - [ ] 架构分层职责清晰，不跨层写逻辑
 - [ ] 无硬编码配置
-- [ ] 无不安全的字符串拼接（SQL/命令/HTML 等）
+- [ ] 无不安全的字符串拼接
 - [ ] 错误处理正确
 - [ ] 日志格式规范
 
-### 8. 功能验证
+### Step 6：功能验证
 
 - [ ] spec.md 中的所有功能已实现
 - [ ] 功能点可正常使用
 - [ ] 输出/响应符合预期
 - [ ] 错误处理正确
 
-### 9. 文档同步
+### Step 7：文档同步
 
 - [ ] ENGINEERING-INDEX.md 已更新
 - [ ] MEMORY.md 已更新（如需要）
 - [ ] 进度追踪已更新
-
-## 执行流程
-
-### Step 1：Spec 覆盖检查
-
-浏览 spec 中的每个部分/需求。可以指向实现它的 task。列出任何缺口。
-
-### Step 2：占位符扫描
-
-搜索计划中的Red Flag — 任何 "TBD"、"TODO"、"implement later"、"fill in details"、"Similar to Task N"。修复它们。
-
-### Step 3：类型一致性检查
-
-后面 task 中使用的类型、方法签名和属性名是否与早期 task 中定义的匹配？函数在 Task 3 中叫 `clearLayers()` 但在 Task 7 中叫 `clearFullLayers()` 是 bug。
-
-### Step 4：运行编译和测试
-
-读取 `.loom/memory/constitution.md` 中的 BUILD_CMD、VET_CMD、TEST_CMD，依次执行。
-
-### Step 5：检查代码质量
-
-对照编码红线逐一检查。
-
-### Step 6：对照 spec 验证
-
-读取 `specs/<date+feature>/spec.md`，确认所有功能已实现。
-
-### Step 7：确认文档同步
-
-检查索引文件是否已更新。
 
 ### Step 8：输出验证报告
 
@@ -181,19 +152,9 @@ description: >
 
 ## 流程图
 
-```dot
-digraph verification {
-    "Spec 覆盖检查" -> "占位符扫描";
-    "占位符扫描" -> "类型一致性检查";
-    "类型一致性检查" -> "编译验证";
-    "编译验证" -> "静态分析";
-    "静态分析" -> "测试验证";
-    "测试验证" -> "代码审查";
-    "代码审查" -> "功能验证";
-    "功能验证" -> "文档同步";
-    "文档同步" -> "输出验证报告";
-    "输出验证报告" -> "完成" [label="全部通过"];
-    "输出验证报告" -> "修复" [label="有失败"];
-    "修复" -> "Spec 覆盖检查";
-}
+```
+Spec覆盖 → 占位符扫描 → 类型一致性 → 编译验证 → 静态分析 → 测试验证
+→ 代码质量 → 功能验证 → 文档同步 → 输出报告
+                                        ├→ 全部通过 → 完成
+                                        └→ 有失败 → 修复 → 回到Spec覆盖（循环）
 ```

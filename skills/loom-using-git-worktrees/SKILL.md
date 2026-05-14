@@ -94,15 +94,7 @@ git branch --show-current
 
 ## 状态输出
 
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- pipeline [■■■□□□] Step 3/6 — git-worktree
- 功能:    <feature-name>
- status:  ✅ 完成
- 分支:    feature/<date>-<feature-name>
- 下一步:  → Step 4: subagent-dev
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+- 完成：`✅ pipeline [■■■□□□] Step 3/6 — git-worktree | 功能: <feature-name> | 分支: feature/<date>-<name> | → Step 4: subagent-dev`
 
 ## 分支命名规则
 
@@ -131,13 +123,8 @@ git branch --show-current
 
 ## 流程图
 
-```dot
-digraph git_worktrees {
-    "检查当前状态" -> "创建功能分支";
-    "创建功能分支" -> "验证测试基线";
-    "验证测试基线" -> "确认分支状态";
-    "确认分支状态" -> "触发 subagent-dev";
-}
+```
+检查当前状态 → 创建隔离分支 → 安装依赖验证基线 → 确认分支状态 → 触发 subagent-dev
 ```
 
 ## 完成条件与下一步

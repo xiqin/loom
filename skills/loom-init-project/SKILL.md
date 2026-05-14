@@ -17,9 +17,8 @@ description: >
 
 ## 状态输出
 
-执行开始时：
-
-```
+- 开始：`▶ pipeline [init] — 项目初始化 (init-project) | status: 开始`
+- 完成：`✅ pipeline [init] — 项目初始化 | 完成 | 4 个核心文件 + N 个工具适配文件 | → 检查并完善 [TODO]`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  pipeline [init] — 项目初始化 (init-project)
  skill:   init-project
@@ -225,92 +224,23 @@ alwaysApply: true
 
 **5.3.1 忽略配置模板**
 
-通用忽略列表（所有工具共享）：
+所有工具共享以下通用忽略列表：
 
 ```
-node_modules/
-vendor/
-dist/
-build/
-.cache/
-.git/
-*.lock
-*.log
-__pycache__/
-.venv/
-venv/
-.coverage/
-*.pyc
-*.pyo
-*.egg-info/
-.tox/
+node_modules/ vendor/ dist/ build/ .cache/ .git/ *.lock *.log
+__pycache__/ .venv/ venv/ .coverage/ *.pyc *.pyo *.egg-info/ .tox/
 ```
 
-**Claude Code** (`.claudeignore`)：
+| 工具 | 输出文件 | 额外条目 | 备注 |
+|------|---------|---------|------|
+| Claude Code | `.claudeignore` | — | 自动生成 `# 由 loom init-project 自动生成` |
+| Cursor | `.cursorignore` | — | 同上 |
+| Codex | `.codexignore` | — | 同上 |
+| OpenCode | `opencode.json` 的 `watcher.ignore` | — | 合并到已有配置，不覆盖其他字段 |
 
-```
-# 由 loom init-project 自动生成
-node_modules/
-vendor/
-dist/
-build/
-.cache/
-.git/
-*.lock
-*.log
-__pycache__/
-.venv/
-venv/
-.coverage/
-*.pyc
-*.pyo
-*.egg-info/
-.tox/
-```
-
-**OpenCode** (`opencode.json` 的 `watcher.ignore`)：
-
-在已有的 `opencode.json` 中合并 `watcher.ignore` 字段，不覆盖用户已有配置。
-
-**Cursor** (`.cursorignore`)：
-
-```
-# 由 loom init-project 自动生成
-node_modules/
-vendor/
-dist/
-build/
-.cache/
-.git/
-*.lock
-*.log
-__pycache__/
-.venv/
-venv/
-```
-
-**Codex** (`.codexignore`)：
-
-```
-# 由 loom init-project 自动生成
-node_modules/
-vendor/
-dist/
-build/
-.cache/
-.git/
-*.lock
-*.log
-__pycache__/
-.venv/
-venv/
-```
-
-**生成规则：**
-
+生成规则：
 - 根据项目语言追加特定忽略项（如 Python 追加 `__pycache__/`、`.venv/`）
 - 已有忽略文件时，检查是否包含 `loom` 标记，有则覆盖，无则跳过并提示
-- OpenCode 的 `watcher.ignore` 合并到已有 `opencode.json`，不覆盖其他字段
 
 **5.4 分发执行**
 
@@ -358,47 +288,14 @@ venv/
 
 ## 模板变量
 
-| 变量                     | 来源                  | 示例                                          |
-| ------------------------ | --------------------- | --------------------------------------------- |
-| `{{PROJECT_NAME}}`       | 目录名 / go module    | my-project                                    |
-| `{{PROJECT_DESC}}`       | README / 用户输入     | 项目描述                                      |
-| `{{LANGUAGE}}`           | go.mod / package.json | Go 1.24                                       |
-| `{{WEB_FRAMEWORK}}`      | import 分析           | Gin 1.9                                       |
-| `{{ORM}}`                | import 分析           | GORM + GORM Gen                               |
-| `{{DATABASE}}`           | import 分析           | MySQL 5.7                                     |
-| `{{CACHE}}`              | import 分析           | Redis                                         |
-| `{{LOGGING}}`            | import 分析           | Zap                                           |
-| `{{DI}}`                 | import 分析           | Google Wire                                   |
-| `{{ARCH_PATTERN}}`       | 目录结构推断          | Router→Controller→Service→Repository          |
-| `{{ENTRY_POINTS}}`       | cmd/ / main.\* 扫描   | cmd/server, cmd/queue                         |
-| `{{TEST_CMD}}`           | 语言检测              | go test ./... -v -count=1                     |
-| `{{BUILD_CMD}}`          | 语言检测              | go build ./...                                |
-| `{{VET_CMD}}`            | 语言检测              | go vet ./...                                  |
-| `{{ERROR_PATTERN}}`      | 源码分析              | errs.New(code, msg)                           |
-| `{{RESPONSE_PATTERN}}`   | 源码分析              | response.Backend\*\*\*Response                |
-| `{{CODING_REDLINES}}`    | 模式检测 + 默认       | 自动生成编码红线列表                          |
-| `{{LOGGING_PATTERN}}`    | 源码分析              | logger.Info("描述", zap.String("key", value)) |
-| `{{DI_PATTERN}}`         | 源码分析              | Google Wire                                   |
-| `{{ARCH_PRINCIPLE}}`     | 架构推断              | 分层架构                                      |
-| `{{ARCH_DESC}}`          | 架构推断              | Router→Controller→Service→Repository          |
-| `{{DI_PRINCIPLE}}`       | DI 检测               | 依赖注入                                      |
-| `{{DI_DESC}}`            | DI 检测               | Google Wire 自动生成依赖图                    |
-| `{{CONFIG_PRINCIPLE}}`   | 配置检测              | 配置外置                                      |
-| `{{CONFIG_DESC}}`        | 配置检测              | 环境变量 + 配置文件分离                       |
-| `{{ERROR_PRINCIPLE}}`    | 错误处理检测          | 统一错误处理                                  |
-| `{{ERROR_DESC}}`         | 错误处理检测          | 统一错误码 + 包装错误                         |
-| `{{CODEGEN_PRINCIPLE}}`  | 代码生成检测          | 代码生成                                      |
-| `{{CODEGEN_DESC}}`       | 代码生成检测          | GORM Gen 自动生成 Model                       |
-| `{{LANGUAGE_VERSION}}`   | 版本检测              | Go 1.24                                       |
-| `{{FRAMEWORK_VERSION}}`  | 版本检测              | Gin 1.9                                       |
-| `{{ORM_VERSION}}`        | 版本检测              | GORM v2                                       |
-| `{{DATABASE_VERSION}}`   | 版本检测              | MySQL 5.7                                     |
-| `{{CACHE_VERSION}}`      | 版本检测              | go-redis v9                                   |
-| `{{LOGGING_VERSION}}`    | 版本检测              | Zap v1.27                                     |
-| `{{DI_VERSION}}`         | 版本检测              | Wire v0.6                                     |
-| `{{DEV_FLOW}}`           | 用户确认              | clone → branch → code → test → PR             |
-| `{{DIRECTORY_TREE}}`     | 目录扫描              | 自动生成目录树                                |
-| `{{TECH_STACK_SUMMARY}}` | 汇总                  | Go 1.24 + Gin + GORM + MySQL                  |
+| 分组 | 变量 | 来源 |
+|------|------|------|
+| 技术栈 | PROJECT_NAME, PROJECT_DESC, LANGUAGE, WEB_FRAMEWORK, ORM, DATABASE, CACHE, LOGGING, DI | Step 1 扫描 |
+| 架构 | ARCH_PATTERN, ARCH_PRINCIPLE, ARCH_DESC, DIRECTORY_TREE, ENTRY_POINTS | Step 3 推断 |
+| 命令 | BUILD_CMD, VET_CMD, TEST_CMD, LANGUAGE_VERSION, FRAMEWORK_VERSION, ORM_VERSION, DATABASE_VERSION, CACHE_VERSION, LOGGING_VERSION, DI_VERSION | Step 1 生成 |
+| 模式 | ERROR_PATTERN, RESPONSE_PATTERN, CODING_REDLINES, LOGGING_PATTERN, DI_PATTERN | Step 2 分析 |
+| 配置 | ARCH_PRINCIPLE/DESC, DI_PRINCIPLE/DESC, CONFIG_PRINCIPLE/DESC, ERROR_PRINCIPLE/DESC, CODEGEN_PRINCIPLE/DESC | Step 2+推断 |
+| 其他 | DEV_FLOW, TECH_STACK_SUMMARY | 用户确认+汇总 |
 
 ## 约束
 

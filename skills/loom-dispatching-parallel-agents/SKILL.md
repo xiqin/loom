@@ -52,50 +52,11 @@ description: >
 
 ```
 派发 Task 1 subagent (cheap) ──→ ┐
-                                ├→ 全部完成后进入组 2
+                                  ├→ 全部完成后进入组 2
 派发 Task 2 subagent (cheap) ──→ ┘
 ```
 
-**并发工作流图：**
-
-```dot
-digraph parallel_execution {
-    rankdir=TB;
-
-    subgraph cluster_group1 {
-        label="组 1 (cheap model)";
-        "Task 1 subagent" -> "完成";
-        "Task 2 subagent" -> "完成";
-    }
-
-    "组 1 全部完成" -> "组 2";
-
-    subgraph cluster_group2 {
-        label="组 2 (standard model)";
-        "Task 3 subagent" -> "完成";
-        "Task 4 subagent" -> "完成";
-    }
-
-    "组 2 全部完成" -> "组 3";
-
-    "组 3" -> "Task 5 subagent (capable)";
-}
-```
-
-### Step 4：等待并收集结果
-
-1. 等待所有并行 subagent 完成
-2. 收集每个 subagent 的输出
-3. 验证所有任务成功
-4. 如有失败，按顺序重新执行失败任务
-
-### Step 5：处理冲突
-
-如果并行任务有潜在冲突（如修改同一文件）：
-
-1. 按顺序执行冲突任务
-2. 或将冲突任务拆分到不同组
-3. 使用文件锁或队列机制（如适用）
+模型选择：并行任务通常使用便宜模型（机械实现），集成/复杂任务使用标准/强模型。
 
 ## 并行派发模板
 
@@ -125,14 +86,8 @@ digraph parallel_execution {
 
 ## 流程图
 
-```dot
-digraph dispatching {
-    "分析任务依赖" -> "创建并行组";
-    "创建并行组" -> "并行派发";
-    "并行派发" -> "等待并收集结果";
-    "等待并收集结果" -> "处理冲突" [label="有冲突"];
-    "等待并收集结果" -> "完成" [label="全部成功"];
-    "处理冲突" -> "重新派发";
-    "重新派发" -> "等待并收集结果";
-}
+```
+分析依赖 → 创建并行组 → 并行派发 → 等待收集结果
+                                       ├→ 有冲突 → 处理冲突 → 重新派发
+                                       └→ 全部成功 → 完成
 ```
