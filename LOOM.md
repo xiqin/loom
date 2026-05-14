@@ -36,7 +36,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 | loom-using-git-worktrees | feature 分支 | 创建隔离分支, +测试基线验证 |
 | loom-subagent-driven-development | 源码 + 测试报告 | Subagent 派发 + 双重审查,独立模板文件、4种状态处理 |
 | loom-verification-before-completion | 验证报告 | 完成前验证, +Spec覆盖、类型一致性、编译测试 |
-| loom-index-update | ENGINEERING-INDEX.md | 工程索引同步 |
+| loom-index-update | 知识图谱 或 ENGINEERING-INDEX.md | 工程索引同步 |
 
 **辅助 Skills：**
 
@@ -77,9 +77,9 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 
 代码变更后同步更新：
 
-1. `ENGINEERING-INDEX.md` — 新增/删除了模块、路由、控制器、服务
-2. `.loom/memory/MEMORY.md` — 踩坑、用户偏好、变更要点
-3. `.claude/CLAUDE.md` — 引入了新的约定或命令
+1.  — 新增/删除了模块、路由、控制器、服务（graphify 可用时由知识图谱替代）
+2.  `.loom/memory/MEMORY.md` — 踩坑、用户偏好、变更要点
+3.  `{{ENTRY_FILE}}` — 引入了新的约定或命令
 
 ## 记忆
 

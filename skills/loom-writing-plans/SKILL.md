@@ -207,8 +207,16 @@ def function(input):
                                               备选路径 → executing-plans
 ```
 
+## progress.md 更新
+
+**开始执行时**：更新 `specs/<date+feature>/progress.md`，将 Step 2 状态设为 `▶ 进行中`，**开始时间填写当前时间（HH:mm 格式，如 14:30）**；在 Skill 调用记录中追加一行，时间列填写当前时间。
+
+**执行完成时**：将 Step 2 状态更新为 `✅ 完成`，**完成时间填写当前时间（HH:mm 格式）**；在 Skill 调用记录中更新对应行结果为 `✅ 已完成`，时间列填写完成时的时间。
+
+**关键：时间必须填入实际的 HH:mm 数值（如 14:30），禁止填入字面量 "HH:mm"。**
+
 ## 完成条件与下一步
 
-plan.md 保存并自检完毕后，必须同时更新 `specs/<date+feature>/progress.md`，**等待用户确认 plan**。
+plan.md 保存并自检完毕后，必须同时更新 `specs/<date+feature>/progress.md`（按上述规则填写完成时间），**等待用户确认 plan**。
 
 用户确认后，**必须立即触发 git-worktree**（loom-using-git-worktrees skill）。

@@ -152,7 +152,7 @@ pkg/          → 公共工具包
 | `templates/project-structure.md`         | `.loom/rules/project-structure.md`    | 工程结构约束        |
 | `templates/memory.md`                    | `.loom/memory/MEMORY.md`              | 记忆文件（空模板）  |
 | 从 constitution + project-structure 提取 | `.loom/templates/subagent-context.md` | 子 agent 精简上下文 |
-| `templates/engineering-index.md`         | `.loom/ENGINEERING-INDEX.md`          | 工程索引（空模板）  |
+| `templates/engineering-index.md`         | `.loom/ENGINEERING-INDEX.md`          | 工程索引（空模板，graphify 可用时由知识图谱替代）  |
 
 渲染时用 Step 1-3 扫描结果替换模板中的 `{{变量}}`。详见「模板变量」节。
 

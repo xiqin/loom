@@ -66,7 +66,7 @@ graph LR
 | 3 | git-worktree | 创建隔离分支 | feature 分支 |
 | 4 | subagent-dev | 派发 subagent 编码，运行测试 | 源码 + 测试报告 |
 | 5 | verification | 完成前验证（Spec覆盖、类型一致性、编译测试） | 验证报告 |
-| 6 | index-update | 工程索引同步，功能开发完成 | ENGINEERING-INDEX.md |
+| 6 | index-update | 工程索引同步，功能开发完成 | 知识图谱 或 ENGINEERING-INDEX.md |
 
 ### 阶段串联规则
 

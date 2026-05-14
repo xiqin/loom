@@ -90,7 +90,7 @@ const SKILL_DETAILS = {
   'loom-using-git-worktrees': { output: 'feature 分支', note: '创建隔离分支, +测试基线验证' },
   'loom-subagent-driven-development': { output: '源码 + 测试报告', note: 'Subagent 派发 + 双重审查,独立模板文件、4种状态处理' },
   'loom-verification-before-completion': { output: '验证报告', note: '完成前验证, +Spec覆盖、类型一致性、编译测试' },
-  'loom-index-update': { output: 'ENGINEERING-INDEX.md', note: '工程索引同步' },
+  'loom-index-update': { output: '知识图谱 或 ENGINEERING-INDEX.md', note: '工程索引同步' },
   'loom-init-project': { note: '项目初始化（扫描 + 生成宪章/结构）' },
   'loom-using-loom': { note: 'loom 框架使用指南（本 skill）' },
   'loom-test-driven-development': { note: 'TDD 测试驱动开发，+流程图、好/坏示例、常见借口表' },

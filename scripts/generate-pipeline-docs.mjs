@@ -98,7 +98,7 @@ function generatePipelineMd(schema) {
     'loom-using-git-worktrees': 'feature 分支',
     'loom-subagent-driven-development': '源码 + 测试报告',
     'loom-verification-before-completion': '验证报告',
-    'loom-index-update': 'ENGINEERING-INDEX.md',
+    'loom-index-update': '知识图谱 或 ENGINEERING-INDEX.md',
   };
   for (const [, state] of pipelineSteps) {
     const output = OUTPUT_MAP[state.skill] || '—';

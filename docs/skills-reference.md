@@ -34,7 +34,7 @@ description: loom 全部技能快速参考
 
 - **用途**：工程索引同步
 - **触发**：代码变更完成后
-- **输出**：ENGINEERING-INDEX.md、MEMORY.md 更新
+- **输出**：知识图谱（graphify 可用时）或 ENGINEERING-INDEX.md、MEMORY.md 更新
 - **下一步**：工作完成，可以提交
 
 ## 辅助 Skills

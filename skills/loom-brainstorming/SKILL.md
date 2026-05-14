@@ -191,8 +191,40 @@ Spec 自审通过后，询问用户审查：
                                                               └→ 批准 → writing-plans
 ```
 
+## progress.md 创建与更新
+
+**brainstorming 是 progress.md 的创建者。** 执行时必须：
+
+1. **开始执行时**：创建 `specs/<date+feature>/progress.md`，格式如下。将 Step 1 状态设为 `▶ 进行中`，**开始时间填写当前时间（HH:mm 格式，如 14:30）**，其余步骤设为 `⏳ 等待`。
+
+```markdown
+# <功能名> — 开发流水线
+
+**开始时间：** YYYY-MM-DD HH:mm
+**当前阶段：** Step 1/6
+
+| Step | 阶段 | 状态 | 开始时间 | 完成时间 | 备注 |
+|------|------|------|---------|---------|------|
+| 1 | brainstorming | ▶ 进行中 | <当前时间 HH:mm> | — |  |
+| 2 | writing-plans | ⏳ 等待 | — | — |  |
+| 3 | git-worktree | ⏳ 等待 | — | — |  |
+| 4 | subagent-dev | ⏳ 等待 | — | — |  |
+| 5 | verification | ⏳ 等待 | — | — |  |
+| 6 | index-update | ⏳ 等待 | — | — |  |
+
+## Skill 调用记录
+
+| 时间 | Skill | 触发原因 | 结果 |
+|------|-------|---------|------|
+| <当前时间 HH:mm> | brainstorming | 用户提出需求 | ▶ 执行中 |
+```
+
+2. **执行完成时**：将 Step 1 状态更新为 `✅ 完成`，**完成时间填写当前时间（HH:mm 格式）**；在 Skill 调用记录中更新 brainstorming 行结果为 `✅ 已完成`，时间列填写完成时的时间。
+
+**关键：时间必须填入实际的 HH:mm 数值（如 14:30），禁止填入字面量 "HH:mm"。**
+
 ## 完成条件与下一步
 
-spec.md 保存并自审完毕后，必须同时更新 `specs/<date+feature>/progress.md`，**等待用户确认方案**。
+spec.md 保存并自审完毕后，必须同时更新 `specs/<date+feature>/progress.md`（按上述规则填写完成时间），**等待用户确认方案**。
 
 用户确认后，**必须立即触发 writing-plans**（loom-writing-plans skill）。

@@ -127,6 +127,14 @@ git branch --show-current
 检查当前状态 → 创建隔离分支 → 安装依赖验证基线 → 确认分支状态 → 触发 subagent-dev
 ```
 
+## progress.md 更新
+
+**开始执行时**：更新 `specs/<date+feature>/progress.md`，将 Step 3 状态设为 `▶ 进行中`，**开始时间填写当前时间（HH:mm 格式，如 14:30）**；在 Skill 调用记录中追加一行，时间列填写当前时间。
+
+**执行完成时**：将 Step 3 状态更新为 `✅ 完成`，**完成时间填写当前时间（HH:mm 格式）**，备注列填写分支名（如 `分支: feature/xxx`）；在 Skill 调用记录中更新对应行结果为 `✅ 已完成`，时间列填写完成时的时间。
+
+**关键：时间必须填入实际的 HH:mm 数值（如 14:30），禁止填入字面量 "HH:mm"。**
+
 ## 完成条件与下一步
 
-分支创建并验证测试基线后，必须同时更新 `specs/<date+feature>/progress.md`，**触发 subagent-driven-development（loom-subagent-driven-development skill）** 进行编码执行。
+分支创建并验证测试基线后，必须同时更新 `specs/<date+feature>/progress.md`（按上述规则填写完成时间），**触发 subagent-driven-development（loom-subagent-driven-development skill）** 进行编码执行。

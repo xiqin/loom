@@ -103,12 +103,16 @@ Implementer subagent 报告四种状态之一。适当处理每一种：
 读取plan → 对每个task循环:
   派发implementer → 实现者问问题？
     ├→ 是 → 回答并提供上下文 → 重新派发
-    └→ 否 → implementer实现/测试/提交/自检
+    └→ 否 → implementer实现/测试(持久化)/自检
       → 派发combined reviewer → 审查通过？
         ├→ 否 → implementer修复 → 重新审查（循环）
         └→ 是 → 标记task完成 → 还有更多task？
               ├→ 是 → 下一个task
-              └→ 否 → 派发test-reporter → 全部PASS → finishing-branch
+              └→ 否 → 派发test-reporter →
+                          1.编写集成测试(持久化)
+                          2.运行全量回归测试
+                          3.对照spec验证
+                          4.输出测试报告 → 全部PASS → verification
 ```
 
 ## 派发前准备
@@ -153,9 +157,16 @@ Implementer subagent 报告四种状态之一。适当处理每一种：
 
 ## 全部 task 完成后
 
-### Step 3：派发 test-reporter subagent（集成测试验证, 必须执行）
+### Step 3：派发 test-reporter subagent（集成测试 + 回归测试, 必须执行）
 
-全部 task 通过审查后，必须派发一个 test-reporter subagent 生成集成测试报告。
+全部 task 通过审查后，必须派发一个 test-reporter subagent 执行以下工作：
+
+1. **编写集成测试**：为 spec.md 中定义的跨模块交互场景编写集成测试，测试文件持久化到项目标准测试目录
+2. **运行全量回归测试**：执行项目完整测试套件，区分新增代码引起的失败和预先存在的失败
+3. **对照 spec 验证**：逐一验证 spec.md 中定义的每个接口
+4. **输出测试报告**：保存到 `specs/<date+feature>/test-report.md`
+
+**不要在 test-reporter 派发前自行运行编译和测试**，这些由 test-reporter 负责执行。
 
 **test-reporter 的指令模板：**
 参见 `test-reporter-prompt.md`
@@ -163,12 +174,24 @@ Implementer subagent 报告四种状态之一。适当处理每一种：
 **判定规则：**
 
 - **全部 PASS** → 通过，触发 verification-before-completion skill
-- **存在 FAIL** → 不通过，派回 implementer 修复后重新走 Step 3
-- **存在 WARN** → 警告，等用户选择跳过或修复
+- **集成测试 FAIL** → 不通过，派回 implementer 修复后重新走 Step 3
+- **回归测试有新增代码引起的失败** → 不通过，派回 implementer 修复后重新走 Step 3
+- **回归测试仅有预先存在的失败** → 标记 WARN，不阻断流水线
+- **存在 WARN** → 记录警告，等用户选择跳过或修复
 
 ## 最终验证
 
 **在 test-reporter 之前，先执行全量编译和测试。全部通过后方可派发 test-reporter 生成报告。同时更新 `specs/<date+feature>/progress.md`。**
+
+## progress.md 更新
+
+**开始执行时**：更新 `specs/<date+feature>/progress.md`，将 Step 4 状态设为 `▶ 进行中`，**开始时间填写当前时间（HH:mm 格式，如 14:30）**，备注列填写总 task 数（如 `task 0/8`）；在 Skill 调用记录中追加一行，时间列填写当前时间。
+
+**每个 task 完成时**：更新备注列的 task 进度（如 `task 3/8`）。
+
+**全部 task 完成时**：将 Step 4 状态更新为 `✅ 完成`，**完成时间填写当前时间（HH:mm 格式）**；在 Skill 调用记录中更新对应行结果为 `✅ 已完成`，时间列填写完成时的时间。
+
+**关键：时间必须填入实际的 HH:mm 数值（如 14:30），禁止填入字面量 "HH:mm"。**
 
 ## 红线与关键规则
 
@@ -185,12 +208,15 @@ Implementer subagent 报告四种状态之一。适当处理每一种：
 - 禁止跳过审查循环（reviewer 发现问题 = 实现者修复 = 再次审查）
 - 禁止让实现者自检替代实际审查
 - 任一审查有未解决问题时禁止移动到下一个 task
+- 禁止将测试文件作为临时验证后删除
+- 禁止跳过集成测试（test-reporter 必须编写集成测试）
+- 禁止跳过回归测试（test-reporter 必须运行全量回归测试）
 
 **关键规则：**
 
 1. subagent 互不继承上下文 — 每个 subagent 是全新会话，必须完整传入所需上下文
 2. BLOCKER 阻断 — 任一审查有 BLOCKER 或 Critical 偏差则不进入下一个 task
-3. TDD 验证 — implementer 必须编写并运行单元测试，测试失败等同 BLOCKER
+3. 三类测试要求 — implementer 必须编写并运行单元测试（持久化到项目标准测试目录），test-reporter 必须编写集成测试并运行全量回归测试
 4. 测试报告必须生成 — 全部 task 完成后必须派发 test-reporter
 5. 停止条件 — 遇到 plan 不清晰、重复修复无效、spec 有歧义时立即停止并询问用户
 
@@ -215,4 +241,4 @@ Implementer subagent 报告四种状态之一。适当处理每一种：
 
 ## 完成条件与下一步
 
-所有步骤完成后，必须同时更新 `specs/<date+feature>/progress.md`。验证通过后，触发 verification-before-completion（loom-verification-before-completion skill）。
+所有步骤完成后，必须同时更新 `specs/<date+feature>/progress.md`（按上述 progress.md 更新规则填写完成时间）。验证通过后，触发 verification-before-completion（loom-verification-before-completion skill）。

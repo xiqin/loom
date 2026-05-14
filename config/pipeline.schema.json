@@ -10,13 +10,26 @@
       "skill": "loom-brainstorming",
       "command": "loom-brainstorm",
       "description": "需求头脑风暴，探索 2-3 种实现方案",
-      "allowedTransitions": ["planning", "failed"],
+      "allowedTransitions": [
+        "planning",
+        "failed"
+      ],
       "preconditions": [
-        { "type": "input", "description": "用户提供需求描述", "check": "requirement 非空" }
+        {
+          "type": "input",
+          "description": "用户提供需求描述",
+          "check": "requirement 非空"
+        }
       ],
       "outputs": [
-        { "path": "specs/<date+feature>/spec.md", "action": "created" },
-        { "path": "specs/<date+feature>/progress.md", "action": "created" }
+        {
+          "path": "specs/<date+feature>/spec.md",
+          "action": "created"
+        },
+        {
+          "path": "specs/<date+feature>/progress.md",
+          "action": "created"
+        }
       ],
       "reads": [
         ".loom/memory/constitution.md",
@@ -32,13 +45,26 @@
       "skill": "loom-writing-plans",
       "command": "loom-write-plan",
       "description": "按项目架构分层拆解 task",
-      "allowedTransitions": ["approved", "failed"],
+      "allowedTransitions": [
+        "approved",
+        "failed"
+      ],
       "preconditions": [
-        { "type": "file", "description": "spec.md 存在且用户已确认", "check": "specs/<date+feature>/spec.md 存在" }
+        {
+          "type": "file",
+          "description": "spec.md 存在且用户已确认",
+          "check": "specs/<date+feature>/spec.md 存在"
+        }
       ],
       "outputs": [
-        { "path": "specs/<date+feature>/plan.md", "action": "created" },
-        { "path": "specs/<date+feature>/progress.md", "action": "modified" }
+        {
+          "path": "specs/<date+feature>/plan.md",
+          "action": "created"
+        },
+        {
+          "path": "specs/<date+feature>/progress.md",
+          "action": "modified"
+        }
       ],
       "reads": [
         "specs/<date+feature>/spec.md",
@@ -55,10 +81,21 @@
       "skill": null,
       "command": null,
       "description": "用户已确认计划，等待执行（检查点状态）",
-      "allowedTransitions": ["executing", "failed"],
+      "allowedTransitions": [
+        "executing",
+        "failed"
+      ],
       "preconditions": [
-        { "type": "file", "description": "plan.md 存在且用户已确认", "check": "specs/<date+feature>/plan.md 存在" },
-        { "type": "file", "description": "spec.md 存在", "check": "specs/<date+feature>/spec.md 存在" }
+        {
+          "type": "file",
+          "description": "plan.md 存在且用户已确认",
+          "check": "specs/<date+feature>/plan.md 存在"
+        },
+        {
+          "type": "file",
+          "description": "spec.md 存在",
+          "check": "specs/<date+feature>/spec.md 存在"
+        }
       ],
       "outputs": [],
       "reads": [],
@@ -72,14 +109,31 @@
       "skill": "loom-using-git-worktrees",
       "command": "loom-execute-plan",
       "description": "创建隔离分支",
-      "allowedTransitions": ["executing", "failed"],
+      "allowedTransitions": [
+        "executing",
+        "failed"
+      ],
       "preconditions": [
-        { "type": "file", "description": "plan.md 存在", "check": "specs/<date+feature>/plan.md 存在" },
-        { "type": "git", "description": "工作目录干净或可创建 worktree", "check": "git worktree add 成功" }
+        {
+          "type": "file",
+          "description": "plan.md 存在",
+          "check": "specs/<date+feature>/plan.md 存在"
+        },
+        {
+          "type": "git",
+          "description": "工作目录干净或可创建 worktree",
+          "check": "git worktree add 成功"
+        }
       ],
       "outputs": [
-        { "path": "feature/<date>-<name> 分支", "action": "created" },
-        { "path": "specs/<date+feature>/progress.md", "action": "modified" }
+        {
+          "path": "feature/<date>-<name> 分支",
+          "action": "created"
+        },
+        {
+          "path": "specs/<date+feature>/progress.md",
+          "action": "modified"
+        }
       ],
       "reads": [
         "specs/<date+feature>/plan.md",
@@ -96,16 +150,46 @@
       "skill": "loom-subagent-driven-development",
       "command": null,
       "description": "派发 subagent 编码，运行测试",
-      "allowedTransitions": ["verification", "failed"],
+      "allowedTransitions": [
+        "verification",
+        "failed"
+      ],
       "preconditions": [
-        { "type": "file", "description": "plan.md 存在", "check": "specs/<date+feature>/plan.md 存在" },
-        { "type": "git", "description": "worktree 已创建", "check": "git worktree 存在" }
+        {
+          "type": "file",
+          "description": "plan.md 存在",
+          "check": "specs/<date+feature>/plan.md 存在"
+        },
+        {
+          "type": "git",
+          "description": "worktree 已创建",
+          "check": "git worktree 存在"
+        }
       ],
       "outputs": [
-        { "path": "源码文件", "action": "created/modified" },
-        { "path": "测试文件", "action": "created/modified" },
-        { "path": "specs/<date+feature>/test-report.md", "action": "created" },
-        { "path": "specs/<date+feature>/progress.md", "action": "modified" }
+        {
+          "path": "源码文件",
+          "action": "created/modified"
+        },
+        {
+          "path": "单元测试文件",
+          "action": "created/modified",
+          "note": "implementer 编写，持久化到项目标准测试目录"
+        },
+        {
+          "path": "集成测试文件",
+          "action": "created/modified",
+          "note": "test-reporter 编写，持久化到项目标准测试目录"
+        },
+        {
+          "path": "specs/<date+feature>/test-report.md",
+          "action": "created",
+          "note": "包含集成测试、回归测试和Spec验证结果"
+        },
+        {
+          "path": "specs/<date+feature>/progress.md",
+          "action": "modified"
+        }
       ],
       "reads": [
         "specs/<date+feature>/plan.md",
@@ -121,11 +205,19 @@
       "subStates": {
         "implementer": {
           "description": "Subagent 编码实现",
-          "statuses": ["DONE", "DONE_WITH_CONCERNS", "NEEDS_CONTEXT", "BLOCKED"]
+          "statuses": [
+            "DONE",
+            "DONE_WITH_CONCERNS",
+            "NEEDS_CONTEXT",
+            "BLOCKED"
+          ]
         },
         "reviewer": {
           "description": "Spec + 代码质量合并审查",
-          "verdicts": ["PASS", "FAIL"]
+          "verdicts": [
+            "PASS",
+            "FAIL"
+          ]
         }
       }
     },
@@ -134,15 +226,36 @@
       "skill": "loom-verification-before-completion",
       "command": null,
       "description": "完成前验证（Spec覆盖、类型一致性、编译测试）",
-      "allowedTransitions": ["synced", "executing", "failed"],
+      "allowedTransitions": [
+        "synced",
+        "executing",
+        "failed"
+      ],
       "preconditions": [
-        { "type": "test", "description": "所有测试通过", "check": "测试套件 exit code 0" },
-        { "type": "build", "description": "编译通过", "check": "编译 exit code 0" }
+        {
+          "type": "test",
+          "description": "所有测试通过",
+          "check": "测试套件 exit code 0"
+        },
+        {
+          "type": "build",
+          "description": "编译通过",
+          "check": "编译 exit code 0"
+        }
       ],
       "outputs": [
-        { "path": "验证报告", "action": "created" },
-        { "path": "specs/<date+feature>/verify-report.md", "action": "created" },
-        { "path": "specs/<date+feature>/progress.md", "action": "modified" }
+        {
+          "path": "验证报告",
+          "action": "created"
+        },
+        {
+          "path": "specs/<date+feature>/verify-report.md",
+          "action": "created"
+        },
+        {
+          "path": "specs/<date+feature>/progress.md",
+          "action": "modified"
+        }
       ],
       "reads": [
         "specs/<date+feature>/spec.md",
@@ -167,16 +280,50 @@
       "description": "工程索引同步，功能开发完成",
       "allowedTransitions": [],
       "preconditions": [
-        { "type": "review", "description": "验证通过", "check": "verification 结果为 PASS" },
-        { "type": "test", "description": "所有测试通过", "check": "测试套件 exit code 0" }
+        {
+          "type": "review",
+          "description": "验证通过",
+          "check": "verification 结果为 PASS"
+        },
+        {
+          "type": "test",
+          "description": "所有测试通过",
+          "check": "测试套件 exit code 0"
+        }
       ],
       "outputs": [
-        { "path": ".loom/ENGINEERING-INDEX.md", "action": "modified" },
-        { "path": ".loom/memory/MEMORY.md", "action": "modified" },
-        { "path": "specs/<date+feature>/progress.md", "action": "modified" }
+        {
+          "path": "graphify-out/graph.json",
+          "action": "created_or_modified",
+          "note": "graphify 可用时生成，与 ENGINEERING-INDEX.md 互斥"
+        },
+        {
+          "path": "graphify-out/GRAPH_REPORT.md",
+          "action": "created_or_modified",
+          "note": "graphify 可用时生成，与 ENGINEERING-INDEX.md 互斥"
+        },
+        {
+          "path": "graphify-out/graph.html",
+          "action": "created_or_modified",
+          "note": "graphify 可用时生成，与 ENGINEERING-INDEX.md 互斥"
+        },
+        {
+          "path": ".loom/ENGINEERING-INDEX.md",
+          "action": "modified"
+        },
+        {
+          "path": ".loom/memory/MEMORY.md",
+          "action": "modified"
+        },
+        {
+          "path": "specs/<date+feature>/progress.md",
+          "action": "modified"
+        }
       ],
       "reads": [
         ".loom/ENGINEERING-INDEX.md",
+        "graphify-out/graph.json",
+        "graphify-out/GRAPH_REPORT.md",
         ".loom/memory/MEMORY.md",
         "源码文件"
       ],
@@ -190,10 +337,17 @@
       "skill": null,
       "command": null,
       "description": "流水线失败（任意阶段）",
-      "allowedTransitions": ["brainstorming", "executing", "verification"],
+      "allowedTransitions": [
+        "brainstorming",
+        "executing",
+        "verification"
+      ],
       "preconditions": [],
       "outputs": [
-        { "path": "specs/<date+feature>/progress.md", "action": "modified" }
+        {
+          "path": "specs/<date+feature>/progress.md",
+          "action": "modified"
+        }
       ],
       "reads": [],
       "interactive": true,
@@ -209,30 +363,126 @@
     }
   },
   "transitions": [
-    { "from": "brainstorming", "to": "planning", "trigger": "user_confirms_spec", "description": "用户确认 spec.md" },
-    { "from": "brainstorming", "to": "failed", "trigger": "error", "description": "brainstorming 失败" },
-    { "from": "planning", "to": "approved", "trigger": "user_confirms_plan", "description": "用户确认 plan.md" },
-    { "from": "planning", "to": "failed", "trigger": "error", "description": "planning 失败" },
-    { "from": "approved", "to": "git-worktree", "trigger": "user_triggers_execute", "description": "用户执行 loom-execute-plan" },
-    { "from": "approved", "to": "failed", "trigger": "error", "description": "执行前检查失败" },
-    { "from": "git-worktree", "to": "executing", "trigger": "worktree_created", "description": "worktree 创建成功，触发 subagent" },
-    { "from": "git-worktree", "to": "failed", "trigger": "error", "description": "worktree 创建失败" },
-    { "from": "executing", "to": "verification", "trigger": "all_tasks_done", "description": "所有 task 完成，进入验证" },
-    { "from": "executing", "to": "failed", "trigger": "test_failure|blocker", "description": "测试失败或 BLOCKED 状态" },
-    { "from": "verification", "to": "synced", "trigger": "verification_pass", "description": "验证通过" },
-    { "from": "verification", "to": "executing", "trigger": "blocker_found", "description": "BLOCKER 派回 implementer 修复" },
-    { "from": "verification", "to": "failed", "trigger": "critical_failure", "description": "验证发现 Critical 偏差" },
-    { "from": "failed", "to": "brainstorming", "trigger": "user_restarts", "description": "从头重新开始" },
-    { "from": "failed", "to": "executing", "trigger": "user_retries", "description": "修复后重试执行" },
-    { "from": "failed", "to": "verification", "trigger": "user_retries_verification", "description": "修复后重试验证" }
+    {
+      "from": "brainstorming",
+      "to": "planning",
+      "trigger": "user_confirms_spec",
+      "description": "用户确认 spec.md"
+    },
+    {
+      "from": "brainstorming",
+      "to": "failed",
+      "trigger": "error",
+      "description": "brainstorming 失败"
+    },
+    {
+      "from": "planning",
+      "to": "approved",
+      "trigger": "user_confirms_plan",
+      "description": "用户确认 plan.md"
+    },
+    {
+      "from": "planning",
+      "to": "failed",
+      "trigger": "error",
+      "description": "planning 失败"
+    },
+    {
+      "from": "approved",
+      "to": "git-worktree",
+      "trigger": "user_triggers_execute",
+      "description": "用户执行 loom-execute-plan"
+    },
+    {
+      "from": "approved",
+      "to": "failed",
+      "trigger": "error",
+      "description": "执行前检查失败"
+    },
+    {
+      "from": "git-worktree",
+      "to": "executing",
+      "trigger": "worktree_created",
+      "description": "worktree 创建成功，触发 subagent"
+    },
+    {
+      "from": "git-worktree",
+      "to": "failed",
+      "trigger": "error",
+      "description": "worktree 创建失败"
+    },
+    {
+      "from": "executing",
+      "to": "verification",
+      "trigger": "all_tasks_done",
+      "description": "所有 task 完成，进入验证"
+    },
+    {
+      "from": "executing",
+      "to": "failed",
+      "trigger": "test_failure|blocker",
+      "description": "测试失败或 BLOCKED 状态"
+    },
+    {
+      "from": "verification",
+      "to": "synced",
+      "trigger": "verification_pass",
+      "description": "验证通过"
+    },
+    {
+      "from": "verification",
+      "to": "executing",
+      "trigger": "blocker_found",
+      "description": "BLOCKER 派回 implementer 修复"
+    },
+    {
+      "from": "verification",
+      "to": "failed",
+      "trigger": "critical_failure",
+      "description": "验证发现 Critical 偏差"
+    },
+    {
+      "from": "failed",
+      "to": "brainstorming",
+      "trigger": "user_restarts",
+      "description": "从头重新开始"
+    },
+    {
+      "from": "failed",
+      "to": "executing",
+      "trigger": "user_retries",
+      "description": "修复后重试执行"
+    },
+    {
+      "from": "failed",
+      "to": "verification",
+      "trigger": "user_retries_verification",
+      "description": "修复后重试验证"
+    }
   ],
   "progressFileFormat": {
     "path": "specs/<date+feature>/progress.md",
     "statusValues": {
-      "waiting": { "symbol": "⏳", "label": "等待", "description": "尚未开始" },
-      "running": { "symbol": "▶", "label": "进行中", "description": "正在执行" },
-      "done": { "symbol": "✅", "label": "完成", "description": "已完成" },
-      "failed": { "symbol": "❌", "label": "失败", "description": "执行失败" }
+      "waiting": {
+        "symbol": "⏳",
+        "label": "等待",
+        "description": "尚未开始"
+      },
+      "running": {
+        "symbol": "▶",
+        "label": "进行中",
+        "description": "正在执行"
+      },
+      "done": {
+        "symbol": "✅",
+        "label": "完成",
+        "description": "已完成"
+      },
+      "failed": {
+        "symbol": "❌",
+        "label": "失败",
+        "description": "执行失败"
+      }
     },
     "progressBar": {
       "filled": "■",

@@ -24,17 +24,20 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 
 ## 工程索引
 
-`.loom/ENGINEERING-INDEX.md` 是项目索引，包含路由表、控制器/服务/模型层的方法签名、依赖关系和调用链。
+当 **graphify 可用**时，优先使用知识图谱（ + ）作为工程索引。当 **graphify 不可用**时，使用手动索引。
 
-**回答任何关于项目结构、路由、模块、方法签名、依赖关系的问题前，必须先读此索引。索引已覆盖签名级信息，绝大多数问题无需回退读源码。只有在需要修改具体实现逻辑时才读源码文件。**
+`graphify-out/` 是**graphify**知识图谱索引。
+`.loom/ENGINEERING-INDEX.md` 是手动索引，包含路由表、控制器/服务/模型层的方法签名、依赖关系和调用链。
+
+**回答任何关于项目结构、路由、模块、方法签名、依赖关系的问题前，必须先读索引。graphify 可用时读图谱报告，否则读手动索引。只有在需要修改具体实现逻辑时才读源码文件。**
 
 ## 完成工作后更新
 
 代码变更后同步更新：
 
-1. `.loom/ENGINEERING-INDEX.md` — 新增/删除了模块、路由、控制器、服务
-2. `.loom/memory/MEMORY.md` — 踩坑、用户偏好、变更要点
-3. `{{ENTRY_FILE}}` — 引入了新的约定或命令
+1.  — 新增/删除了模块、路由、控制器、服务（graphify 可用时由知识图谱替代）
+2.  `.loom/memory/MEMORY.md` — 踩坑、用户偏好、变更要点
+3.  `{{ENTRY_FILE}}` — 引入了新的约定或命令
 
 ## 记忆
 

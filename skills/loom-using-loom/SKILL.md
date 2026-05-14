@@ -25,7 +25,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 | 3    | git-worktree                | 创建隔离分支                             | feature 分支                   |
 | 4    | subagent-driven-development | Subagent 隔离派发 + 双审查               | 源码 + 测试报告                |
 | 5    | verification                | 完成前验证，Spec覆盖/类型一致性/编译测试 | 验证报告                       |
-| 6    | index-update                | 工程索引同步                             | ENGINEERING-INDEX.md           |
+| 6    | index-update                | 工程索引同步                             | 知识图谱 或 ENGINEERING-INDEX.md |
 
 ### 阶段串联规则
 
@@ -59,7 +59,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 | loom-using-git-worktrees | feature 分支 | 创建隔离分支, +测试基线验证 |
 | loom-subagent-driven-development | 源码 + 测试报告 | Subagent 派发 + 双重审查,独立模板文件、4种状态处理 |
 | loom-verification-before-completion | 验证报告 | 完成前验证, +Spec覆盖、类型一致性、编译测试 |
-| loom-index-update | ENGINEERING-INDEX.md | 工程索引同步 |
+| loom-index-update | 知识图谱 或 ENGINEERING-INDEX.md | 工程索引同步 |
 
 **辅助 Skills：**
 

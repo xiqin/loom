@@ -150,14 +150,14 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 
 **核心流水线 Skills：**
 
-| Skill                               | 输出                           | 说明                                               |
-| ----------------------------------- | ------------------------------ | -------------------------------------------------- |
-| loom-brainstorming                  | `specs/<date+feature>/spec.md` | 需求头脑风暴, +可视化伴侣、设计自检、用户审查 Gate |
-| loom-writing-plans                  | `specs/<date+feature>/plan.md` | 分层拆解 task, +模型选择、类型一致性检查           |
-| loom-using-git-worktrees            | feature 分支                   | 创建隔离分支, +测试基线验证                        |
-| loom-subagent-driven-development    | 源码 + 测试报告                | Subagent 派发 + 双重审查,独立模板文件、4种状态处理 |
-| loom-verification-before-completion | 验证报告                       | 完成前验证, +Spec覆盖、类型一致性、编译测试        |
-| loom-index-update                   | ENGINEERING-INDEX.md           | 工程索引同步                                       |
+| Skill                               | 输出                             | 说明                                               |
+| ----------------------------------- | -------------------------------- | -------------------------------------------------- |
+| loom-brainstorming                  | `specs/<date+feature>/spec.md`   | 需求头脑风暴, +可视化伴侣、设计自检、用户审查 Gate |
+| loom-writing-plans                  | `specs/<date+feature>/plan.md`   | 分层拆解 task, +模型选择、类型一致性检查           |
+| loom-using-git-worktrees            | feature 分支                     | 创建隔离分支, +测试基线验证                        |
+| loom-subagent-driven-development    | 源码 + 测试报告                  | Subagent 派发 + 双重审查,独立模板文件、4种状态处理 |
+| loom-verification-before-completion | 验证报告                         | 完成前验证, +Spec覆盖、类型一致性、编译测试        |
+| loom-index-update                   | 知识图谱 或 ENGINEERING-INDEX.md | 工程索引同步                                       |
 
 **辅助 Skills：**
 
