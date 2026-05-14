@@ -20,7 +20,7 @@ param(
 
 $Repo = "xiqin/loom"
 # AUTO-SYNC: updated by scripts/generate-tooling.mjs and scripts/sync-version.mjs
-$DefaultVersion = "1.3.2"
+$DefaultVersion = "1.4.0"
 if (-not $Version) { $Version = $DefaultVersion }
 $SupportedTools = @("claude-code", "cursor", "copilot", "opencode", "codex")
 
