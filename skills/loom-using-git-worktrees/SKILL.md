@@ -42,7 +42,7 @@ git status
 
 - [ ] 确认当前在正确的分支（通常为主分支）
 - [ ] 确认没有未提交的变更
-- [ ] 确认有实现计划（`specs/<date+feature>/plan.md`）
+- [ ] 确认有实现计划（`specs/<date+feature>/plan.md` 和 `specs/<date+feature>/tasks/` 目录）
 
 ### Step 2：创建隔离工作空间
 

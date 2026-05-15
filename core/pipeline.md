@@ -14,7 +14,7 @@
 | `planning` | Step 2 | 按项目架构分层拆解 task |
 | `approved` | — | 用户已确认计划，等待执行（检查点状态） |
 | `git-worktree` | Step 3 | 创建隔离分支 |
-| `executing` | Step 4 | 派发 subagent 编码，运行测试 |
+| `executing` | Step 4 | Subagent 编码执行（隔离派发 + 合并审查 + 增量修复） |
 | `verification` | Step 5 | 完成前验证（Spec覆盖、类型一致性、编译测试） |
 | `synced` | Step 6 | 工程索引同步，功能开发完成 |
 | `failed` | — | 流水线失败（任意阶段） |
@@ -33,7 +33,7 @@ stateDiagram-v2
     executing --> verification : 所有 task 完成，进入验证
     executing --> failed : 测试失败或 BLOCKED 状态
     verification --> synced : 验证通过
-    verification --> executing : BLOCKER 派回 implementer 修复
+    verification --> executing : BLOCKER 派回 implementer 修复（增量模式：只传递修复指令 + subagent-context）
     verification --> failed : 验证发现 Critical 偏差
     failed --> brainstorming : 从头重新开始
     failed --> executing : 修复后重试执行
@@ -62,9 +62,9 @@ graph LR
 | Step | 阶段 | 说明 | 输出 |
 |------|------|------|------|
 | 1 | brainstorming | 需求头脑风暴，探索 2-3 种实现方案 | `specs/<date+feature>/spec.md` |
-| 2 | writing-plans | 按项目架构分层拆解 task | `specs/<date+feature>/plan.md` |
+| 2 | writing-plans | 按项目架构分层拆解 task | `plan.md` + `tasks/` 目录 |
 | 3 | git-worktree | 创建隔离分支 | feature 分支 |
-| 4 | subagent-dev | 派发 subagent 编码，运行测试 | 源码 + 测试报告 |
+| 4 | subagent-dev | Subagent 编码执行（隔离派发 + 合并审查 + 增量修复） | 源码 + 测试报告 |
 | 5 | verification | 完成前验证（Spec覆盖、类型一致性、编译测试） | 验证报告 |
 | 6 | index-update | 工程索引同步，功能开发完成 | 知识图谱 或 ENGINEERING-INDEX.md |
 
@@ -106,8 +106,8 @@ index-update 完成 → 通知可以提交
 |------|---------|
 | brainstorming | 用户提供需求描述 |
 | writing-plans | spec.md 存在且用户已确认 |
-| git-worktree | plan.md 存在 + 工作目录干净或可创建 worktree |
-| subagent-dev | plan.md 存在 + worktree 已创建 |
+| git-worktree | plan.md 和 tasks 目录存在且用户已确认 + spec.md 存在 |
+| subagent-dev | plan.md 和 tasks 目录存在 + worktree 已创建 |
 | verification | 所有测试通过 + 编译通过 |
 | index-update | 验证通过 + 所有测试通过 |
 

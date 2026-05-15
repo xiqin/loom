@@ -20,7 +20,7 @@ description: >
 
 ### Step 1：分析任务依赖
 
-1. 读取 `specs/<date+feature>/plan.md` 中的所有 task
+1. 读取 `specs/<date+feature>/plan.md` 中的 Task 概览，读取 `specs/<date+feature>/tasks/` 目录下的各 task 文件
 2. 分析任务之间的依赖关系
 3. 找出可并行的任务组
 

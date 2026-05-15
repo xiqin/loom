@@ -119,7 +119,7 @@ flowchart TD
 
 ## 规格审查（Spec Review）
 
-规格审查对照 `spec.md` 和 `plan.md` 检查实现是否符合规格。
+规格审查对照 `spec.md` 和当前 task 文件检查实现是否符合规格。
 
 ### 检查项
 

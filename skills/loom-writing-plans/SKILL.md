@@ -24,7 +24,8 @@ description: >
 
 ## 输出路径
 
-保存到 `specs/<date+feature>/plan.md`。
+- 主文件保存到 `specs/<date+feature>/plan.md`（摘要 + Task 概览）
+- 每个 task 保存到 `specs/<date+feature>/tasks/T1.md`、`T2.md`、...（独立 task 文件）
 
 **上下文：** 如果在隔离 worktree 中工作，它应该已经通过 `loom-using-git-worktrees` skill 在执行时创建。
 
@@ -75,9 +76,9 @@ description: >
 
 ### Step 5：为每个 task 编写详细内容
 
-**每个 task 必须包含以下全部字段，禁止省略：**
+**plan.md 只包含摘要和 Task 概览，每个 task 的详细内容写入独立文件。**
 
-**每个 plan 必须以这个 header 开头：**
+**plan.md 必须以这个 header 开头：**
 
 ```markdown
 # [功能名称] 实现计划
@@ -89,11 +90,23 @@ description: >
 **技术栈：** [关键技术/库]
 
 ---
+
+## Task 概览
+
+| Task | 名称 | 层级 | 复杂度 | 依赖 | 文件 |
+|------|------|------|--------|------|------|
+| T1 | <功能点名称> | <层级> | 简单 | 无 | `tasks/T1.md` |
+| T2 | <功能点名称> | <层级> | 中等 | T1 | `tasks/T2.md` |
+| ... | ... | ... | ... | ... | ... |
+
+## 依赖关系
+
+T1 → T2 → T3 → ...
 ```
 
-**Task 结构：**
+**每个 task 文件（`tasks/TN.md`）必须包含以下全部字段，禁止省略：**
 
-~~~markdown
+```markdown
 ### Task N: <功能点名称>
 
 - **层级**: 从 `.loom/rules/project-structure.md` 中提取的项目分层名称
@@ -111,7 +124,6 @@ def test_specific_behavior():
     result = function(input)
     assert result == expected
 ```
-~~~
 
 - [ ] **步骤 2：运行测试验证失败**
 
@@ -129,6 +141,7 @@ def function(input):
 
 运行测试用例
 预期：PASS
+```
 
 ### Step 6：检查清单（No Placeholders）
 
@@ -142,6 +155,8 @@ def function(input):
 
 **其他检查项：**
 
+- [ ] plan.md 包含摘要和 Task 概览表
+- [ ] 每个 task 文件（tasks/TN.md）包含完整的步骤和代码示例
 - [ ] 所有 task 的依赖关系无循环
 - [ ] 每个 task 可独立编译验证
 - [ ] 代码示例可直接复制运行（无占位符）
@@ -217,6 +232,6 @@ def function(input):
 
 ## 完成条件与下一步
 
-plan.md 保存并自检完毕后，必须同时更新 `specs/<date+feature>/progress.md`（按上述规则填写完成时间），**等待用户确认 plan**。
+plan.md 和所有 task 文件（tasks/T1.md, T2.md, ...）保存并自检完毕后，必须同时更新 `specs/<date+feature>/progress.md`（按上述规则填写完成时间），**等待用户确认 plan**。
 
 用户确认后，**必须立即触发 git-worktree**（loom-using-git-worktrees skill）。

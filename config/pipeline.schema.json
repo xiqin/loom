@@ -59,7 +59,13 @@
       "outputs": [
         {
           "path": "specs/<date+feature>/plan.md",
-          "action": "created"
+          "action": "created",
+          "note": "摘要 + Task 概览表"
+        },
+        {
+          "path": "specs/<date+feature>/tasks/",
+          "action": "created",
+          "note": "独立 task 文件目录，每个 task 一个文件（T1.md, T2.md, ...）"
         },
         {
           "path": "specs/<date+feature>/progress.md",
@@ -88,8 +94,8 @@
       "preconditions": [
         {
           "type": "file",
-          "description": "plan.md 存在且用户已确认",
-          "check": "specs/<date+feature>/plan.md 存在"
+          "description": "plan.md 和 tasks 目录存在且用户已确认",
+          "check": "specs/<date+feature>/plan.md 存在且 specs/<date+feature>/tasks/ 目录存在"
         },
         {
           "type": "file",
@@ -116,13 +122,13 @@
       "preconditions": [
         {
           "type": "file",
-          "description": "plan.md 存在",
-          "check": "specs/<date+feature>/plan.md 存在"
+          "description": "plan.md 和 tasks 目录存在且用户已确认",
+          "check": "specs/<date+feature>/plan.md 存在且 specs/<date+feature>/tasks/ 目录存在"
         },
         {
-          "type": "git",
-          "description": "工作目录干净或可创建 worktree",
-          "check": "git worktree add 成功"
+          "type": "file",
+          "description": "spec.md 存在",
+          "check": "specs/<date+feature>/spec.md 存在"
         }
       ],
       "outputs": [
@@ -136,20 +142,18 @@
         }
       ],
       "reads": [
-        "specs/<date+feature>/plan.md",
-        "specs/<date+feature>/spec.md",
         ".loom/memory/constitution.md"
       ],
       "interactive": false,
-      "autoTransition": true,
-      "nextOnSuccess": "自动触发 subagent-dev",
+      "autoTransition": false,
+      "nextOnSuccess": "分支创建成功后转 executing",
       "banner": "Step 3/6 — git-worktree"
     },
     "executing": {
       "step": 4,
       "skill": "loom-subagent-driven-development",
       "command": null,
-      "description": "派发 subagent 编码，运行测试",
+      "description": "Subagent 编码执行（隔离派发 + 合并审查 + 增量修复）",
       "allowedTransitions": [
         "verification",
         "failed"
@@ -157,8 +161,8 @@
       "preconditions": [
         {
           "type": "file",
-          "description": "plan.md 存在",
-          "check": "specs/<date+feature>/plan.md 存在"
+          "description": "plan.md 和 tasks 目录存在",
+          "check": "specs/<date+feature>/plan.md 存在且 specs/<date+feature>/tasks/ 目录存在"
         },
         {
           "type": "git",
@@ -193,6 +197,7 @@
       ],
       "reads": [
         "specs/<date+feature>/plan.md",
+        "specs/<date+feature>/tasks/",
         "specs/<date+feature>/spec.md",
         ".loom/templates/subagent-context.md",
         ".loom/memory/constitution.md",
@@ -210,6 +215,16 @@
             "DONE_WITH_CONCERNS",
             "NEEDS_CONTEXT",
             "BLOCKED"
+          ],
+          "modes": [
+            {
+              "mode": "首次实现模式",
+              "description": "从零开始实现完整 task，接收完整 task 定义和 spec 上下文"
+            },
+            {
+              "mode": "修复模式",
+              "description": "基于修复指令精准修复问题，只接收修复指令 + subagent-context，不重新传递完整 task 和 spec"
+            }
           ]
         },
         "reviewer": {
@@ -217,7 +232,8 @@
           "verdicts": [
             "PASS",
             "FAIL"
-          ]
+          ],
+          "failOutput": "修复指令（结构化的问题定位和修复方向）"
         }
       }
     },
@@ -260,6 +276,7 @@
       "reads": [
         "specs/<date+feature>/spec.md",
         "specs/<date+feature>/plan.md",
+        "specs/<date+feature>/tasks/",
         ".loom/memory/constitution.md",
         ".loom/rules/project-structure.md",
         "源码文件"
@@ -270,7 +287,9 @@
       "banner": "Step 5/6 — verification",
       "retryOnFail": {
         "target": "executing",
-        "condition": "BLOCKER 存在时派回 implementer 修复"
+        "condition": "BLOCKER 存在时派回 implementer 修复",
+        "fixMode": true,
+        "fixModeDescription": "增量修复模式：只派发 implementer（修复模式），传递修复指令 + subagent-context.md，不重新传递完整 task 上下文和 spec 全文"
       }
     },
     "synced": {
@@ -433,7 +452,8 @@
       "from": "verification",
       "to": "executing",
       "trigger": "blocker_found",
-      "description": "BLOCKER 派回 implementer 修复"
+      "description": "BLOCKER 派回 implementer 修复（增量模式：只传递修复指令 + subagent-context）",
+      "fixMode": true
     },
     {
       "from": "verification",

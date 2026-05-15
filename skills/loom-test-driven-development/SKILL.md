@@ -49,7 +49,7 @@ description: >
 ### Step 1：理解需求
 
 1. 读取 `specs/<date+feature>/spec.md` 获取需求
-2. 读取 `specs/<date+feature>/plan.md` 获取实现计划
+2. 读取 `specs/<date+feature>/plan.md` 获取 Task 概览，读取对应 `specs/<date+feature>/tasks/TN.md` 获取当前 task 详细内容
 3. 明确当前 task 的测试范围
 
 ### Step 2：红（写失败测试）

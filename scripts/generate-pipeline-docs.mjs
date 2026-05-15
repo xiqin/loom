@@ -94,7 +94,7 @@ function generatePipelineMd(schema) {
   md += `|------|------|------|------|\n`;
   const OUTPUT_MAP = {
     'loom-brainstorming': '`specs/<date+feature>/spec.md`',
-    'loom-writing-plans': '`specs/<date+feature>/plan.md`',
+    'loom-writing-plans': '`plan.md` + `tasks/` 目录',
     'loom-using-git-worktrees': 'feature 分支',
     'loom-subagent-driven-development': '源码 + 测试报告',
     'loom-verification-before-completion': '验证报告',
