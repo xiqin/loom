@@ -241,7 +241,7 @@
       "step": 5,
       "skill": "loom-verification-before-completion",
       "command": null,
-      "description": "完成前验证（Spec覆盖、类型一致性、编译测试）",
+      "description": "完成前验证（前置产出核验、编译验证、占位符扫描、类型一致性、最终一致性核验）",
       "allowedTransitions": [
         "synced",
         "executing",
@@ -249,14 +249,14 @@
       ],
       "preconditions": [
         {
-          "type": "test",
-          "description": "所有测试通过",
-          "check": "测试套件 exit code 0"
+          "type": "file",
+          "description": "test-report.md 存在且结论为 PASS",
+          "check": "specs/<date+feature>/test-report.md 存在且结论为 PASS"
         },
         {
-          "type": "build",
-          "description": "编译通过",
-          "check": "编译 exit code 0"
+          "type": "file",
+          "description": "combined-reviewer 报告存在且判定为通过",
+          "check": "存在 reviewer 通过判定"
         }
       ],
       "outputs": [
@@ -277,6 +277,8 @@
         "specs/<date+feature>/spec.md",
         "specs/<date+feature>/plan.md",
         "specs/<date+feature>/tasks/",
+        "specs/<date+feature>/test-report.md",
+        "combined-reviewer 报告",
         ".loom/rules/constitution.md",
         ".loom/rules/project-structure.md",
         "源码文件"

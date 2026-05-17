@@ -20,17 +20,12 @@ loom/
 │   │   ├── claude-code.js  # Claude Code 适配器
 │   │   ├── cursor.js       # Cursor 适配器
 │   │   ├── copilot.js      # Copilot 适配器
+│   │   ├── cursor-converter.js # Cursor rules 转换
 │   │   ├── opencode.js     # OpenCode 适配器
 │   │   └── codex.js        # Codex 适配器
 │   ├── core/               # 核心逻辑
-│   │   ├── installer.js    # 安装器
-│   │   ├── uninstaller.js  # 卸载器
-│   │   ├── manifest.js     # manifest 读写
-│   │   └── schema-validator.js  # 模板 schema 验证
+│   │   └── installer.js    # 安装器
 │   ├── utils/              # 工具函数
-│   │   ├── backup.js       # 备份管理
-│   │   ├── conflict.js     # 冲突检测
-│   │   └── version.js      # 版本解析与比较
 │   └── generated/          # 自动生成
 │       └── tooling.js      # 从 tools.schema.json 生成
 ├── config/                 # Schema 定义
@@ -53,9 +48,15 @@ loom/
 │   └── handlers/           # Hook 处理器
 │       └── session-start.cjs
 ├── templates/              # 项目模板
-├── plugin-meta/            # 插件元数据
+├── .claude-plugin/         # 插件元数据
 ├── scripts/                # 构建脚本
 │   ├── generate-tooling.mjs
+│   ├── generate-plugin-meta.mjs
+│   ├── generate-pipeline-docs.mjs
+│   ├── generate-skills-catalog.mjs
+│   ├── generate-review-summary.mjs
+│   ├── generate-model-selection.mjs
+│   ├── generate-shared-rules.mjs
 │   └── sync-version.mjs
 └── tests/                  # 测试套件
 ```
@@ -103,12 +104,6 @@ src/core/installer.js    — 适配器注册与获取（ADAPTER_MAP、getUserAda
 3. 删除 loom 安装的 skills 子目录
 4. 删除 loom 安装的 commands 文件
 5. 注销插件配置
-
-### 工具函数层
-
-- `backup.js`：创建备份、清理旧备份（保留最近 3 份）
-- `conflict.js`：检测文件冲突状态（不存在/loom-managed/conflict）
-- `version.js`：解析 `loom:version=x.y.z` 标记、比较版本号
 
 ## 数据流
 
@@ -181,8 +176,7 @@ tests/
 ├── commands/       # CLI 命令测试
 ├── adapters/       # 适配器测试
 ├── hooks/          # Hook 系统测试
-├── utils/          # 工具函数测试
-└── core/           # 核心逻辑测试（待补充）
+└── utils/          # 工具函数测试
 ```
 
 测试框架：vitest。运行：

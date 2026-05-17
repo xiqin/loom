@@ -22,8 +22,7 @@
 
 | 路径                       | 类型      | 说明                  |
 | -------------------------- | --------- | --------------------- |
-| `~/.cursor/skills/<name>/` | directory | 每个 skill 一个子目录 |
-| `~/.cursor/commands/`      | directory | command 定义文件      |
+| `~/.cursor/rules/<name>.mdc` | file | 每个 skill 转为 .mdc 规则文件 |
 
 ### Copilot
 

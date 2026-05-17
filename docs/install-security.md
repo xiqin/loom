@@ -9,8 +9,7 @@
 | Claude Code | Claude Code plugin marketplace     | plugin 注册               |
 | OpenCode    | `~/.config/opencode/commands/`     | command `.md` 文件        |
 | OpenCode    | `~/.config/opencode/opencode.json` | npm plugin 配置           |
-| Cursor      | `~/.cursor/skills/`                | skills 子目录             |
-| Cursor      | `~/.cursor/commands/`              | command `.md` 文件        |
+| Cursor      | `~/.cursor/rules/`                 | `.mdc` 规则文件           |
 | Copilot     | `~/.copilot/skills/`               | skills 子目录             |
 | Copilot     | `~/.copilot/instructions/`         | command `.md` 文件        |
 | Copilot     | `~/.copilot/`                      | `copilot-instructions.md` |

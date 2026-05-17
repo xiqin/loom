@@ -34,11 +34,13 @@ export default async function list(options) {
     const commandsDir = join(ASSETS_DIR, 'commands');
     try {
       const entries = readdirSync(commandsDir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.isFile() && entry.name.endsWith('.md')) {
-          const name = entry.name.replace('.md', '');
-          console.log(`    /${name}`);
-        }
+      const mdFiles = entries.filter(e => e.isFile() && e.name.endsWith('.md'));
+      if (mdFiles.length === 0) {
+        console.log('    (no commands found)');
+      }
+      for (const entry of mdFiles) {
+        const name = entry.name.replace('.md', '');
+        console.log(`    /${name}`);
       }
     } catch {
       console.log('    (no commands found)');

@@ -20,3 +20,6 @@ specs/
 
 # loom-engineering
 .loom-backup/
+
+# Not tracked in repo
+.claudeignore
