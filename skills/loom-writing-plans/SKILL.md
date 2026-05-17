@@ -41,9 +41,9 @@ description: >
 
 ### Step 2：读取项目约束
 
-1. 读取 `.loom/memory/constitution.md`（宪章）
+1. 读取 `.loom/rules/constitution.md`（宪章）
 2. 读取 `.loom/rules/project-structure.md`（工程结构）
-3. 如果存在 `.loom/templates/subagent-context.md`，读取它用于后续 task 上下文
+3. 如果存在 `.loom/contexts/subagent-context.md`，读取它用于后续 task 上下文
 
 ### Step 3：文件结构
 
@@ -93,11 +93,11 @@ description: >
 
 ## Task 概览
 
-| Task | 名称 | 层级 | 复杂度 | 依赖 | 文件 |
-|------|------|------|--------|------|------|
-| T1 | <功能点名称> | <层级> | 简单 | 无 | `tasks/T1.md` |
-| T2 | <功能点名称> | <层级> | 中等 | T1 | `tasks/T2.md` |
-| ... | ... | ... | ... | ... | ... |
+| Task | 名称         | 层级   | 复杂度 | 依赖 | 文件          |
+| ---- | ------------ | ------ | ------ | ---- | ------------- |
+| T1   | <功能点名称> | <层级> | 简单   | 无   | `tasks/T1.md` |
+| T2   | <功能点名称> | <层级> | 中等   | T1   | `tasks/T2.md` |
+| ...  | ...          | ...    | ...    | ...  | ...           |
 
 ## 依赖关系
 
@@ -106,7 +106,7 @@ T1 → T2 → T3 → ...
 
 **每个 task 文件（`tasks/TN.md`）必须包含以下全部字段，禁止省略：**
 
-```markdown
+````markdown
 ### Task N: <功能点名称>
 
 - **层级**: 从 `.loom/rules/project-structure.md` 中提取的项目分层名称
@@ -141,7 +141,7 @@ def function(input):
 
 运行测试用例
 预期：PASS
-```
+````
 
 ### Step 6：检查清单（No Placeholders）
 
@@ -186,7 +186,7 @@ def function(input):
 
 ## 编码红线（task 中绝对禁止）
 
-**读取 `.loom/memory/constitution.md` 中的编码红线，以下为通用红线（项目宪章有额外条目时以宪章为准）：**
+**读取 `.loom/rules/constitution.md` 中的编码红线，以下为通用红线（项目宪章有额外条目时以宪章为准）：**
 
 1. 跨层写逻辑（如在展示层写业务逻辑、在数据层写展示逻辑）
 2. 使用语言默认的调试打印——必须用项目日志组件
@@ -197,7 +197,7 @@ def function(input):
 
 ## 技术上下文（task 中必须参考）
 
-从`.loom/memory/constitution.md`和`.loom/rules/project-structure.md`中提取——不同项目关注点不同，按实际提取：
+从`.loom/rules/constitution.md`和`.loom/rules/project-structure.md`中提取——不同项目关注点不同，按实际提取：
 
 **通用关注点：**
 
@@ -234,4 +234,4 @@ def function(input):
 
 plan.md 和所有 task 文件（tasks/T1.md, T2.md, ...）保存并自检完毕后，必须同时更新 `specs/<date+feature>/progress.md`（按上述规则填写完成时间），**等待用户确认 plan**。
 
-用户确认后，**必须立即触发 git-worktree**（loom-using-git-worktrees skill）。
+用户确认后，**完成后：遵循 `.loom/workflow.yaml` 继续下一步**。

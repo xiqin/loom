@@ -7,7 +7,7 @@
     {
       "id": "constitution",
       "sourceFile": "templates/constitution.md",
-      "outputPath": ".loom/memory/constitution.md",
+      "outputPath": ".loom/rules/constitution.md",
       "description": "项目宪章 — 编码准则、核心原则、技术栈、编码红线",
       "requiredVariables": [
         "ARCH_PRINCIPLE",

@@ -61,41 +61,6 @@
 - 必须通过：{{VET_CMD}}
 - 测试命令：{{TEST_CMD}}
 
-## 开发流程（硬性约束 · 必须严格执行）
-
-**任何新增功能或接口，必须严格按以下顺序执行，不可跳过、不可合并步骤：**
-
-本项目使用 loom (loom-engineering) 插件。
-
-```
-brainstorming → writing-plans → git-worktree → subagent-dev → verification → index-update
-```
-
-### 第一步：需求设计（brainstorming）→ 产出 `specs/<date+feature>/spec.md`，用户确认后继续
-
-### 第二步：计划拆解（writing-plans）→ 产出 `specs/<date+feature>/plan.md`，用户确认后继续
-
-### 第三步：环境隔离（git-worktree）→ 创建 `feature/<date>-<feature>` 隔离分支
-
-### 第四步：编码执行（subagent-dev）→ Subagent 隔离派发 + 双审查
-
-### 第五步：完成前验证（verification）→ Spec 覆盖/类型一致性/编译测试
-
-### 第六步：索引更新（index-update）→ 同步工程索引
-
-**严令禁止跳过任何步骤。每个步骤完成后必须显式触发下一步，不可自行终止。**
-**每个 skill 执行完毕后，必须读取自身的"完成条件与下一步"节并严格遵守。跳过串联视为严重错误。**
-
-## progress.md 追踪文件
-
-维护 `specs/<date+feature>/progress.md`，格式：
-
-| Step | 阶段          | 状态 | 开始时间 | 完成时间 | 备注 |
-| ---- | ------------- | ---- | -------- | -------- | ---- |
-| 1    | brainstorming | ✅   | <当前时间 HH:mm> | <当前时间 HH:mm> |      |
-
-更新规则：开始→▶进行中+填写开始时间，完成→✅+填写完成时间，失败→❌+填写完成时间+原因。**时间必须填入实际的 HH:mm 数值（如 14:30），禁止填入字面量 "HH:mm"。**
-
 ## 治理规则
 
 本章程高于所有其他开发规范。

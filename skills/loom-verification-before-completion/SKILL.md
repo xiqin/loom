@@ -85,7 +85,7 @@ status: ✅ 完成
 <!-- loom:generate:rule:build-vet-test-cmd -->
 **构建/检查/测试命令**
 
-读取 `.loom/memory/constitution.md` 中的 BUILD_CMD/VET_CMD/TEST_CMD 并执行验证。
+读取 `.loom/rules/constitution.md` 中的 BUILD_CMD/VET_CMD/TEST_CMD 并执行验证。
 <!-- /loom:generate:rule:build-vet-test-cmd -->
 
 - [ ] BUILD_CMD 通过
@@ -177,7 +177,7 @@ status: ✅ 完成
 
 ## 完成条件与下一步
 
-**验证通过后：** 更新 `specs/<date+feature>/progress.md`（按上述规则填写完成时间），触发 index-update（loom-index-update skill）
+**验证通过后：** 更新 `specs/<date+feature>/progress.md`（按上述规则填写完成时间），遵循 `.loom/workflow.yaml` 继续下一步
 
 **验证未通过：** 更新 `specs/<date+feature>/progress.md`（按上述规则标记失败），输出修复指令后回到 executing 阶段。**禁止全量重新执行 Step 4**，只派发 implementer（修复模式）修复 BLOCKER 对应的问题。
 
@@ -189,6 +189,7 @@ status: ✅ 完成
 ## 修复指令
 
 ### 修复项 1
+
 - **问题**：<具体问题描述>
 - **文件**：<文件路径>
 - **位置**：<函数名/行号/区域>
@@ -196,6 +197,7 @@ status: ✅ 完成
 - **修复方向**：<具体的修复方向>
 
 ### 修复项 2
+
 - **问题**：<具体问题描述>
 - **文件**：<文件路径>
 - **位置**：<函数名/行号/区域>

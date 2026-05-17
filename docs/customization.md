@@ -17,7 +17,7 @@ loom 框架支持多级自定义：
 
 ### 宪章自定义
 
-编辑 `.loom/memory/constitution.md`：
+编辑 `.loom/rules/constitution.md`：
 
 ```markdown
 # 项目宪章
@@ -126,7 +126,7 @@ description: >
 
 ### 修改流水线步骤
 
-如果项目需要自定义流水线（如添加额外步骤），编辑 `.loom/memory/constitution.md`：
+如果项目需要自定义流水线（如添加额外步骤），编辑 `.loom/rules/constitution.md`：
 
 ```markdown
 ## 开发流程

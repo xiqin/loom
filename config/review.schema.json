@@ -35,7 +35,7 @@
         "命名规范",
         "日志格式"
       ],
-      "source": ".loom/memory/constitution.md"
+      "source": ".loom/rules/constitution.md"
     },
     {
       "id": "security",

@@ -124,7 +124,7 @@ git branch --show-current
 ## 流程图
 
 ```
-检查当前状态 → 创建隔离分支 → 安装依赖验证基线 → 确认分支状态 → 触发 subagent-dev
+检查当前状态 → 创建隔离分支 → 安装依赖验证基线 → 确认分支状态 → 继续 workflow
 ```
 
 ## progress.md 更新
@@ -137,4 +137,6 @@ git branch --show-current
 
 ## 完成条件与下一步
 
-分支创建并验证测试基线后，必须同时更新 `specs/<date+feature>/progress.md`（按上述规则填写完成时间），**触发 subagent-driven-development（loom-subagent-driven-development skill）** 进行编码执行。
+分支创建并验证测试基线后，必须同时更新 `specs/<date+feature>/progress.md`（按上述规则填写完成时间）。
+
+完成后：遵循 `.loom/workflow.yaml` 继续下一步。

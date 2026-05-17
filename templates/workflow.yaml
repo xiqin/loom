@@ -1,0 +1,32 @@
+# 本文件由 `/loom-init-project` 自动生成，请根据项目实际情况完善
+
+pipeline:
+  name: loom-development
+  steps:
+    - id: brainstorming
+      skill: loom-brainstorming
+      next: planning
+      description: "需求头脑风暴，输出 spec.md"
+    - id: planning
+      skill: loom-writing-plans
+      next: approved
+      description: "拆解实现计划，输出 plan.md"
+    - id: approved
+      gate: human-approval
+      description: "等待用户确认 plan 后才能继续"
+      next: git-worktree
+    - id: git-worktree
+      skill: loom-using-git-worktrees
+      next: executing
+      description: "创建隔离分支"
+    - id: executing
+      skill: loom-subagent-driven-development
+      next: verification
+      description: "编码执行"
+    - id: verification
+      skill: loom-verification-before-completion
+      next: synced
+      description: "完成前验证"
+    - id: synced
+      skill: loom-index-update
+      description: "索引同步，流水线结束"

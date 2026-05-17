@@ -40,13 +40,13 @@ description: >
 
 **修复模式 vs 首次实现模式的上下文差异：**
 
-| 上下文项 | 首次实现模式 | 修复模式 |
-|---------|:----------:|:------:|
-| tasks/TN.md 当前 task | ✅ | ❌ |
-| 修复指令 | ❌ | ✅ |
-| spec.md 全文 | ✅ | ❌ |
-| subagent-context.md | ✅ | ✅ |
-| reviewer/test-reporter 输出 | ❌ | ❌（修复指令已包含定位信息） |
+| 上下文项                    | 首次实现模式 |           修复模式           |
+| --------------------------- | :----------: | :--------------------------: |
+| tasks/TN.md 当前 task       |      ✅      |              ❌              |
+| 修复指令                    |      ❌      |              ✅              |
+| spec.md 全文                |      ✅      |              ❌              |
+| subagent-context.md         |      ✅      |              ✅              |
+| reviewer/test-reporter 输出 |      ❌      | ❌（修复指令已包含定位信息） |
 
 修复模式只传递：修复指令（问题 + 文件 + 位置 + 方向）+ subagent-context.md（编码红线等约束），不重新传递完整 task 定义和 spec 全文。
 
@@ -88,7 +88,9 @@ digraph when_to_use {
 ## 模型选择
 
 <!-- 模型选择策略详见 writing-plans SKILL.md -->
+
 机械实现任务→便宜模型，集成判断→标准模型，架构审查→最强模型。
+
 - 触及1-2个文件且有完整规范 → 便宜模型
 - 触及多个文件且有集成问题 → 标准模型
 - 需要设计判断或广泛代码库理解 → 最强模型
@@ -129,9 +131,9 @@ Implementer subagent 报告四种状态之一。适当处理每一种：
                           2.运行全量回归测试
                           3.对照spec验证
                           4.输出测试报告
-                            ├→ 全部PASS → verification
-                            └→ 有FAIL → 提取修复指令 → 派发implementer(修复模式)
-                                            → 修复后重新派发test-reporter（循环）
+                             ├→ 全部PASS → 继续 workflow
+                             └→ 有FAIL → 提取修复指令 → 派发implementer(修复模式)
+                                             → 修复后重新派发test-reporter（循环）
 ```
 
 ## 派发前准备
@@ -142,10 +144,27 @@ Implementer subagent 报告四种状态之一。适当处理每一种：
 
 ### 准备：读取项目约束（派发时传入精简上下文）
 
-每个 subagent 必须注入精简上下文模板：`.loom/templates/subagent-context.md`, 同时传入：
+每个 subagent 必须注入精简上下文模板：`.loom/contexts/subagent-context.md`, 同时传入：
+
 - `specs/<date+feature>/spec.md` — 需求规格
 - `specs/<date+feature>/plan.md` — Task 概览（编排器用）
 - `specs/<date+feature>/tasks/TN.md` — 当前 task 详细内容（implementer/reviewer 用）
+
+### 准备：读取 prompt 模板（派发前必须执行）
+
+派发前必须读取对应模板文件作为 prompt 基础：
+
+- implementer → `implementer-prompt.md`
+- test-reporter → `test-reporter-prompt.md`
+- reviewer → `combined-reviewer-prompt.md`
+
+**派发流程**：
+
+1. 读取模板文件
+2. 把 task 内容填入模板的占位符（如 `<当前 task 文件内容>`）
+3. 用填充后的完整 prompt 派发 subagent
+
+**禁止手写简化 prompt 绕过模板。** 模板中的 TDD 要求、测试持久化要求、编码红线等约束必须通过模板传递给 subagent。
 
 ## 每个 Task 的执行循环（必须执行）
 
@@ -157,7 +176,7 @@ Implementer subagent 报告四种状态之一。适当处理每一种：
 
 - `specs/<date+feature>/spec.md` 中相关章节
 - `specs/<date+feature>/tasks/TN.md`（当前 task 详细内容）
-- `.loom/templates/subagent-context.md`（精简项目约束）
+- `.loom/contexts/subagent-context.md`（精简项目约束）
 
 **implementer 的指令模板：**
 参见 `implementer-prompt.md`，模式设为"首次实现模式"
@@ -169,7 +188,7 @@ Implementer subagent 报告四种状态之一。适当处理每一种：
 **输入上下文：**
 
 - 修复指令（从 reviewer/test-reporter 输出中提取的结构化修复指令）
-- `.loom/templates/subagent-context.md`（精简项目约束）
+- `.loom/contexts/subagent-context.md`（精简项目约束）
 
 **不再传递：** 当前 task 详细内容（TN.md）、spec.md 全文（修复指令中已包含足够的定位信息）
 
@@ -185,7 +204,7 @@ Implementer subagent 报告四种状态之一。适当处理每一种：
 - implementer 的输出（创建/修改的文件列表 + 代码）
 - `specs/<date+feature>/spec.md`（完整需求）
 - `specs/<date+feature>/tasks/TN.md`（当前 task 详细内容）
-- `.loom/templates/subagent-context.md`（精简项目约束）
+- `.loom/contexts/subagent-context.md`（精简项目约束）
 - git diff（仅变更部分）
 
 **判定规则：**
@@ -211,7 +230,7 @@ Implementer subagent 报告四种状态之一。适当处理每一种：
 
 **判定规则：**
 
-- **全部 PASS** → 通过，触发 verification-before-completion skill
+- **全部 PASS** → 通过，遵循 `.loom/workflow.yaml` 继续下一步
 - **集成测试 FAIL** → 不通过，从 test-reporter 输出中提取修复指令，派发 implementer（修复模式），修复后重新派发 test-reporter
 - **回归测试有新增代码引起的失败** → 不通过，从 test-reporter 输出中提取修复指令，派发 implementer（修复模式），修复后重新派发 test-reporter
 - **回归测试仅有预先存在的失败** → 标记 WARN，不阻断流水线
@@ -280,4 +299,6 @@ Implementer subagent 报告四种状态之一。适当处理每一种：
 
 ## 完成条件与下一步
 
-所有步骤完成后，必须同时更新 `specs/<date+feature>/progress.md`（按上述 progress.md 更新规则填写完成时间）。验证通过后，触发 verification-before-completion（loom-verification-before-completion skill）。
+所有步骤完成后，必须同时更新 `specs/<date+feature>/progress.md`（按上述 progress.md 更新规则填写完成时间）。
+
+完成后：遵循 `.loom/workflow.yaml` 继续下一步。

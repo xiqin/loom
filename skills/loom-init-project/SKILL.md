@@ -12,13 +12,15 @@ description: >
 ## 触发条件
 
 - 用户输入 `/loom-init-project`
-- 项目中不存在 `.loom/memory/constitution.md`（首次使用自动提示）
+- 项目中不存在 `.loom/rules/constitution.md`（首次使用自动提示）
 - 项目结构发生重大变更后重新生成
 
 ## 状态输出
 
 - 开始：`▶ pipeline [init] — 项目初始化 (init-project) | status: 开始`
 - 完成：`✅ pipeline [init] — 项目初始化 | 完成 | 4 个核心文件 + N 个工具适配文件 | → 检查并完善 [TODO]`
+
+```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  pipeline [init] — 项目初始化 (init-project)
  skill:   init-project
@@ -42,12 +44,15 @@ description: >
 ```
 .loom/                              ← 核心配置（工具无关，唯一维护点）
   memory/
-    constitution.md                ← 项目宪章
     MEMORY.md                      ← 记忆文件
   rules/
+    constitution.md                ← 项目宪章
     project-structure.md           ← 工程结构约束
-  templates/
+  contexts/
     subagent-context.md            ← 子 agent 上下文
+  index/
+    ENGINEERING-INDEX.md           ← 工程索引，使用graphify时此文件无效
+  workflow.yaml                    ← 开发流程约束
 
 .claude/CLAUDE.md                  ← Claude Code 入口（wrapper → .loom/）
 AGENTS.md                          ← OpenCode / Codex 入口（wrapper → .loom/）
@@ -146,13 +151,14 @@ pkg/          → 公共工具包
 
 必须读取 `templates/` 目录下的模板文件，渲染变量后写入 `.loom/`, 禁止擅自删减内容：
 
-| 源模板                                   | 目标文件                              | 说明                |
-| ---------------------------------------- | ------------------------------------- | ------------------- |
-| `templates/constitution.md`              | `.loom/memory/constitution.md`        | 项目宪章            |
-| `templates/project-structure.md`         | `.loom/rules/project-structure.md`    | 工程结构约束        |
-| `templates/memory.md`                    | `.loom/memory/MEMORY.md`              | 记忆文件（空模板）  |
-| 从 constitution + project-structure 提取 | `.loom/templates/subagent-context.md` | 子 agent 精简上下文 |
-| `templates/engineering-index.md`         | `.loom/ENGINEERING-INDEX.md`          | 工程索引（空模板，graphify 可用时由知识图谱替代）  |
+| 源模板                                   | 目标文件                             | 说明                                              |
+| ---------------------------------------- | ------------------------------------ | ------------------------------------------------- |
+| `templates/constitution.md`              | `.loom/rules/constitution.md`        | 项目宪章                                          |
+| `templates/project-structure.md`         | `.loom/rules/project-structure.md`   | 工程结构约束                                      |
+| `templates/memory.md`                    | `.loom/memory/MEMORY.md`             | 记忆文件（空模板）                                |
+| 从 constitution + project-structure 提取 | `.loom/contexts/subagent-context.md` | 子 agent 精简上下文                               |
+| `templates/engineering-index.md`         | `.loom/index/engineering-index.md`   | 工程索引（空模板，graphify 可用时由知识图谱替代） |
+| `templates/workflow.yaml`                | `.loom/workflow.yaml`                | 开发流程约束                                      |
 
 渲染时用 Step 1-3 扫描结果替换模板中的 `{{变量}}`。详见「模板变量」节。
 
@@ -178,18 +184,18 @@ pkg/          → 公共工具包
 
 所有工具统一使用 wrapper 模式：入口文件引用 `.loom/` 下的源文件，AI 工具运行时按需读取。
 
-| 工具        | 分发目标                              | 格式    | 内容                                       |
-| ----------- | ------------------------------------- | ------- | ------------------------------------------ |
-| Claude Code | `.claude/CLAUDE.md`                   | wrapper | 指引读取 `.loom/memory/constitution.md` 等 |
-| Claude Code | `.claudeignore`                       | ignore  | 过滤 node_modules、vendor 等目录           |
-| OpenCode    | `AGENTS.md`                           | wrapper | 指引读取 `.loom/memory/constitution.md` 等 |
-| OpenCode    | `opencode.json` 的 `watcher.ignore`   | config  | 过滤 node_modules、vendor 等目录           |
-| Cursor      | `.cursor/rules/constitution.mdc`      | mdc     | 完整复制 + frontmatter                     |
-| Cursor      | `.cursor/rules/project-structure.mdc` | mdc     | 完整复制 + frontmatter                     |
-| Cursor      | `.cursorignore`                       | ignore  | 过滤 node_modules、vendor 等目录           |
-| Copilot     | `.github/copilot-instructions.md`     | wrapper | 指引读取 `.loom/memory/constitution.md` 等 |
-| Codex       | `AGENTS.md`                           | wrapper | 同 OpenCode，共享文件                      |
-| Codex       | `.codexignore`                        | ignore  | 过滤 node_modules、vendor 等目录           |
+| 工具        | 分发目标                              | 格式    | 内容                                      |
+| ----------- | ------------------------------------- | ------- | ----------------------------------------- |
+| Claude Code | `.claude/CLAUDE.md`                   | wrapper | 指引读取 `.loom/rules/constitution.md` 等 |
+| Claude Code | `.claudeignore`                       | ignore  | 过滤 node_modules、vendor 等目录          |
+| OpenCode    | `AGENTS.md`                           | wrapper | 指引读取 `.loom/rules/constitution.md` 等 |
+| OpenCode    | `opencode.json` 的 `watcher.ignore`   | config  | 过滤 node_modules、vendor 等目录          |
+| Cursor      | `.cursor/rules/constitution.mdc`      | mdc     | 完整复制 + frontmatter                    |
+| Cursor      | `.cursor/rules/project-structure.mdc` | mdc     | 完整复制 + frontmatter                    |
+| Cursor      | `.cursorignore`                       | ignore  | 过滤 node_modules、vendor 等目录          |
+| Copilot     | `.github/copilot-instructions.md`     | wrapper | 指引读取 `.loom/rules/constitution.md` 等 |
+| Codex       | `AGENTS.md`                           | wrapper | 同 OpenCode，共享文件                     |
+| Codex       | `.codexignore`                        | ignore  | 过滤 node_modules、vendor 等目录          |
 
 **分发原则：**
 
@@ -228,17 +234,18 @@ alwaysApply: true
 
 ```
 node_modules/ vendor/ dist/ build/ .cache/ .git/ *.lock *.log
-__pycache__/ .venv/ venv/ .coverage/ *.pyc *.pyo *.egg-info/ .tox/
+__pycache__/ .venv/ venv/ .coverage/ *.pyc *.pyo *.egg-info/ .tox/ .worktree/
 ```
 
-| 工具 | 输出文件 | 额外条目 | 备注 |
-|------|---------|---------|------|
-| Claude Code | `.claudeignore` | — | 自动生成 `# 由 loom init-project 自动生成` |
-| Cursor | `.cursorignore` | — | 同上 |
-| Codex | `.codexignore` | — | 同上 |
-| OpenCode | `opencode.json` 的 `watcher.ignore` | — | 合并到已有配置，不覆盖其他字段 |
+| 工具        | 输出文件                            | 额外条目 | 备注                                       |
+| ----------- | ----------------------------------- | -------- | ------------------------------------------ |
+| Claude Code | `.claudeignore`                     | —        | 自动生成 `# 由 loom init-project 自动生成` |
+| Cursor      | `.cursorignore`                     | —        | 同上                                       |
+| Codex       | `.codexignore`                      | —        | 同上                                       |
+| OpenCode    | `opencode.json` 的 `watcher.ignore` | —        | 合并到已有配置，不覆盖其他字段             |
 
 生成规则：
+
 - 根据项目语言追加特定忽略项（如 Python 追加 `__pycache__/`、`.venv/`）
 - 已有忽略文件时，检查是否包含 `loom` 标记，有则覆盖，无则跳过并提示
 
@@ -258,13 +265,13 @@ __pycache__/ .venv/ venv/ .coverage/ *.pyc *.pyo *.egg-info/ .tox/
 
 ### 核心配置文件（`.loom/`）
 
-| 文件                                | 状态      | 说明                   |
-| ----------------------------------- | --------- | ---------------------- |
-| .loom/memory/constitution.md        | ✅ 已生成 | 项目宪章，5 项核心原则 |
-| .loom/rules/project-structure.md    | ✅ 已生成 | 工程结构约束           |
-| .loom/memory.md                     | ✅ 已生成 | 记忆文件（空模板）     |
-| .loom/templates/subagent-context.md | ✅ 已生成 | 子 agent 精简上下文    |
-| .loom/ENGINEERING-INDEX.md          | ✅ 已生成 | 工程索引（空模板）     |
+| 文件                               | 状态      | 说明                   |
+| ---------------------------------- | --------- | ---------------------- |
+| .loom/rules/constitution.md        | ✅ 已生成 | 项目宪章，5 项核心原则 |
+| .loom/rules/project-structure.md   | ✅ 已生成 | 工程结构约束           |
+| .loom/memory.md                    | ✅ 已生成 | 记忆文件（空模板）     |
+| .loom/contexts/subagent-context.md | ✅ 已生成 | 子 agent 精简上下文    |
+| .loom/index/engineering-index.md   | ✅ 已生成 | 工程索引（空模板）     |
 
 ### 工具适配分发
 
@@ -281,21 +288,21 @@ __pycache__/ .venv/ venv/ .coverage/ *.pyc *.pyo *.egg-info/ .tox/
 
 ### 需人工完善的 [TODO]
 
-- [ ] .loom/memory/constitution.md 中的「编码红线」需确认是否完整
+- [ ] .loom/rules/constitution.md 中的「编码红线」需确认是否完整
 - [ ] .loom/rules/project-structure.md 中的「开发流程」需确认
 - [ ] .loom/memory.md 需在使用中逐步积累
 ```
 
 ## 模板变量
 
-| 分组 | 变量 | 来源 |
-|------|------|------|
-| 技术栈 | PROJECT_NAME, PROJECT_DESC, LANGUAGE, WEB_FRAMEWORK, ORM, DATABASE, CACHE, LOGGING, DI | Step 1 扫描 |
-| 架构 | ARCH_PATTERN, ARCH_PRINCIPLE, ARCH_DESC, DIRECTORY_TREE, ENTRY_POINTS | Step 3 推断 |
-| 命令 | BUILD_CMD, VET_CMD, TEST_CMD, LANGUAGE_VERSION, FRAMEWORK_VERSION, ORM_VERSION, DATABASE_VERSION, CACHE_VERSION, LOGGING_VERSION, DI_VERSION | Step 1 生成 |
-| 模式 | ERROR_PATTERN, RESPONSE_PATTERN, CODING_REDLINES, LOGGING_PATTERN, DI_PATTERN | Step 2 分析 |
-| 配置 | ARCH_PRINCIPLE/DESC, DI_PRINCIPLE/DESC, CONFIG_PRINCIPLE/DESC, ERROR_PRINCIPLE/DESC, CODEGEN_PRINCIPLE/DESC | Step 2+推断 |
-| 其他 | DEV_FLOW, TECH_STACK_SUMMARY | 用户确认+汇总 |
+| 分组   | 变量                                                                                                                                         | 来源          |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| 技术栈 | PROJECT_NAME, PROJECT_DESC, LANGUAGE, WEB_FRAMEWORK, ORM, DATABASE, CACHE, LOGGING, DI                                                       | Step 1 扫描   |
+| 架构   | ARCH_PATTERN, ARCH_PRINCIPLE, ARCH_DESC, DIRECTORY_TREE, ENTRY_POINTS                                                                        | Step 3 推断   |
+| 命令   | BUILD_CMD, VET_CMD, TEST_CMD, LANGUAGE_VERSION, FRAMEWORK_VERSION, ORM_VERSION, DATABASE_VERSION, CACHE_VERSION, LOGGING_VERSION, DI_VERSION | Step 1 生成   |
+| 模式   | ERROR_PATTERN, RESPONSE_PATTERN, CODING_REDLINES, LOGGING_PATTERN, DI_PATTERN                                                                | Step 2 分析   |
+| 配置   | ARCH_PRINCIPLE/DESC, DI_PRINCIPLE/DESC, CONFIG_PRINCIPLE/DESC, ERROR_PRINCIPLE/DESC, CODEGEN_PRINCIPLE/DESC                                  | Step 2+推断   |
+| 其他   | DEV_FLOW, TECH_STACK_SUMMARY                                                                                                                 | 用户确认+汇总 |
 
 ## 约束
 

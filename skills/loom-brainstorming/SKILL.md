@@ -41,7 +41,7 @@ description: >
 
 ### Step 1：理解需求
 
-1. 必须先读取 `.loom/memory/constitution.md`（宪章）了解项目约束
+1. 必须先读取 `.loom/rules/constitution.md`（宪章）了解项目约束
 2. 必须先读取 `.loom/rules/project-structure.md`（工程结构）了解技术栈和分层
 3. 如果是修改类需求，先分析现有代码的实现方式和影响范围
 4. 明确需求边界：做什么、不做什么
@@ -203,19 +203,19 @@ Spec 自审通过后，询问用户审查：
 **开始时间：** YYYY-MM-DD HH:mm
 **当前阶段：** Step 1/6
 
-| Step | 阶段 | 状态 | 开始时间 | 完成时间 | 备注 |
-|------|------|------|---------|---------|------|
-| 1 | brainstorming | ▶ 进行中 | <当前时间 HH:mm> | — |  |
-| 2 | writing-plans | ⏳ 等待 | — | — |  |
-| 3 | git-worktree | ⏳ 等待 | — | — |  |
-| 4 | subagent-dev | ⏳ 等待 | — | — |  |
-| 5 | verification | ⏳ 等待 | — | — |  |
-| 6 | index-update | ⏳ 等待 | — | — |  |
+| Step | 阶段          | 状态     | 开始时间         | 完成时间 | 备注 |
+| ---- | ------------- | -------- | ---------------- | -------- | ---- |
+| 1    | brainstorming | ▶ 进行中 | <当前时间 HH:mm> | —        |      |
+| 2    | writing-plans | ⏳ 等待  | —                | —        |      |
+| 3    | git-worktree  | ⏳ 等待  | —                | —        |      |
+| 4    | subagent-dev  | ⏳ 等待  | —                | —        |      |
+| 5    | verification  | ⏳ 等待  | —                | —        |      |
+| 6    | index-update  | ⏳ 等待  | —                | —        |      |
 
 ## Skill 调用记录
 
-| 时间 | Skill | 触发原因 | 结果 |
-|------|-------|---------|------|
+| 时间             | Skill         | 触发原因     | 结果     |
+| ---------------- | ------------- | ------------ | -------- |
 | <当前时间 HH:mm> | brainstorming | 用户提出需求 | ▶ 执行中 |
 ```
 
@@ -227,4 +227,4 @@ Spec 自审通过后，询问用户审查：
 
 spec.md 保存并自审完毕后，必须同时更新 `specs/<date+feature>/progress.md`（按上述规则填写完成时间），**等待用户确认方案**。
 
-用户确认后，**必须立即触发 writing-plans**（loom-writing-plans skill）。
+用户确认后，**完成后：遵循 `.loom/workflow.yaml` 继续下一步**。

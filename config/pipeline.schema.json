@@ -32,7 +32,7 @@
         }
       ],
       "reads": [
-        ".loom/memory/constitution.md",
+        ".loom/rules/constitution.md",
         ".loom/rules/project-structure.md"
       ],
       "interactive": true,
@@ -74,7 +74,7 @@
       ],
       "reads": [
         "specs/<date+feature>/spec.md",
-        ".loom/memory/constitution.md",
+        ".loom/rules/constitution.md",
         ".loom/rules/project-structure.md"
       ],
       "interactive": true,
@@ -142,7 +142,7 @@
         }
       ],
       "reads": [
-        ".loom/memory/constitution.md"
+        ".loom/rules/constitution.md"
       ],
       "interactive": false,
       "autoTransition": false,
@@ -199,8 +199,8 @@
         "specs/<date+feature>/plan.md",
         "specs/<date+feature>/tasks/",
         "specs/<date+feature>/spec.md",
-        ".loom/templates/subagent-context.md",
-        ".loom/memory/constitution.md",
+        ".loom/contexts/subagent-context.md",
+        ".loom/rules/constitution.md",
         ".loom/rules/project-structure.md"
       ],
       "interactive": true,
@@ -277,7 +277,7 @@
         "specs/<date+feature>/spec.md",
         "specs/<date+feature>/plan.md",
         "specs/<date+feature>/tasks/",
-        ".loom/memory/constitution.md",
+        ".loom/rules/constitution.md",
         ".loom/rules/project-structure.md",
         "源码文件"
       ],
@@ -327,7 +327,7 @@
           "note": "graphify 可用时生成，与 ENGINEERING-INDEX.md 互斥"
         },
         {
-          "path": ".loom/ENGINEERING-INDEX.md",
+          "path": ".loom/index/engineering-index.md",
           "action": "modified"
         },
         {
@@ -340,7 +340,7 @@
         }
       ],
       "reads": [
-        ".loom/ENGINEERING-INDEX.md",
+        ".loom/index/engineering-index.md",
         "graphify-out/graph.json",
         "graphify-out/GRAPH_REPORT.md",
         ".loom/memory/MEMORY.md",

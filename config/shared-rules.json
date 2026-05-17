@@ -42,7 +42,7 @@
     {
       "id": "build-vet-test-cmd",
       "heading": "构建/检查/测试命令",
-      "content": "读取 `.loom/memory/constitution.md` 中的 BUILD_CMD/VET_CMD/TEST_CMD 并执行验证。",
+      "content": "读取 `.loom/rules/constitution.md` 中的 BUILD_CMD/VET_CMD/TEST_CMD 并执行验证。",
       "injectTo": ["loom-verification-before-completion", "loom-finishing-a-development-branch"],
       "notes": "worktrees/TDD 中的命令引用是步骤描述的一部分，保持手动维护"
     }

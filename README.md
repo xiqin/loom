@@ -5,7 +5,7 @@ AI 工程化框架。把需求、规范、上下文、执行过程"织"成一套
 ## loom 是什么
 
 - 一套 **skills + commands + hooks** 的集合，注入到 AI 编程工具中
-- 一条 **6 步开发流水线**：需求分析 → 计划拆解 → 隔离开发 → 代码审查 → 完成前验证 → 索引同步
+- 一条 **自定义开发流水线**：需求分析 → 计划拆解 → 隔离开发 → 代码审查 → 完成前验证 → 索引同步
 - 一个 **CLI 工具**（`loom`），负责安装、更新、诊断、卸载
 - 一个 **项目初始化器**（`/loom-init-project`），自动扫描项目生成宪章和工程结构
 
@@ -113,18 +113,21 @@ loom doctor
 
 ## 流水线
 
+流水线由 `.loom/workflow.yaml` 集中定义，执行时自动读取。
+示例：
+
 ```
 brainstorming → writing-plans → git-worktree → subagent-dev → verification → index-update
 ```
 
-| Step | 阶段                        | 说明                                     | 输出                           |
-| ---- | --------------------------- | ---------------------------------------- | ------------------------------ |
-| 1    | brainstorming               | 需求头脑风暴，探索 2-3 种实现方案        | `specs/<date+feature>/spec.md` |
-| 2    | writing-plans               | 按分层拆解 task                          | `specs/<date+feature>/plan.md` |
-| 3    | git-worktree                | 创建隔离分支                             | feature 分支                   |
-| 4    | subagent-driven-development | Subagent 隔离派发 + 双审查               | 源码 + 测试报告                |
-| 5    | verification                | 完成前验证，Spec覆盖/类型一致性/编译测试 | 验证报告                       |
-| 6    | index-update                | 工程索引同步                             | ENGINEERING-INDEX.md           |
+| Step | 阶段                        | 说明                                     | 输出                             |
+| ---- | --------------------------- | ---------------------------------------- | -------------------------------- |
+| 1    | brainstorming               | 需求头脑风暴，探索 2-3 种实现方案        | `specs/<date+feature>/spec.md`   |
+| 2    | writing-plans               | 按分层拆解 task                          | `specs/<date+feature>/plan.md`   |
+| 3    | git-worktree                | 创建隔离分支                             | feature 分支                     |
+| 4    | subagent-driven-development | Subagent 隔离派发 + 双审查               | 源码 + 测试报告                  |
+| 5    | verification                | 完成前验证，Spec覆盖/类型一致性/编译测试 | 验证报告                         |
+| 6    | index-update                | 工程索引同步                             | 知识图谱 或 ENGINEERING-INDEX.md |
 
 ### 代码审查（5 维）
 
