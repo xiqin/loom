@@ -12,7 +12,7 @@
 set -euo pipefail
 
 REPO="xiqin/loom"
-VERSION="1.4.0"
+VERSION="1.5.0"
 # AUTO-SYNC: updated by scripts/generate-tooling.mjs and scripts/sync-version.mjs
 SUPPORTED_TOOLS=("claude-code" "cursor" "copilot" "opencode" "codex")
 
