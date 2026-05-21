@@ -44,14 +44,15 @@
     "node": ">=18"
   },
   "scripts": {
-    "generate": "node scripts/generate-tooling.mjs && node scripts/generate-plugin-meta.mjs && node scripts/generate-skills-catalog.mjs && node scripts/generate-pipeline-docs.mjs && node scripts/generate-model-selection.mjs && node scripts/generate-shared-rules.mjs && node scripts/generate-review-summary.mjs",
+    "generate": "node scripts/generate-tooling.mjs && node scripts/generate-plugin-meta.mjs && node scripts/generate-skills-catalog.mjs && node scripts/generate-model-selection.mjs && node scripts/generate-shared-rules.mjs && node scripts/generate-progress-rules.mjs && node scripts/generate-review-summary.mjs",
     "generate:catalog": "node scripts/generate-skills-catalog.mjs",
-    "generate:pipeline": "node scripts/generate-pipeline-docs.mjs",
     "generate:model-selection": "node scripts/generate-model-selection.mjs",
+    "generate:progress": "node scripts/generate-progress-rules.mjs",
     "generate:rules": "node scripts/generate-shared-rules.mjs",
     "generate:review": "node scripts/generate-review-summary.mjs",
     "sync-version": "node scripts/sync-version.mjs",
     "sync-version:check": "node scripts/sync-version.mjs --check",
+    "test:skills": "node skills/loom-writing-skills/scripts/lint-skills.mjs",
     "pretest": "node scripts/generate-tooling.mjs",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -108,6 +108,43 @@ describe('OpenCodeAdapter', () => {
     expect(existsSync(join(TEST_DIR, '.config', 'opencode', 'skills', 'loom-test'))).toBe(false);
   });
 
+  it('install removes stale loom skills but preserves custom skills', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.config', 'opencode'));
+
+    const skillsDir = join(TEST_DIR, '.config', 'opencode', 'skills');
+    mkdirSync(join(skillsDir, 'loom-old'), { recursive: true });
+    writeFileSync(join(skillsDir, 'loom-old', 'SKILL.md'), '# Old');
+    mkdirSync(join(skillsDir, 'custom-skill'), { recursive: true });
+    writeFileSync(join(skillsDir, 'custom-skill', 'SKILL.md'), '# Custom');
+
+    const loomRoot = join(TEST_DIR, 'loom-root');
+    mkdirSync(join(loomRoot, 'skills', 'loom-new'), { recursive: true });
+    writeFileSync(join(loomRoot, 'skills', 'loom-new', 'SKILL.md'), '# New');
+
+    adapter.install(loomRoot, '1.0.0');
+
+    expect(existsSync(join(skillsDir, 'loom-old'))).toBe(false);
+    expect(existsSync(join(skillsDir, 'loom-new'))).toBe(true);
+    expect(existsSync(join(skillsDir, 'custom-skill'))).toBe(true);
+  });
+
+  it('uninstall preserves custom skills', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.config', 'opencode'));
+
+    const skillsDir = join(TEST_DIR, '.config', 'opencode', 'skills');
+    mkdirSync(join(skillsDir, 'loom-test'), { recursive: true });
+    writeFileSync(join(skillsDir, 'loom-test', 'SKILL.md'), '# Loom');
+    mkdirSync(join(skillsDir, 'custom-skill'), { recursive: true });
+    writeFileSync(join(skillsDir, 'custom-skill', 'SKILL.md'), '# Custom');
+    mkdirSync(join(TEST_DIR, '.config', 'opencode'), { recursive: true });
+    writeFileSync(join(TEST_DIR, '.config', 'opencode', 'opencode.json'), JSON.stringify({ plugin: ['loom-engineering'] }));
+
+    adapter.uninstall(TEST_DIR);
+
+    expect(existsSync(join(skillsDir, 'loom-test'))).toBe(false);
+    expect(existsSync(join(skillsDir, 'custom-skill'))).toBe(true);
+  });
+
   it('_addNpmPlugin does not duplicate existing plugin', () => {
     vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.config', 'opencode'));
     mkdirSync(join(TEST_DIR, '.config', 'opencode'), { recursive: true });

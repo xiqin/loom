@@ -5,6 +5,8 @@ import { homedir } from 'node:os';
 const USER_DIR = join(homedir(), '.config', 'opencode');
 const SKILLS_DIR = join(USER_DIR, 'skills');
 const COMMANDS_DIR = join(USER_DIR, 'commands');
+const MANAGED_SKILL_PREFIX = 'loom-';
+const MANAGED_COMMAND_PREFIX = 'loom-';
 
 function copySkills(packageDir, log) {
   const src = join(packageDir, 'skills');
@@ -28,6 +30,7 @@ function copySkills(packageDir, log) {
     for (const entry of readdirSync(SKILLS_DIR, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
       if (srcNames.has(entry.name)) continue;
+      if (!entry.name.startsWith(MANAGED_SKILL_PREFIX)) continue;
       rmSync(join(SKILLS_DIR, entry.name), { recursive: true, force: true });
       log.push(`  skills: removed stale ${entry.name}`);
     }
@@ -55,6 +58,7 @@ function copyCommands(packageDir, log) {
     for (const entry of readdirSync(COMMANDS_DIR, { withFileTypes: true })) {
       if (!entry.isFile()) continue;
       if (srcNames.has(entry.name)) continue;
+      if (!entry.name.startsWith(MANAGED_COMMAND_PREFIX)) continue;
       rmSync(join(COMMANDS_DIR, entry.name), { force: true });
       log.push(`  commands: removed stale ${entry.name}`);
     }

@@ -69,7 +69,7 @@ function loadPipelineSteps() {
     }
   }
   steps.sort((a, b) => (typeof a.step === 'number' ? a.step : 99) - (typeof b.step === 'number' ? b.step : 99));
-  return { steps, totalSteps: schema.progressFileFormat.progressBar.totalSteps };
+  return { steps, totalSteps: steps.length };
 }
 
 const PIPELINE_SKILLS = [

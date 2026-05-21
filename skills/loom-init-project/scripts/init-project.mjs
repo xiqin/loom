@@ -1,0 +1,502 @@
+#!/usr/bin/env node
+
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from 'node:fs';
+import { basename, dirname, join, relative } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const SKILL_DIR = dirname(__dirname);
+const PACKAGE_ROOT = join(SKILL_DIR, '..', '..');
+
+const COMMON_IGNORE = [
+  'node_modules/',
+  'vendor/',
+  'dist/',
+  'build/',
+  '.cache/',
+  '.git/',
+  '*.lock',
+  '*.log',
+  '__pycache__/',
+  '.venv/',
+  'venv/',
+  '.coverage',
+  '*.pyc',
+  '*.pyo',
+  '*.egg-info/',
+  '.tox/',
+  '.worktree/',
+];
+
+const TOOL_ALIASES = new Map([
+  ['claude', 'claude-code'],
+  ['claudecode', 'claude-code'],
+  ['claude_code', 'claude-code'],
+  ['claude-code', 'claude-code'],
+  ['codex', 'codex'],
+  ['cursor', 'cursor'],
+  ['copilot', 'copilot'],
+  ['github-copilot', 'copilot'],
+  ['github_copilot', 'copilot'],
+  ['opencode', 'opencode'],
+  ['open-code', 'opencode'],
+  ['open_code', 'opencode'],
+]);
+
+export function initProject(options = {}) {
+  const cwd = options.cwd || process.cwd();
+  const force = Boolean(options.force);
+  const templateDir = resolveTemplateDir(options.templateDir);
+  const facts = analyzeProject(cwd);
+  const variables = buildVariables(facts);
+  const result = {
+    root: cwd,
+    projectName: facts.projectName,
+    techStack: variables.TECH_STACK_SUMMARY,
+    written: [],
+    skipped: [],
+    detectedTools: [],
+  };
+
+  writeRendered(templateDir, 'constitution.md', join(cwd, '.loom', 'rules', 'constitution.md'), variables, result, force);
+  writeRendered(templateDir, 'project-structure.md', join(cwd, '.loom', 'rules', 'project-structure.md'), variables, result, force);
+  writeRendered(templateDir, 'memory.md', join(cwd, '.loom', 'memory', 'MEMORY.md'), variables, result, force);
+  writeRendered(templateDir, 'engineering-index.md', join(cwd, '.loom', 'index', 'engineering-index.md'), variables, result, force);
+  writeRendered(templateDir, 'workflow.yaml', join(cwd, '.loom', 'workflow.yaml'), variables, result, force);
+
+  writeFile(
+    join(cwd, '.loom', 'contexts', 'subagent-context.md'),
+    renderSubagentContext(variables),
+    result,
+    force
+  );
+
+  const tools = detectTools(cwd, options.tools);
+  result.detectedTools = [...tools].sort();
+  const wrapper = renderTemplate(readTemplate(templateDir, 'agents.md'), variables);
+
+  if (tools.has('codex') || tools.has('opencode') || tools.has('claude-code')) {
+    writeFile(join(cwd, 'AGENTS.md'), wrapper, result, force);
+  }
+  if (tools.has('claude-code')) {
+    writeFile(join(cwd, '.claude', 'CLAUDE.md'), '@AGENTS.md\n', result, force);
+    writeIgnoreFile(join(cwd, '.claudeignore'), result, force);
+  }
+  if (tools.has('copilot')) {
+    writeFile(join(cwd, '.github', 'copilot-instructions.md'), wrapper, result, force);
+  }
+  if (tools.has('cursor')) {
+    writeFile(join(cwd, '.cursor', 'rules', 'loom.mdc'), renderCursorRule(wrapper), result, force);
+    writeIgnoreFile(join(cwd, '.cursorignore'), result, force);
+  }
+  if (tools.has('codex')) {
+    writeIgnoreFile(join(cwd, '.codexignore'), result, force);
+  }
+  if (tools.has('opencode')) {
+    mergeOpenCodeIgnore(join(cwd, 'opencode.json'), result);
+  }
+
+  return result;
+}
+
+function resolveTemplateDir(explicitDir) {
+  const candidates = [
+    explicitDir,
+    join(SKILL_DIR, 'templates'),
+    join(PACKAGE_ROOT, 'templates'),
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (existsSync(join(candidate, 'constitution.md'))) return candidate;
+  }
+
+  throw new Error('Cannot find loom templates directory.');
+}
+
+function analyzeProject(root) {
+  const pkg = readJsonIfExists(join(root, 'package.json'));
+  const goMod = readTextIfExists(join(root, 'go.mod'));
+  const pyproject = readTextIfExists(join(root, 'pyproject.toml'));
+  const requirements = readTextIfExists(join(root, 'requirements.txt'));
+  const cargo = readTextIfExists(join(root, 'Cargo.toml'));
+  const pom = readTextIfExists(join(root, 'pom.xml'));
+  const gradle = readTextIfExists(join(root, 'build.gradle')) || readTextIfExists(join(root, 'build.gradle.kts'));
+
+  const projectName = pkg?.name || extractGoModuleName(goMod) || basename(root);
+  const projectDesc = pkg?.description || extractReadmeSummary(root) || '[TODO: 补充项目描述]';
+  const tech = detectTech({ root, pkg, goMod, pyproject, requirements, cargo, pom, gradle });
+
+  return {
+    root,
+    projectName,
+    projectDesc,
+    packageJson: pkg,
+    tech,
+    directoryTree: buildDirectoryTree(root),
+  };
+}
+
+function detectTech({ root, pkg, goMod, pyproject, requirements, cargo, pom, gradle }) {
+  if (pkg) {
+    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+    const hasTs = Boolean(deps.typescript || existsSync(join(root, 'tsconfig.json')));
+    return {
+      language: hasTs ? 'TypeScript' : 'JavaScript',
+      languageVersion: pkg.engines?.node || '[TODO: Node 版本]',
+      framework: findFirstDependency(deps, ['next', 'vite', 'react', 'vue', 'express', 'koa', 'fastify']) || '[TODO: Web 框架]',
+      orm: findFirstDependency(deps, ['prisma', 'typeorm', 'sequelize', 'mongoose']) || '[TODO: ORM]',
+      database: findFirstDependency(deps, ['pg', 'mysql2', 'sqlite3', 'better-sqlite3', 'mongodb']) || '[TODO: 数据库]',
+      cache: findFirstDependency(deps, ['redis', 'ioredis']) || '[TODO: 缓存]',
+      logging: findFirstDependency(deps, ['pino', 'winston', 'debug']) || '[TODO: 日志]',
+      di: findFirstDependency(deps, ['inversify', 'tsyringe']) || '[TODO: 依赖注入]',
+      buildCmd: pkg.scripts?.build ? 'npm run build' : '[TODO: 构建命令]',
+      vetCmd: pkg.scripts?.lint ? 'npm run lint' : 'npm test',
+      testCmd: pkg.scripts?.test ? 'npm test' : '[TODO: 测试命令]',
+    };
+  }
+
+  if (goMod) {
+    return {
+      language: 'Go',
+      languageVersion: extractGoVersion(goMod) || '[TODO: Go 版本]',
+      framework: includesAny(goMod, ['gin-gonic/gin', 'labstack/echo', 'gofiber/fiber']) || '[TODO: Web 框架]',
+      orm: includesAny(goMod, ['gorm.io/gorm', 'entgo.io/ent']) || '[TODO: ORM]',
+      database: includesAny(goMod, ['go-sql-driver/mysql', 'jackc/pgx', 'mattn/go-sqlite3']) || '[TODO: 数据库]',
+      cache: includesAny(goMod, ['redis/go-redis']) || '[TODO: 缓存]',
+      logging: includesAny(goMod, ['uber-go/zap', 'sirupsen/logrus', 'rs/zerolog']) || '[TODO: 日志]',
+      di: includesAny(goMod, ['google/wire', 'uber-go/fx']) || '[TODO: 依赖注入]',
+      buildCmd: 'go build ./...',
+      vetCmd: 'go vet ./...',
+      testCmd: 'go test ./... -v -count=1',
+    };
+  }
+
+  if (pyproject || requirements) {
+    return {
+      language: 'Python',
+      languageVersion: '[TODO: Python 版本]',
+      framework: includesAny(`${pyproject}\n${requirements}`, ['fastapi', 'django', 'flask']) || '[TODO: Web 框架]',
+      orm: includesAny(`${pyproject}\n${requirements}`, ['sqlalchemy', 'django', 'tortoise-orm']) || '[TODO: ORM]',
+      database: includesAny(`${pyproject}\n${requirements}`, ['psycopg', 'pymysql', 'sqlite']) || '[TODO: 数据库]',
+      cache: includesAny(`${pyproject}\n${requirements}`, ['redis']) || '[TODO: 缓存]',
+      logging: 'logging',
+      di: '[TODO: 依赖注入]',
+      buildCmd: 'python -m compileall .',
+      vetCmd: 'ruff check .',
+      testCmd: 'pytest -v',
+    };
+  }
+
+  if (cargo) {
+    return {
+      language: 'Rust',
+      languageVersion: '[TODO: Rust 版本]',
+      framework: includesAny(cargo, ['axum', 'actix-web', 'rocket']) || '[TODO: Web 框架]',
+      orm: includesAny(cargo, ['diesel', 'sqlx', 'sea-orm']) || '[TODO: ORM]',
+      database: includesAny(cargo, ['postgres', 'mysql', 'sqlite']) || '[TODO: 数据库]',
+      cache: includesAny(cargo, ['redis']) || '[TODO: 缓存]',
+      logging: includesAny(cargo, ['tracing', 'log']) || '[TODO: 日志]',
+      di: '[TODO: 依赖注入]',
+      buildCmd: 'cargo build',
+      vetCmd: 'cargo clippy',
+      testCmd: 'cargo test',
+    };
+  }
+
+  if (pom || gradle) {
+    return {
+      language: 'Java',
+      languageVersion: '[TODO: Java 版本]',
+      framework: includesAny(`${pom}\n${gradle}`, ['spring-boot', 'micronaut', 'quarkus']) || '[TODO: Web 框架]',
+      orm: includesAny(`${pom}\n${gradle}`, ['hibernate', 'mybatis', 'jpa']) || '[TODO: ORM]',
+      database: includesAny(`${pom}\n${gradle}`, ['mysql', 'postgresql', 'h2']) || '[TODO: 数据库]',
+      cache: includesAny(`${pom}\n${gradle}`, ['redis', 'caffeine']) || '[TODO: 缓存]',
+      logging: includesAny(`${pom}\n${gradle}`, ['logback', 'log4j']) || '[TODO: 日志]',
+      di: 'Spring DI',
+      buildCmd: pom ? 'mvn compile' : 'gradle build',
+      vetCmd: pom ? 'mvn checkstyle:check' : 'gradle check',
+      testCmd: pom ? 'mvn test' : 'gradle test',
+    };
+  }
+
+  return {
+    language: '[TODO: 编程语言]',
+    languageVersion: '[TODO: 语言版本]',
+    framework: '[TODO: Web 框架]',
+    orm: '[TODO: ORM]',
+    database: '[TODO: 数据库]',
+    cache: '[TODO: 缓存]',
+    logging: '[TODO: 日志]',
+    di: '[TODO: 依赖注入]',
+    buildCmd: '[TODO: 构建命令]',
+    vetCmd: '[TODO: 静态检查命令]',
+    testCmd: '[TODO: 测试命令]',
+  };
+}
+
+function buildVariables(facts) {
+  const tech = facts.tech;
+  const stack = [
+    tech.language,
+    tech.framework,
+    tech.orm,
+    tech.database,
+    tech.cache,
+    tech.logging,
+  ].filter(item => item && !item.startsWith('[TODO')).join(' / ') || '[TODO: 技术栈摘要]';
+
+  return {
+    PROJECT_NAME: facts.projectName,
+    PROJECT_DESC: facts.projectDesc,
+    TECH_STACK_SUMMARY: stack,
+    LANGUAGE: tech.language,
+    LANGUAGE_VERSION: tech.languageVersion,
+    WEB_FRAMEWORK: tech.framework,
+    FRAMEWORK_VERSION: versionOf(tech.framework, facts.packageJson),
+    ORM: tech.orm,
+    ORM_VERSION: versionOf(tech.orm, facts.packageJson),
+    DATABASE: tech.database,
+    DATABASE_VERSION: versionOf(tech.database, facts.packageJson),
+    CACHE: tech.cache,
+    CACHE_VERSION: versionOf(tech.cache, facts.packageJson),
+    LOGGING: tech.logging,
+    LOGGING_VERSION: versionOf(tech.logging, facts.packageJson),
+    DI: tech.di,
+    DI_VERSION: versionOf(tech.di, facts.packageJson),
+    BUILD_CMD: tech.buildCmd,
+    VET_CMD: tech.vetCmd,
+    TEST_CMD: tech.testCmd,
+    DIRECTORY_TREE: facts.directoryTree,
+    ARCH_PATTERN: inferArchPattern(facts.directoryTree),
+    ENTRY_POINTS: '[TODO: 入口文件]',
+    ARCH_PRINCIPLE: '遵循现有架构边界',
+    ARCH_DESC: '新增代码放在既有分层中，不为单次需求创建额外架构层。',
+    DI_PRINCIPLE: '依赖显式传递',
+    DI_DESC: '优先复用项目现有依赖注入方式，避免隐藏全局状态。',
+    CONFIG_PRINCIPLE: '配置集中管理',
+    CONFIG_DESC: '新增配置必须进入项目既有配置系统，并提供安全默认值。',
+    ERROR_PRINCIPLE: '错误可诊断',
+    ERROR_DESC: '保留调用上下文，面向用户和日志使用一致的错误语义。',
+    CODEGEN_PRINCIPLE: '生成物可追踪',
+    CODEGEN_DESC: '生成代码必须有来源、命令和再生成方式。',
+    CODING_REDLINES: '- [TODO] 补充项目禁止事项、兼容性边界和安全红线。',
+  };
+}
+
+function writeRendered(templateDir, templateName, target, variables, result, force) {
+  const content = renderTemplate(readTemplate(templateDir, templateName), variables);
+  writeFile(target, content, result, force);
+}
+
+function readTemplate(templateDir, name, fallbackName) {
+  const primary = join(templateDir, name);
+  if (existsSync(primary)) return readFileSync(primary, 'utf8');
+  if (fallbackName) return readFileSync(join(templateDir, fallbackName), 'utf8');
+  throw new Error(`Missing template: ${name}`);
+}
+
+function renderTemplate(template, variables) {
+  const rendered = template.replace(/\{\{([A-Z0-9_]+)\}\}/g, (_, key) => variables[key] ?? `[TODO: ${key}]`);
+  const unresolved = rendered.match(/\{\{[A-Z0-9_]+\}\}/g);
+  if (unresolved) {
+    throw new Error(`Unresolved template variables: ${[...new Set(unresolved)].join(', ')}`);
+  }
+  return rendered;
+}
+
+function writeFile(target, content, result, force) {
+  if (existsSync(target) && !force) {
+    const current = readFileSync(target, 'utf8');
+    if (!isGeneratedByLoom(current)) {
+      result.skipped.push({ path: target, reason: 'existing file is not loom-managed' });
+      return;
+    }
+  }
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, normalizeNewlines(content), 'utf8');
+  result.written.push(target);
+}
+
+function writeIgnoreFile(target, result, force) {
+  const content = `# Generated by loom init-project\n${COMMON_IGNORE.join('\n')}\n`;
+  writeFile(target, content, result, force);
+}
+
+function mergeOpenCodeIgnore(configPath, result) {
+  const config = readJsonIfExists(configPath) || {};
+  config.watcher ||= {};
+  config.watcher.ignore ||= [];
+  let changed = false;
+  for (const pattern of COMMON_IGNORE) {
+    const normalized = pattern.replace(/\/$/, '');
+    if (!config.watcher.ignore.includes(normalized)) {
+      config.watcher.ignore.push(normalized);
+      changed = true;
+    }
+  }
+  if (changed || !existsSync(configPath)) {
+    mkdirSync(dirname(configPath), { recursive: true });
+    writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+    result.written.push(configPath);
+  }
+}
+
+export function normalizeToolIds(value) {
+  const items = Array.isArray(value)
+    ? value
+    : String(value || '').split(',');
+
+  const tools = new Set();
+  for (const item of items) {
+    const normalized = String(item).trim().toLowerCase();
+    if (!normalized) continue;
+    const canonical = TOOL_ALIASES.get(normalized);
+    if (!canonical) {
+      throw new Error(`Unsupported tool "${item}". Supported tools: claude-code, codex, cursor, copilot, opencode.`);
+    }
+    tools.add(canonical);
+  }
+  return [...tools];
+}
+
+function detectTools(root, explicitTools) {
+  if (explicitTools?.length) return new Set(normalizeToolIds(explicitTools));
+
+  const tools = new Set(['codex']);
+  if (existsSync(join(root, '.claude')) || existsSync(join(root, 'CLAUDE.md'))) tools.add('claude-code');
+  if (existsSync(join(root, '.cursor'))) tools.add('cursor');
+  if (existsSync(join(root, '.github'))) tools.add('copilot');
+  if (existsSync(join(root, '.opencode')) || existsSync(join(root, 'opencode.json'))) tools.add('opencode');
+  return tools;
+}
+
+function renderCursorRule(wrapper) {
+  return `---\ndescription: "loom project entry. Read .loom source files before coding."\nalwaysApply: true\n---\n\n${wrapper}`;
+}
+
+function renderSubagentContext(variables) {
+  return `# Subagent Context\n\n> 本文件由 loom init-project 自动生成。给子 agent 派发任务时，优先附上本文件的摘要。\n\n## Project\n\n- Name: ${variables.PROJECT_NAME}\n- Stack: ${variables.TECH_STACK_SUMMARY}\n- Build: ${variables.BUILD_CMD}\n- Check: ${variables.VET_CMD}\n- Test: ${variables.TEST_CMD}\n\n## Boundaries\n\n- Follow .loom/rules/constitution.md and .loom/rules/project-structure.md.\n- Keep changes scoped to the assigned task.\n- Report changed files, verification commands, and unresolved risks.\n`;
+}
+
+function buildDirectoryTree(root, maxDepth = 2) {
+  const ignored = new Set(['.git', 'node_modules', 'vendor', 'dist', 'build', '.cache', '.worktree']);
+  const lines = [basename(root)];
+
+  function walk(dir, depth, prefix) {
+    if (depth > maxDepth) return;
+    const entries = readdirSync(dir, { withFileTypes: true })
+      .filter(entry => !ignored.has(entry.name))
+      .sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name))
+      .slice(0, 30);
+
+    for (const entry of entries) {
+      const marker = entry.isDirectory() ? '/' : '';
+      lines.push(`${prefix}${entry.name}${marker}`);
+      if (entry.isDirectory()) {
+        walk(join(dir, entry.name), depth + 1, `${prefix}  `);
+      }
+    }
+  }
+
+  walk(root, 1, '  ');
+  return lines.join('\n');
+}
+
+function inferArchPattern(tree) {
+  const checks = [
+    ['internal/', 'Go internal package layout'],
+    ['src/', 'src-based application layout'],
+    ['app/', 'application router layout'],
+    ['packages/', 'monorepo packages layout'],
+  ];
+  return checks.find(([needle]) => tree.includes(needle))?.[1] || '[TODO: 架构模式]';
+}
+
+function isGeneratedByLoom(content) {
+  return content.includes('loom init-project')
+    || content.includes('/loom-init-project')
+    || content.includes('Generated by loom');
+}
+
+function normalizeNewlines(content) {
+  return `${content.replace(/\r\n/g, '\n').replace(/\s+$/u, '')}\n`;
+}
+
+function readJsonIfExists(path) {
+  if (!existsSync(path)) return null;
+  return JSON.parse(readFileSync(path, 'utf8'));
+}
+
+function readTextIfExists(path) {
+  return existsSync(path) ? readFileSync(path, 'utf8') : '';
+}
+
+function extractGoModuleName(goMod) {
+  return goMod.match(/^module\s+(.+)$/m)?.[1]?.split('/').pop();
+}
+
+function extractGoVersion(goMod) {
+  return goMod.match(/^go\s+(.+)$/m)?.[1];
+}
+
+function extractReadmeSummary(root) {
+  const readme = ['README.md', 'readme.md'].map(name => join(root, name)).find(existsSync);
+  if (!readme) return '';
+  return readFileSync(readme, 'utf8')
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .find(line => line && !line.startsWith('#')) || '';
+}
+
+function findFirstDependency(deps, names) {
+  return names.find(name => deps?.[name]);
+}
+
+function includesAny(text, needles) {
+  return needles.find(needle => text.includes(needle));
+}
+
+function versionOf(name, pkg) {
+  if (!name || name.startsWith('[TODO') || !pkg) return '[TODO: 版本]';
+  return pkg.dependencies?.[name] || pkg.devDependencies?.[name] || '[TODO: 版本]';
+}
+
+function parseArgs(argv) {
+  const options = {};
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--cwd') options.cwd = argv[++i];
+    else if (arg === '--force') options.force = true;
+    else if (arg === '--tools') options.tools = normalizeToolIds(argv[++i]);
+    else if (arg === '--template-dir') options.templateDir = argv[++i];
+  }
+  return options;
+}
+
+function printReport(result) {
+  console.log(`loom init-project: ${result.projectName}`);
+  console.log(`tech stack: ${result.techStack}`);
+  console.log(`tools: ${result.detectedTools.join(', ') || 'none'}`);
+  console.log(`written: ${result.written.length}`);
+  for (const file of result.written) {
+    console.log(`  + ${relative(result.root, file)}`);
+  }
+  if (result.skipped.length) {
+    console.log(`skipped: ${result.skipped.length}`);
+    for (const item of result.skipped) {
+      console.log(`  - ${relative(result.root, item.path)} (${item.reason})`);
+    }
+  }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const result = initProject(parseArgs(process.argv.slice(2)));
+  printReport(result);
+}

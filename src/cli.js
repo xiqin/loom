@@ -15,6 +15,17 @@ program
   .enablePositionalOptions();
 
 program
+  .command('init-project')
+  .description('Initialize loom project context in the current repository')
+  .option('--cwd <path>', 'Project root (default: current working directory)')
+  .option('--tools <list>', 'Comma-separated tools: claude-code,codex,cursor,copilot,opencode')
+  .option('--force', 'Overwrite existing loom-managed files')
+  .action(async (options) => {
+    const { default: initProjectCommand } = await import('./commands/init-project.js');
+    await initProjectCommand(options);
+  });
+
+program
   .command('install')
   .description('Install loom at user-level (global) for CLI tool')
   .requiredOption('--tool <target>', 'Target tool: claude-code | opencode | cursor | copilot | codex')

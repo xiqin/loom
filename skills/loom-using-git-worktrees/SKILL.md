@@ -92,10 +92,6 @@ git branch --show-current
 
 确认分支已创建并切换成功。
 
-## 状态输出
-
-- 完成：`✅ pipeline [■■■□□□] Step 3/6 — git-worktree | 功能: <feature-name> | 分支: feature/<date>-<name> | → Step 4: subagent-dev`
-
 ## 分支命名规则
 
 <!-- loom:generate:rule:git-branch-naming -->
@@ -129,14 +125,16 @@ git branch --show-current
 
 ## progress.md 更新
 
-**开始执行时**：更新 `specs/<date+feature>/progress.md`，将 Step 3 状态设为 `▶ 进行中`，**开始时间填写当前时间（HH:mm 格式，如 14:30）**；在 Skill 调用记录中追加一行，时间列填写当前时间。
-
-**执行完成时**：将 Step 3 状态更新为 `✅ 完成`，**完成时间填写当前时间（HH:mm 格式）**，备注列填写分支名（如 `分支: feature/xxx`）；在 Skill 调用记录中更新对应行结果为 `✅ 已完成`，时间列填写完成时的时间。
-
-**关键：时间必须填入实际的 HH:mm 数值（如 14:30），禁止填入字面量 "HH:mm"。**
+<!-- loom:generate:progress:git-worktree -->
+**progress.md 更新（由 `config/pipeline.schema.json` 生成）**
+- 阶段：Step 3 / `git-worktree` / `loom-using-git-worktrees`。
+- 开始时更新 `specs/<date+feature>/progress.md`：Step 3 设为 `▶ 进行中`，开始时间填当前 HH:mm，并追加 Skill 调用记录。
+- 完成时：Step 3 设为 `✅ 完成`，完成时间填当前 HH:mm，并把本 skill 调用记录结果更新为 `✅ 完成`。
+- 失败时：Step 3 设为 `❌ 失败`，完成时间填失败时 HH:mm，备注写明阻断原因。
+- 备注列按阶段产物填写：`feature/<date>-<name> 分支`、`specs/<date+feature>/progress.md`；执行阶段可记录 task 进度，worktree 阶段可记录分支名。
+- 时间必须填实际 `HH:mm` 数值，如 `14:30`；禁止填字面量 `HH:mm`。
+<!-- /loom:generate:progress:git-worktree -->
 
 ## 完成条件与下一步
 
 分支创建并验证测试基线后，必须同时更新 `specs/<date+feature>/progress.md`（按上述规则填写完成时间）。
-
-完成后：遵循 `.loom/workflow.yaml` 继续下一步。

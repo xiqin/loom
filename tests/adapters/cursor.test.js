@@ -119,4 +119,24 @@ This is a test skill body.
     const rulesDir = join(TEST_DIR, '.cursor', 'rules');
     expect(existsSync(join(rulesDir, 'loom-plain-skill.mdc'))).toBe(true);
   });
+
+  it('converts multiline skill descriptions into valid mdc frontmatter', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.cursor'));
+
+    const loomRoot = join(TEST_DIR, 'loom-root');
+    mkdirSync(join(loomRoot, 'skills', 'test-skill'), { recursive: true });
+    writeFileSync(join(loomRoot, 'skills', 'test-skill', 'SKILL.md'), `---
+name: test-skill
+description: >
+  First line.
+  Second line.
+---
+# Test Skill
+`);
+
+    adapter.install(loomRoot, '1.0.0');
+
+    const mdcContent = readFileSync(join(TEST_DIR, '.cursor', 'rules', 'loom-test-skill.mdc'), 'utf-8');
+    expect(mdcContent).toMatch(/^---\ndescription: "First line\. Second line\."\nalwaysApply: false\n---\n\n#/);
+  });
 });

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..', '..');
+const MANAGED_SKILL_PREFIX = 'loom-';
 
 export class BaseAdapter {
   get toolName() { throw new Error('must implement toolName'); }
@@ -59,11 +60,12 @@ export class BaseAdapter {
       count++;
     }
 
-    // Remove stale skills
+    // Remove stale loom-managed skills only; users may have other skills here.
     if (existsSync(dest)) {
       for (const entry of readdirSync(dest, { withFileTypes: true })) {
         if (!entry.isDirectory()) continue;
         if (srcNames.has(entry.name)) continue;
+        if (!this._isManagedSkillName(entry.name)) continue;
         rmSync(join(dest, entry.name), { recursive: true, force: true });
         log.push(`  skills: removed stale ${entry.name}`);
       }
@@ -79,6 +81,7 @@ export class BaseAdapter {
     let count = 0;
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
+      if (!this._isManagedSkillName(entry.name)) continue;
       const skillDir = join(dest, entry.name, 'SKILL.md');
       if (!existsSync(skillDir)) continue;
       rmSync(join(dest, entry.name), { recursive: true, force: true });
@@ -104,11 +107,12 @@ export class BaseAdapter {
       count++;
     }
 
-    // Remove stale command files
+    // Remove stale loom-managed command files only; users may have other commands here.
     if (existsSync(cmdDir)) {
       for (const entry of readdirSync(cmdDir, { withFileTypes: true })) {
         if (!entry.isFile()) continue;
         if (srcNames.has(entry.name)) continue;
+        if (!entry.name.startsWith('loom-')) continue;
         rmSync(join(cmdDir, entry.name), { force: true });
         log.push(`  commands: removed stale ${entry.name}`);
       }
@@ -124,6 +128,7 @@ export class BaseAdapter {
     let count = 0;
     for (const entry of entries) {
       if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+      if (!entry.name.startsWith('loom-')) continue;
       rmSync(join(cmdDir, entry.name), { force: true });
       count++;
     }
@@ -133,6 +138,14 @@ export class BaseAdapter {
   _postInstall(loomRoot, version, log) {}
 
   _registerPlugin(loomRoot, version, log) {}
+
+  _isManagedSkillName(name) {
+    return name.startsWith(MANAGED_SKILL_PREFIX);
+  }
+
+  _isManagedCommandName(name) {
+    return name.startsWith(MANAGED_SKILL_PREFIX);
+  }
 
   _copyDir(src, dest) {
     mkdirSync(dest, { recursive: true });

@@ -15,7 +15,7 @@ export function convertSkillToMdc(skillName, skillDir) {
 
   const adaptedBody = adaptBodyReferences(body);
 
-  return `---\n${mdcFrontmatter}---\n\n${adaptedBody}`;
+  return `---\n${mdcFrontmatter}\n---\n\n${adaptedBody}`;
 }
 
 export function convertCommandToMdc(cmdFilePath) {
@@ -28,7 +28,7 @@ export function convertCommandToMdc(cmdFilePath) {
 
   const mdcFrontmatter = buildMdcFrontmatter({ name: `cmd-${name}`, description, alwaysApply: false });
 
-  return `---\n${mdcFrontmatter}---\n\n${content}`;
+  return `---\n${mdcFrontmatter}\n---\n\n${content}`;
 }
 
 export function convertAllSkills(skillsSrc, destDir, log) {
@@ -103,10 +103,25 @@ function parseFrontmatter(content) {
   const match = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/);
   if (match) {
     const lines = match[1].split('\n');
+    let pendingKey = null;
     for (const line of lines) {
       const kv = line.match(/^(\w[\w-]*):\s*(.*?)\s*$/);
       if (kv) {
-        frontmatter[kv[1]] = kv[2];
+        const [, key, rawValue] = kv;
+        if (rawValue.startsWith('>') || rawValue.startsWith('|')) {
+          pendingKey = key;
+          frontmatter[key] = '';
+        } else {
+          pendingKey = null;
+          frontmatter[key] = rawValue;
+        }
+        continue;
+      }
+
+      if (pendingKey && /^\s+/.test(line)) {
+        frontmatter[pendingKey] = `${frontmatter[pendingKey]} ${line.trim()}`.trim();
+      } else if (line.trim()) {
+        pendingKey = null;
       }
     }
     body = match[2];
@@ -116,13 +131,18 @@ function parseFrontmatter(content) {
 }
 
 function buildMdcFrontmatter({ name, description, alwaysApply = false }) {
-  const lines = [`description: ${description}`];
+  const lines = [`description: ${quoteYamlString(description)}`];
   if (alwaysApply === false) {
     lines.push('alwaysApply: false');
   } else {
     lines.push('alwaysApply: true');
   }
   return lines.join('\n');
+}
+
+function quoteYamlString(value) {
+  const normalized = String(value).replace(/\s+/g, ' ').trim();
+  return JSON.stringify(normalized);
 }
 
 function extractCommandDescription(content, name) {

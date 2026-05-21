@@ -86,10 +86,8 @@ const shellList = ids.map(id => `"${id}"`).join(' ');
 const psList = ids.map(id => `"${id}"`).join(', ');
 
 const SHELL_TOOL_TARGETS = [
-  { path: 'install.sh',    pattern: /^SUPPORTED_TOOLS=\([^)]*\)/m,  replacement: `SUPPORTED_TOOLS=(${shellList})` },
-  { path: 'uninstall.sh',  pattern: /^SUPPORTED_TOOLS=\([^)]*\)/m,  replacement: `SUPPORTED_TOOLS=(${shellList})` },
-  { path: 'install.ps1',   pattern: /^\$SupportedTools = @\([^)]*\)/m, replacement: `$SupportedTools = @(${psList})` },
-  { path: 'uninstall.ps1', pattern: /^\$SupportedTools = @\([^)]*\)/m, replacement: `$SupportedTools = @(${psList})` },
+  { path: 'scripts/common.sh',    pattern: /^SUPPORTED_TOOLS=\([^)]*\)/m,  replacement: `SUPPORTED_TOOLS=(${shellList})` },
+  { path: 'scripts/common.ps1',   pattern: /^\$SupportedTools = @\([^)]*\)/m, replacement: `$SupportedTools = @(${psList})` },
 ];
 
 let toolSyncCount = 0;

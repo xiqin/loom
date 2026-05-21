@@ -25,7 +25,6 @@ loom/
 │   │   └── codex.js        # Codex 适配器
 │   ├── core/               # 核心逻辑
 │   │   └── installer.js    # 安装器
-│   ├── utils/              # 工具函数
 │   └── generated/          # 自动生成
 │       └── tooling.js      # 从 tools.schema.json 生成
 ├── config/                 # Schema 定义
@@ -34,11 +33,6 @@ loom/
 │   ├── pipeline.schema.json # 流水线状态机
 │   ├── review.schema.json  # 审查框架
 │   └── templates.schema.json # 模板定义
-├── core/                   # 核心框架文档
-│   ├── pipeline.md         # 流水线定义
-│   ├── review-framework.md # 审查框架
-│   ├── progress-tracker.md # 进度追踪
-│   └── subagent-context.md # 子 agent 上下文
 ├── skills/                 # Skills 定义
 ├── commands/               # Commands 定义
 ├── hooks/                  # Hook 系统
@@ -52,7 +46,6 @@ loom/
 ├── scripts/                # 构建脚本
 │   ├── generate-tooling.mjs
 │   ├── generate-plugin-meta.mjs
-│   ├── generate-pipeline-docs.mjs
 │   ├── generate-skills-catalog.mjs
 │   ├── generate-review-summary.mjs
 │   ├── generate-model-selection.mjs
@@ -175,8 +168,7 @@ node scripts/sync-version.mjs        # 同步版本号
 tests/
 ├── commands/       # CLI 命令测试
 ├── adapters/       # 适配器测试
-├── hooks/          # Hook 系统测试
-└── utils/          # 工具函数测试
+└── hooks/          # Hook 系统测试
 ```
 
 测试框架：vitest。运行：

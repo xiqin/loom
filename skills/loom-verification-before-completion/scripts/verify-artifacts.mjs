@@ -1,0 +1,72 @@
+#!/usr/bin/env node
+
+import { existsSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const PLACEHOLDER_RE = /\b(TBD|TODO|implement later|fill in details)\b/i;
+
+export function verifyArtifacts(options = {}) {
+  const specDir = options.specDir || process.cwd();
+  const errors = [];
+  const warnings = [];
+  const requiredFiles = [
+    'spec.md',
+    'plan.md',
+    'progress.md',
+    'test-report.md',
+  ];
+
+  for (const name of requiredFiles) {
+    const path = join(specDir, name);
+    if (!existsSync(path)) {
+      errors.push(`Missing required artifact: ${name}`);
+      continue;
+    }
+    const content = readFileSync(path, 'utf8');
+    const match = content.match(PLACEHOLDER_RE);
+    if (match) errors.push(`${name} contains placeholder phrase: ${match[0]}`);
+  }
+
+  const testReportPath = join(specDir, 'test-report.md');
+  if (existsSync(testReportPath)) {
+    const report = readFileSync(testReportPath, 'utf8');
+    if (/FAIL|失败|不通过/i.test(report) && !/WARN|预先存在|known/i.test(report)) {
+      errors.push('test-report.md contains failing result without known-warning context');
+    }
+    if (!/PASS|通过|WARN/i.test(report)) {
+      warnings.push('test-report.md should include an explicit PASS/WARN conclusion');
+    }
+  }
+
+  const progressPath = join(specDir, 'progress.md');
+  if (existsSync(progressPath)) {
+    const progress = readFileSync(progressPath, 'utf8');
+    if (/HH:mm/i.test(progress)) {
+      errors.push('progress.md still contains literal HH:mm placeholder');
+    }
+  }
+
+  return { ok: errors.length === 0, errors, warnings, specDir };
+}
+
+function parseArgs(argv) {
+  const options = {};
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--spec-dir') options.specDir = argv[++i];
+  }
+  return options;
+}
+
+function printReport(result) {
+  for (const warning of result.warnings) console.warn(`WARN ${warning}`);
+  for (const error of result.errors) console.error(`ERROR ${error}`);
+  console.log(`Checked artifacts in ${relative(process.cwd(), result.specDir) || '.'}`);
+}
+
+if (process.argv[1] === __filename) {
+  const result = verifyArtifacts(parseArgs(process.argv.slice(2)));
+  printReport(result);
+  if (!result.ok) process.exitCode = 1;
+}

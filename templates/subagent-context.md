@@ -1,4 +1,4 @@
-# Subagent 上下文模板（core/subagent-context.md）
+# Subagent 上下文模板
 
 > ⚠️ 此文件为模板定义，不直接用于 subagent。实际使用时由 /loom-init-project 渲染后生成 `.loom/contexts/subagent-context.md`
 

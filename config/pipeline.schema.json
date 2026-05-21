@@ -38,7 +38,7 @@
       "interactive": true,
       "autoTransition": false,
       "nextOnSuccess": "等待用户确认 spec 后转 planning",
-      "banner": "Step 1/6 — brainstorming"
+      "banner": "执行中：loom-brainstorming"
     },
     "planning": {
       "step": 2,
@@ -80,7 +80,7 @@
       "interactive": true,
       "autoTransition": false,
       "nextOnSuccess": "等待用户确认 plan 后转 approved",
-      "banner": "Step 2/6 — writing-plans"
+      "banner": "执行中：loom-writing-plans"
     },
     "approved": {
       "step": null,
@@ -147,7 +147,7 @@
       "interactive": false,
       "autoTransition": false,
       "nextOnSuccess": "分支创建成功后转 executing",
-      "banner": "Step 3/6 — git-worktree"
+      "banner": "执行中：loom-using-git-worktrees"
     },
     "executing": {
       "step": 4,
@@ -206,7 +206,7 @@
       "interactive": true,
       "autoTransition": false,
       "nextOnSuccess": "所有 task 完成后转 verification",
-      "banner": "Step 4/6 — subagent-dev",
+      "banner": "执行中：loom-subagent-driven-development",
       "subStates": {
         "implementer": {
           "description": "Subagent 编码实现",
@@ -286,7 +286,7 @@
       "interactive": true,
       "autoTransition": false,
       "nextOnSuccess": "验证通过后转 synced",
-      "banner": "Step 5/6 — verification",
+      "banner": "执行中：loom-verification-before-completion",
       "retryOnFail": {
         "target": "executing",
         "condition": "BLOCKER 存在时派回 implementer 修复",
@@ -351,7 +351,7 @@
       "interactive": false,
       "autoTransition": false,
       "nextOnSuccess": "通知用户可以提交 PR",
-      "banner": "Step 6/6 — index-update (synced)"
+      "banner": "执行中：loom-index-update"
     },
     "failed": {
       "step": null,
@@ -505,11 +505,6 @@
         "label": "失败",
         "description": "执行失败"
       }
-    },
-    "progressBar": {
-      "filled": "■",
-      "empty": "□",
-      "totalSteps": 6
     }
   }
 }

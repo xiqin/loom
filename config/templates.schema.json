@@ -37,8 +37,7 @@
         "CODING_REDLINES",
         "BUILD_CMD",
         "VET_CMD",
-        "TEST_CMD",
-        "ENTRY_FILE"
+        "TEST_CMD"
       ],
       "optionalVariables": []
     },
@@ -49,39 +48,16 @@
       "description": "工程结构约束 — 目录结构、架构模式、编码红线",
       "requiredVariables": [
         "DIRECTORY_TREE",
-        "ARCH_PATTERN",
-        "CODING_REDLINES",
-        "LANGUAGE",
-        "LANGUAGE_VERSION",
-        "WEB_FRAMEWORK",
-        "FRAMEWORK_VERSION",
-        "ORM",
-        "ORM_VERSION",
-        "DATABASE",
-        "DATABASE_VERSION",
-        "CACHE",
-        "CACHE_VERSION",
-        "LOGGING",
-        "LOGGING_VERSION",
-        "DI",
-        "DI_VERSION"
+        "ARCH_PATTERN"
       ],
       "optionalVariables": []
     },
     {
-      "id": "loom",
-      "sourceFile": "templates/loom.md",
-      "outputPath": ".loom/loom.md",
-      "description": "Loom 入口文档 — 项目名称、描述、入口、快速命令",
-      "requiredVariables": [
-        "PROJECT_NAME",
-        "PROJECT_DESC",
-        "ENTRY_POINTS",
-        "BUILD_CMD",
-        "TEST_CMD",
-        "VET_CMD",
-        "ENTRY_FILE"
-      ],
+      "id": "agents",
+      "sourceFile": "templates/agents.md",
+      "outputPath": "AGENTS.md",
+      "description": "AGENTS.md 标准入口文档",
+      "requiredVariables": [],
       "optionalVariables": []
     },
     {
@@ -91,6 +67,43 @@
       "description": "记忆文件 — 踩坑、偏好、状态、变更记录",
       "requiredVariables": [
         "TECH_STACK_SUMMARY"
+      ],
+      "optionalVariables": []
+    },
+    {
+      "id": "engineering-index",
+      "sourceFile": "templates/engineering-index.md",
+      "outputPath": ".loom/index/engineering-index.md",
+      "description": "工程索引 — 路由、模块、方法签名、依赖关系和调用链",
+      "requiredVariables": [
+        "PROJECT_NAME"
+      ],
+      "optionalVariables": []
+    },
+    {
+      "id": "workflow",
+      "sourceFile": "templates/workflow.yaml",
+      "outputPath": ".loom/workflow.yaml",
+      "description": "开发流水线定义",
+      "requiredVariables": [],
+      "optionalVariables": []
+    },
+    {
+      "id": "subagent-context",
+      "sourceFile": "templates/subagent-context.md",
+      "outputPath": ".loom/contexts/subagent-context.md",
+      "description": "Subagent 隔离派发时注入的项目约束上下文",
+      "requiredVariables": [
+        "ARCH_PATTERN",
+        "CODING_REDLINES",
+        "TECH_STACK",
+        "ERROR_PATTERN",
+        "RESPONSE_PATTERN",
+        "LOGGING_PATTERN",
+        "DI_PATTERN",
+        "TEST_PATTERN",
+        "UNIT_TEST_DIR",
+        "INTEGRATION_TEST_DIR"
       ],
       "optionalVariables": []
     }
