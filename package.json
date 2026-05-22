@@ -16,14 +16,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/xiqin/loom"
+    "url": "git+https://github.com/xiqin/loom.git"
   },
   "bugs": {
     "url": "https://github.com/xiqin/loom/issues"
   },
   "homepage": "https://github.com/xiqin/loom#readme",
   "bin": {
-    "loom": "./bin/loom.js"
+    "loom": "bin/loom.js"
   },
   "files": [
     "bin/",
@@ -34,6 +34,8 @@
     "hooks/",
     "templates/",
     ".claude-plugin/",
+    "scripts/common.sh",
+    "scripts/common.ps1",
     "plugin.mjs",
     "install.sh",
     "install.ps1",
