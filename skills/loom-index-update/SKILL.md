@@ -1,9 +1,7 @@
 ---
 name: loom-index-update
 description: >
-  完成工作后更新索引文件。测试通过后触发，确保工程索引、记忆文件、入口文档与代码保持同步。
-  Use when: code changes are complete and indexes need to be synchronized.
-  Trigger keywords: 更新索引, 同步索引, 更新文档, index update
+  Synchronize engineering index, memory file, and entry docs with code after verification passes.
 ---
 
 # 索引更新 Skill
@@ -55,17 +53,6 @@ description: >
 - 索引内容必须与实际代码一致。
 - 新增表名、路由路径、方法签名必须与源码完全一致。
 - graphify 与 ENGINEERING-INDEX.md 互斥：graphify 可用时使用知识图谱，否则回退手动索引。
-
-## progress.md 更新
-
-<!-- loom:generate:progress:synced -->
-**progress.md 更新（由 `config/pipeline.schema.json` 生成）**
-- 阶段：Step 6 / `synced` / `loom-index-update`。
-- 开始时更新 `specs/<date+feature>/progress.md`：Step 6 设为 `▶ 进行中`，开始时间填当前 HH:mm，并追加 Skill 调用记录。
-- 完成时：Step 6 设为 `✅ 完成`，完成时间填当前 HH:mm，并把本 skill 调用记录结果更新为 `✅ 完成`。
-- 备注列按阶段产物填写：`graphify-out/graph.json`、`graphify-out/GRAPH_REPORT.md`、`graphify-out/graph.html`、`.loom/index/engineering-index.md`、`.loom/memory/MEMORY.md`、`specs/<date+feature>/progress.md`；执行阶段可记录 task 进度，worktree 阶段可记录分支名。
-- 时间必须填实际 `HH:mm` 数值，如 `14:30`；禁止填字面量 `HH:mm`。
-<!-- /loom:generate:progress:synced -->
 
 ## 完成条件与下一步
 

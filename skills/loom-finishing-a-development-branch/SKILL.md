@@ -1,9 +1,7 @@
 ---
 name: loom-finishing-a-development-branch
 description: >
-  开发分支收尾。完成开发后，整理分支并准备合并。
-  Use when: feature development is complete and branch needs to be cleaned up.
-  Trigger keywords: 完成开发, 收尾, 合并分支, 准备提交.
+  Clean up a feature branch after verification: merge, create PR, keep, or discard. Follows conventional commits.
 ---
 
 # 开发分支收尾
@@ -117,12 +115,4 @@ EOF
 没有明确用户同意，永远不要在 main/master 分支上开始实现。
 <!-- /loom:generate:rule:no-main-branch -->
 
-## 流程图
 
-```
-确认开发 → 检查分支 → 运行验证 → 展示选项
-                                      ├→ Merge（合并到主分支）
-                                      ├→ Pull Request（创建PR）
-                                      ├→ Keep（保持分支）
-                                      └→ Discard（丢弃变更）
-```

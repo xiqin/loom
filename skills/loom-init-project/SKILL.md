@@ -1,10 +1,7 @@
 ---
 name: loom-init-project
 description: >
-  项目初始化。扫描项目源码，生成 .loom 核心上下文。
-  优先运行随 skill 携带的 scripts/init-project.mjs 自动生成文件，再人工补齐 [TODO]。
-  Use when: first adopting loom in a repository, refreshing project AI context after major structure changes.
-  Trigger keywords: init-project, 初始化项目, 扫描项目, 生成配置
+  Bootstrap .loom/ context files for a new repository: constitution, project structure, index, memory, workflow.
 ---
 
 # 项目初始化 Skill
@@ -24,7 +21,7 @@ description: >
 
 如果用户没有明确指定 agent 工具，先询问用户要为哪些工具生成入口文件。可选项为：
 
-- `claude-code`：生成 `AGENTS.md`+ `.claude/CLAUDE.md`
+- `claude-code`：生成 `AGENTS.md`+ `CLAUDE.md`
 - `codex`：生成 `AGENTS.md`
 - `opencode`：生成 `AGENTS.md` 并合并 `opencode.json` watcher ignore
 - `cursor`：生成 `.cursor/rules/loom.mdc`
@@ -61,7 +58,7 @@ loom init-project
   index/engineering-index.md
   workflow.yaml
 AGENTS.md                       # 选择 Codex/OpenCode/Claude Code 时
-.claude/CLAUDE.md               # 选择 Claude Code 时
+CLAUDE.md               # 选择 Claude Code 时
 .cursor/rules/loom.mdc                  # 检测到 Cursor 时
 .github/copilot-instructions.md         # 检测到 GitHub Copilot 时
 ```

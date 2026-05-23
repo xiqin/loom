@@ -1,9 +1,7 @@
 ---
 name: loom-writing-plans
 description: >
-  拆解实现计划。当有 spec 设计文档后，拆分为可执行的 task 列表。
-  Use when: a spec design document exists and needs to be broken into bite-sized implementation tasks.
-  Trigger keywords: 写计划, 拆分任务, 计划拆解, writing plan
+  Break a confirmed spec into ordered, independently-verifiable task files with dependency analysis.
 ---
 
 # 实现计划拆解
@@ -12,10 +10,6 @@ description: >
 
 - `specs/<date+feature>/spec.md` 已存在并经用户确认。
 - 需要把 spec 拆为可独立验证的 task 文件。
-
-## 公告
-
-开始时宣布："我正在使用 writing-plans skill 创建实现计划。"
 
 ## 输出
 
@@ -86,18 +80,6 @@ node <skill-dir>/scripts/validate-plan.mjs --spec-dir specs/<date+feature>
 - 需要设计判断或广泛的代码库理解 → 最强模型
 <!-- /loom:generate:model-selection -->
 
-## progress.md 更新
-
-<!-- loom:generate:progress:planning -->
-**progress.md 更新（由 `config/pipeline.schema.json` 生成）**
-- 阶段：Step 2 / `planning` / `loom-writing-plans`。
-- 开始时更新 `specs/<date+feature>/progress.md`：Step 2 设为 `▶ 进行中`，开始时间填当前 HH:mm，并追加 Skill 调用记录。
-- 完成时：Step 2 设为 `✅ 完成`，完成时间填当前 HH:mm，并把本 skill 调用记录结果更新为 `✅ 完成`。
-- 失败时：Step 2 设为 `❌ 失败`，完成时间填失败时 HH:mm，备注写明阻断原因。
-- 备注列按阶段产物填写：`specs/<date+feature>/plan.md`、`specs/<date+feature>/tasks/`、`specs/<date+feature>/progress.md`；执行阶段可记录 task 进度，worktree 阶段可记录分支名。
-- 时间必须填实际 `HH:mm` 数值，如 `14:30`；禁止填字面量 `HH:mm`。
-<!-- /loom:generate:progress:planning -->
-
 ## 完成条件与下一步
 
-`plan.md`、所有 `tasks/TN.md` 和自动校验完成后，更新 progress 并等待用户确认 plan；用户确认后继续 git-worktree。
+`plan.md`、所有 `tasks/TN.md` 和自动校验完成后，等待用户确认 plan；用户确认后继续 git-worktree。

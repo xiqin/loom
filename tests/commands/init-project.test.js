@@ -44,8 +44,8 @@ describe('init-project command', () => {
     await initProjectCommand({ cwd: TEST_DIR, tools: 'claude-code', interactive: false });
 
     expect(existsSync(join(TEST_DIR, 'AGENTS.md'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.claude', 'CLAUDE.md'))).toBe(true);
-    expect(readFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'utf8')).toBe('@AGENTS.md\n');
+    expect(existsSync(join(TEST_DIR, 'CLAUDE.md'))).toBe(true);
+    expect(readFileSync(join(TEST_DIR, 'CLAUDE.md'), 'utf8')).toBe('@AGENTS.md\n');
     expect(existsSync(join(TEST_DIR, '.claudeignore'))).toBe(true);
 
     const output = sp.mock.calls.map(call => call[0]).join('\n');

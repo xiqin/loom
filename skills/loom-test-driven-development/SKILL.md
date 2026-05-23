@@ -1,9 +1,7 @@
 ---
 name: loom-test-driven-development
 description: >
-  测试驱动开发。使用 TDD 的红-绿-重构循环开发功能。
-  Use when: implementing new features with a test-first approach.
-  Trigger keywords: TDD, 测试驱动, 先写测试
+  Implement features using strict Red-Green-Refactor TDD cycle. No production code without a failing test first.
 ---
 
 # 测试驱动开发（TDD）

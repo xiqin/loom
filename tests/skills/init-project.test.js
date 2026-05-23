@@ -58,8 +58,8 @@ describe('loom-init-project script', () => {
 
     expect(result.detectedTools).toEqual(['claude-code']);
     expect(existsSync(join(TEST_DIR, 'AGENTS.md'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.claude', 'CLAUDE.md'))).toBe(true);
-    expect(readFileSync(join(TEST_DIR, '.claude', 'CLAUDE.md'), 'utf8')).toBe('@AGENTS.md\n');
+    expect(existsSync(join(TEST_DIR, 'CLAUDE.md'))).toBe(true);
+    expect(readFileSync(join(TEST_DIR, 'CLAUDE.md'), 'utf8')).toBe('@AGENTS.md\n');
     expect(existsSync(join(TEST_DIR, '.claudeignore'))).toBe(true);
   });
 
@@ -70,7 +70,7 @@ describe('loom-init-project script', () => {
 
     expect(result.detectedTools).toEqual(['claude-code']);
     expect(existsSync(join(TEST_DIR, 'AGENTS.md'))).toBe(true);
-    expect(existsSync(join(TEST_DIR, '.claude', 'CLAUDE.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, 'CLAUDE.md'))).toBe(true);
   });
 
   it('does not overwrite existing non-loom files unless forced', () => {

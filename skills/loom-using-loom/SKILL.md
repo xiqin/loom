@@ -1,44 +1,13 @@
 ---
 name: loom-using-loom
 description: >
-  loom 框架使用指南。当用户首次使用 loom 或询问如何使用时触发。
-  Use when: introducing the loom framework and its capabilities.
-  Trigger keywords: loom 使用指南, loom 入门, 如何使用 loom
+  Overview of the loom engineering framework: pipeline stages, skills catalog, and review dimensions.
+  Load when the user asks about loom capabilities or how to use it.
 ---
 
 # Using loom — AI 工程化框架
 
-loom 是一个 AI 工程化框架，提供 6 步流水线、项目宪章、5 维审查、进度追踪等能力。
-
-## 核心流水线
-
-流水线由 `.loom/workflow.yaml` 集中定义，执行时自动读取。
-示例：
-
-```
-brainstorming → writing-plans → git-worktree → subagent-dev → verification → index-update
-```
-
-### 流水线阶段
-
-| Step | 阶段                        | 说明                                     | 输出                             |
-| ---- | --------------------------- | ---------------------------------------- | -------------------------------- |
-| 1    | brainstorming               | 需求头脑风暴，探索 2-3 种实现方案        | `specs/<date+feature>/spec.md`   |
-| 2    | writing-plans               | 按分层拆解 task                          | `specs/<date+feature>/plan.md`   |
-| 3    | git-worktree                | 创建隔离分支                             | feature 分支                     |
-| 4    | subagent-driven-development | Subagent 隔离派发 + 双审查               | 源码 + 测试报告                  |
-| 5    | verification                | 完成前验证，Spec覆盖/类型一致性/编译测试 | 验证报告                         |
-| 6    | index-update                | 工程索引同步                             | 知识图谱 或 ENGINEERING-INDEX.md |
-
-### 阶段串联规则
-
-- brainstorming 完成 → 等待用户确认 → writing-plans
-- writing-plans 完成 → 等待用户确认 → git-worktree
-- git-worktree 完成 → 触发 subagent-dev
-- subagent-dev 完成 → 触发 verification
-- verification 通过 → 触发 index-update
-- verification 未通过 → 修复后重新验证
-- index-update 完成 → 通知可以提交
+loom 是一个 AI 工程化框架，提供 6 步流水线（brainstorming → writing-plans → git-worktree → subagent-dev → verification → index-update）、5 维审查、Skills 系统等能力。流水线由 `.loom/workflow.yaml` 集中定义。
 
 <!-- loom:generate:rule:no-skip-step -->
 **严令禁止跳步**
@@ -46,9 +15,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 严令禁止跳过任何步骤。每个步骤完成后必须显式触发下一步，不可自行终止。
 <!-- /loom:generate:rule:no-skip-step -->
 
-## Skills 系统
-
-### Skills 清单
+## Skills 清单
 
 <!-- loom:generate:skills-catalog -->
 所有 skills 通过 `/` 命令或 Skill 工具调用。详见 `.loom/skills/` 目录（完整定义）
@@ -84,28 +51,6 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 | loom-finishing-a-development-branch | 分支完成流程 , +选项展示（Merge/PR/Keep/Discard） |
 <!-- /loom:generate:skills-catalog -->
 
-### Skills 触发方式
-
-**自动触发：**
-
-- 当满足触发条件时，skill 会自动激活
-- 例如：用户说"我想做 XX 功能" → 触发 brainstorming
-
-**手动调用：**
-
-- 使用 Skill 工具：`Skill("loom-brainstorming")`
-- 使用斜杠命令：`/loom-brainstorm`、`/loom-write-plan`
-
-## 项目规则
-
-项目规则存储在 `.loom/rules/constitution.md`（宪章）和 `.loom/rules/project-structure.md`（工程约束）中。
-
-首次使用请运行 `/loom-init-project` 自动生成这些文件。
-
-## 进度追踪
-
-每个功能开发必须维护 `specs/<date+feature>/progress.md`，可视化流水线状态。
-
 ## 5 维审查
 
 <!-- loom:generate:review-summary -->
@@ -119,23 +64,3 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 | 性能隐患 | N+1 查询检查、分页查询是否使用框架分页组件 |
 | 规范一致性 | 命名是否符合项目规范、响应格式是否统一 |
 <!-- /loom:generate:review-summary -->
-
-## 常见问题
-
-### Q: 可以跳过某个步骤吗？
-
-A: **不可以。** 流水线每个步骤都有明确目的，跳过会导致质量问题。
-
-### Q: 如何知道当前在哪个阶段？
-
-A: 查看当前输出的 `执行中：<skill-name>`，或读取 `specs/<date+feature>/progress.md`。
-
-### Q: subagent 失败了怎么办？
-
-A: 查看失败状态（BLOCKED/NEEDS_CONTEXT），根据情况提供更多信息、更换模型或分解任务。
-
-## 流程图
-
-```
-brainstorming → writing-plans → git-worktree → subagent-dev → verification → index-update → 完成
-```

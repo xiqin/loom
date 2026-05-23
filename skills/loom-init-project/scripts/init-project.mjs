@@ -86,7 +86,7 @@ export function initProject(options = {}) {
     writeFile(join(cwd, 'AGENTS.md'), wrapper, result, force);
   }
   if (tools.has('claude-code')) {
-    writeFile(join(cwd, '.claude', 'CLAUDE.md'), '@AGENTS.md\n', result, force);
+    writeFile(join(cwd, 'CLAUDE.md'), '@AGENTS.md\n', result, force);
     writeIgnoreFile(join(cwd, '.claudeignore'), result, force);
   }
   if (tools.has('copilot')) {

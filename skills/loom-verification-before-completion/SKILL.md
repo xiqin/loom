@@ -1,9 +1,7 @@
 ---
 name: loom-verification-before-completion
 description: >
-  完成前验证。在宣布任务完成前，执行完整性检查确保所有工作已完成。
-  Use when: before declaring a task or feature complete.
-  Trigger keywords: 完成验证, 验证检查, 完成前检查
+  Final integrity check before declaring work complete: compile, test, placeholder scan, spec coverage.
 ---
 
 # 完成前验证
@@ -58,18 +56,6 @@ node <skill-dir>/scripts/verify-artifacts.mjs --spec-dir specs/<date+feature>
 读取 `.loom/rules/constitution.md` 中的 BUILD_CMD/VET_CMD/TEST_CMD 并执行验证。
 <!-- /loom:generate:rule:build-vet-test-cmd -->
 
-## progress.md 更新
-
-<!-- loom:generate:progress:verification -->
-**progress.md 更新（由 `config/pipeline.schema.json` 生成）**
-- 阶段：Step 5 / `verification` / `loom-verification-before-completion`。
-- 开始时更新 `specs/<date+feature>/progress.md`：Step 5 设为 `▶ 进行中`，开始时间填当前 HH:mm，并追加 Skill 调用记录。
-- 完成时：Step 5 设为 `✅ 完成`，完成时间填当前 HH:mm，并把本 skill 调用记录结果更新为 `✅ 完成`。
-- 失败时：Step 5 设为 `❌ 失败`，完成时间填失败时 HH:mm，备注写明阻断原因。
-- 备注列按阶段产物填写：`验证报告`、`specs/<date+feature>/verify-report.md`、`specs/<date+feature>/progress.md`；执行阶段可记录 task 进度，worktree 阶段可记录分支名。
-- 时间必须填实际 `HH:mm` 数值，如 `14:30`；禁止填字面量 `HH:mm`。
-<!-- /loom:generate:progress:verification -->
-
 ## 完成条件与下一步
 
-验证通过后更新 progress 并进入 index-update；验证失败时标记失败，输出修复指令，禁止全量重跑 Step 4。
+验证通过后进入 index-update；验证失败时标记失败，输出修复指令，禁止全量重跑 Step 4。

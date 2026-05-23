@@ -1,9 +1,7 @@
 ---
 name: loom-requesting-code-review
 description: >
-   请求代码审查。准备审查请求，整理变更摘要。
-   Use when: requesting code review from team members or preparing PR for review.
-   Trigger keywords: 请求审查, 发起 review, 准备审查, 提交审查.
+  Prepare a code review request with change summary, self-test results, and focus areas for reviewers.
 ---
 
 # 请求代码审查
@@ -53,18 +51,22 @@ git log --oneline -10
 **分支：** feature/<date>-<feature-name>
 
 ### 变更统计
+
 <git diff --stat 输出>
 
 ### 主要变更
+
 1. <变更说明 1>
 2. <变更说明 2>
 
 ### 重点关注
+
 1. 架构设计：xxx
 2. 安全性：xxx
 3. 性能：xxx
 
 ### 自测情况
+
 - [x] 编译通过（BUILD_CMD）
 - [x] 静态分析通过（VET_CMD）
 - [x] 测试通过（TEST_CMD）
@@ -73,12 +75,13 @@ git log --oneline -10
 
 ### 变更详情
 
-| 文件 | 变更类型 | 说明 |
-|------|---------|------|
-| path/to/file1 | 新增 | XxxService 实现 |
-| path/to/file2 | 修改 | 新增方法 |
+| 文件          | 变更类型 | 说明            |
+| ------------- | -------- | --------------- |
+| path/to/file1 | 新增     | XxxService 实现 |
+| path/to/file2 | 修改     | 新增方法        |
 
 ### 审查重点
+
 - [ ] 架构合规性
 - [ ] 代码质量
 - [ ] 安全性检查
@@ -90,11 +93,3 @@ git log --oneline -10
 - 审查请求必须包含完整的变更摘要
 - 必须标注重点关注项
 - 必须提供自测情况
-
-## 流程图
-
-```
-准备材料 → 整理摘要 → 生成审查请求 → 等待反馈
-                                       ├→ 有反馈 → 修复 → 重新生成请求
-                                       └→ 无问题 → 完成
-```

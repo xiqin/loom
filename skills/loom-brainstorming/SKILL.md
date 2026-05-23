@@ -1,9 +1,7 @@
 ---
 name: loom-brainstorming
 description: >
-  需求头脑风暴。当用户提出需求、功能描述、PRD 时触发，探索 2-3 种实现方案及 trade-off。
-  Use when: starting any feature development to explore design options.
-  Trigger keywords: 头脑风暴、brainstorm、设计方案、怎么做、怎么实现
+  Explore 2-3 implementation options with trade-offs when the user describes a new feature or requirement.
 ---
 
 # 需求头脑风暴
@@ -66,20 +64,6 @@ description: >
 - 接口/API 设计必须遵循项目约定。
 - YAGNI：删除不必要功能。
 
-## progress.md 更新
-
-<!-- loom:generate:progress:brainstorming -->
-
-**progress.md 更新（由 `config/pipeline.schema.json` 生成）**
-
-- 阶段：Step 1 / `brainstorming` / `loom-brainstorming`。
-- 开始时创建 `specs/<date+feature>/progress.md`：Step 1 设为 `▶ 进行中`，后续步骤设为 `⏳ 等待`。
-- 完成时：Step 1 设为 `✅ 完成`，完成时间填当前 HH:mm，并把本 skill 调用记录结果更新为 `✅ 完成`。
-- 失败时：Step 1 设为 `❌ 失败`，完成时间填失败时 HH:mm，备注写明阻断原因。
-- 备注列按阶段产物填写：`specs/<date+feature>/spec.md`、`specs/<date+feature>/progress.md`；执行阶段可记录 task 进度，worktree 阶段可记录分支名。
-- 时间必须填实际 `HH:mm` 数值，如 `14:30`；禁止填字面量 `HH:mm`。
-<!-- /loom:generate:progress:brainstorming -->
-
 ## 完成条件与下一步
 
-`spec.md` 保存、自审、progress 更新完成后，等待用户确认方案；用户确认后遵循 `.loom/workflow.yaml` 继续下一步。
+`spec.md` 保存、自审完成后，等待用户确认方案；用户确认后遵循 AGENTS.md 流水线规则继续下一步。

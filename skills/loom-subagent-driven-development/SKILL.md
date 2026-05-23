@@ -1,10 +1,7 @@
 ---
 name: loom-subagent-driven-development
 description: >
-  使用 subagent 派发方式执行编码任务。每个 task 派发独立 subagent，
-  每轮编码后派发 reviewer subagent 审查（合并模式）。
-  Use when: executing a plan with isolated subagents and review checkpoints.
-  Trigger keywords: subagent 派发, 编码执行, 执行计划
+  Execute plan tasks via isolated subagents with reviewer checkpoints. Handles DONE/BLOCKED/NEEDS_CONTEXT states.
 ---
 
 # Subagent 编码执行
@@ -14,10 +11,6 @@ description: >
 - `specs/<date+feature>/plan.md` 和 `tasks/` 已存在。
 - git worktree 已创建。
 - 用户确认 plan 后进入执行阶段。
-
-## 公告
-
-开始时宣布："我正在使用 Subagent-Driven Development 执行这个计划。"
 
 ## 核心机制
 
@@ -85,18 +78,6 @@ description: >
 - 需要设计判断或广泛的代码库理解 → 最强模型
 <!-- /loom:generate:model-selection -->
 
-## progress.md 更新
-
-<!-- loom:generate:progress:executing -->
-**progress.md 更新（由 `config/pipeline.schema.json` 生成）**
-- 阶段：Step 4 / `executing` / `loom-subagent-driven-development`。
-- 开始时更新 `specs/<date+feature>/progress.md`：Step 4 设为 `▶ 进行中`，开始时间填当前 HH:mm，并追加 Skill 调用记录。
-- 完成时：Step 4 设为 `✅ 完成`，完成时间填当前 HH:mm，并把本 skill 调用记录结果更新为 `✅ 完成`。
-- 失败时：Step 4 设为 `❌ 失败`，完成时间填失败时 HH:mm，备注写明阻断原因。
-- 备注列按阶段产物填写：`源码文件`、`单元测试文件`、`集成测试文件`、`specs/<date+feature>/test-report.md`、`specs/<date+feature>/progress.md`；执行阶段可记录 task 进度，worktree 阶段可记录分支名。
-- 时间必须填实际 `HH:mm` 数值，如 `14:30`；禁止填字面量 `HH:mm`。
-<!-- /loom:generate:progress:executing -->
-
 ## 完成条件与下一步
 
-全部 task、reviewer、test-reporter 通过后，更新 progress 并进入 verification。
+全部 task、reviewer、test-reporter 通过后，按 AGENTS.md 流水线规则更新进度并进入 verification。

@@ -1,9 +1,7 @@
 ---
 name: loom-dispatching-parallel-agents
 description: >
-  并行派发。将独立的任务分发给多个 subagent 并行执行。
-  Use when: multiple independent tasks can be executed in parallel.
-  Trigger keywords: 并行执行, 并发处理, 多任务同时.
+  Dispatch multiple independent tasks to parallel subagents when no shared file conflicts exist.
 ---
 
 # 并行派发
@@ -84,10 +82,3 @@ description: >
 - 并行任务的结果需要合并验证
 - 根据任务复杂度选择模型（cheap/standard/capable）
 
-## 流程图
-
-```
-分析依赖 → 创建并行组 → 并行派发 → 等待收集结果
-                                       ├→ 有冲突 → 处理冲突 → 重新派发
-                                       └→ 全部成功 → 完成
-```

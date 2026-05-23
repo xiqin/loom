@@ -1,9 +1,7 @@
 ---
 name: loom-using-git-worktrees
 description: >
-  Git 工作树隔离。创建隔离的 git 分支进行开发，避免污染主分支。
-  Use when: starting a new feature development to create an isolated branch.
-  Trigger keywords: 创建分支, 新分支, worktree, 隔离开发.
+  Create an isolated git branch/worktree before coding begins. Verifies baseline tests pass.
 ---
 
 # Git 工作树隔离
@@ -27,10 +25,6 @@ git rev-parse --show-superproject-working-tree
 ```
 
 **如果已在隔离环境中：** 跳过创建，直接使用当前环境。
-
-## 公告
-
-开始时宣布："我正在使用 using-git-worktrees skill 创建隔离工作空间。"
 
 ## 执行流程
 
@@ -117,24 +111,6 @@ git branch --show-current
 - **只清理自己创建的 worktree**（验证路径在 superpower 管理目录下）
 - 目录创建前必须确认 `.gitignore` 规则
 
-## 流程图
-
-```
-检查当前状态 → 创建隔离分支 → 安装依赖验证基线 → 确认分支状态 → 继续 workflow
-```
-
-## progress.md 更新
-
-<!-- loom:generate:progress:git-worktree -->
-**progress.md 更新（由 `config/pipeline.schema.json` 生成）**
-- 阶段：Step 3 / `git-worktree` / `loom-using-git-worktrees`。
-- 开始时更新 `specs/<date+feature>/progress.md`：Step 3 设为 `▶ 进行中`，开始时间填当前 HH:mm，并追加 Skill 调用记录。
-- 完成时：Step 3 设为 `✅ 完成`，完成时间填当前 HH:mm，并把本 skill 调用记录结果更新为 `✅ 完成`。
-- 失败时：Step 3 设为 `❌ 失败`，完成时间填失败时 HH:mm，备注写明阻断原因。
-- 备注列按阶段产物填写：`feature/<date>-<name> 分支`、`specs/<date+feature>/progress.md`；执行阶段可记录 task 进度，worktree 阶段可记录分支名。
-- 时间必须填实际 `HH:mm` 数值，如 `14:30`；禁止填字面量 `HH:mm`。
-<!-- /loom:generate:progress:git-worktree -->
-
 ## 完成条件与下一步
 
-分支创建并验证测试基线后，必须同时更新 `specs/<date+feature>/progress.md`（按上述规则填写完成时间）。
+分支创建并验证测试基线后，按 AGENTS.md 流水线规则更新进度并进入下一步。

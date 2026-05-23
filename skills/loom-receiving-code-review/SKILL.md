@@ -1,9 +1,8 @@
 ---
 name: loom-receiving-code-review
 description: >
-   接受代码审查。处理审查反馈，按要求修复问题。
-   Use when: receiving and responding to code review feedback.
-   Trigger keywords: 审查反馈, review 意见, 修改审查问题.
+  Process code review feedback: classify items, implement fixes, push back with reasoning when needed.
+  Triggered after receiving review comments on a PR or branch.
 ---
 
 # 接受代码审查
@@ -50,64 +49,18 @@ description: >
 
 ## 反馈来源区分
 
-### 来自 human partner（可信）
-- 理解后可直接实施
-- 范围不清时仍需确认
-- 不搞表演性附和
-- 直接行动或技术确认
+- **human partner**：理解后直接实施，范围不清时确认，不附和
+- **外部审查者**：实施前必须验证技术正确性、兼容性和上下文完整性
 
-### 来自外部审查者
-**实施前必须检查：**
-1. 对当前代码库技术正确吗？
-2. 会破坏现有功能吗？
-3. 当前实现有什么原因？
-4. 所有平台/版本都能工作吗？
-5. 审查者理解完整上下文吗？
+> 详细检查清单见 `references/response-templates.md`
 
-**如果建议有问题：用技术推理 push back。**
+## YAGNI 与 Push Back
 
-**如果无法验证：明确说明"需要 [X] 才能验证，应该 [调查/询问/继续]？"**
+- 审查者建议"properly implement"时，先 grep 确认是否真的在用；未使用则建议删除
+- 建议破坏现有功能、缺乏上下文、违反 YAGNI、与架构决策冲突时，用技术推理 push back
+- 不清楚的反馈：**停止实施**，先确认所有不清楚的项
 
-## YAGNI 检查
-
-审查者建议"properly implement"时：
-- 先 grep 代码库看是否真的在用
-- 未使用：建议删除（YAGNI）
-- 在用：再实施
-
-## 何时 Push Back
-
-- 建议破坏现有功能
-- 审查者缺乏完整上下文
-- 违反 YAGNI（未使用的功能）
-- 对当前技术栈技术不正确
-- 遗留/兼容性原因
-- 与 human partner 的架构决策冲突
-
-**Push back 方式：**
-- 用技术推理，不搞防御性
-- 问具体问题
-- 引用可工作的测试/代码
-- 涉及架构时请示 human partner
-
-## 不清楚的反馈
-
-```
-如果任何项不清楚：
-  停止 - 不要实施任何东西
-  先询问不清楚的项
-
-原因：各项可能相关。部分理解 = 错误实施。
-```
-
-**示例：**
-```
-human partner: "修复 1-6"
-你理解 1,2,3,6。4,5 不清楚。
-
-❌ 错误：先实施 1,2,3,6，之后再问 4,5
-✅ 正确："理解了 1,2,3,6。实施前需要确认 4 和 5。"
-```
+> 完整 YAGNI 检查流程、push back 方式和不清楚反馈示例见 `references/response-templates.md`
 
 ## 执行流程
 
@@ -144,35 +97,7 @@ human partner: "修复 1-6"
 
 ### Step 4：回复审查
 
-对每个审查意见回复（使用统一模板）：
-
-```markdown
-# 审查反馈响应
-
-## 已修复的问题
-
-### BLOCKER 问题
-| # | 意见 | 修复内容 | 验证结果 |
-|---|------|---------|----------|
-| 1 | <意见> | <修复> | ✅ 通过 |
-
-## 已采纳的建议
-
-| # | 建议 | 实施内容 |
-|---|------|----------|
-| 1 | <建议> | <实施> |
-
-## 已拒绝的建议
-
-| # | 建议 | 拒绝理由 |
-|---|------|----------|
-| 1 | <建议> | <理由> |
-
-## 验证结果
-- [x] 编译通过
-- [x] 测试通过
-- [x] 代码自查
-```
+使用 `references/response-templates.md` 中的统一模板格式回复审查意见。
 
 ### Step 5：再次提交
 
@@ -188,10 +113,3 @@ git push
 - SUGGESTION 必须明确回复采纳或拒绝
 - 拒绝建议时必须提供理由
 - 修复后必须重新运行测试
-
-## 流程图
-
-```
-理解反馈 → 分类处理 → 实施修复 → 回复审查 → 提交
-                                              └→ 需修改 → 理解反馈（循环）
-```
