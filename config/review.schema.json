@@ -3,7 +3,7 @@
   "$id": "https://github.com/xiqin/loom/config/review.schema.json",
   "title": "loom Review Framework",
   "description": "审查框架定义 — 维度、严重等级、判定规则。驱动 combined-reviewer / spec-reviewer / code-quality-reviewer。",
-  "version": 1,
+  "version": 2,
   "dimensions": [
     {
       "id": "architecture",
@@ -85,6 +85,28 @@
         "配置项命名"
       ],
       "source": ".loom/rules/project-structure.md"
+    },
+    {
+      "id": "impact-scope",
+      "name": "变更影响范围",
+      "order": 6,
+      "defaultSeverity": "BLOCKER",
+      "description": "下游调用方识别、breaking change 检测、并行 task 冲突",
+      "checks": [
+        "本次变更的函数、接口、类型是否被其他模块引用（读取 engineering-index.md）",
+        "公开接口的参数签名是否变化（新增必填参数、删除字段、类型变更）",
+        "数据库 schema、消息格式、配置项是否有不向后兼容的变更",
+        "本次变更的文件或模块是否与其他正在进行的 task 有重叠",
+        "影响范围风险评级：仅模块内部（低）/ 跨模块调用链（中）/ 公开接口或共享数据结构（高）"
+      ],
+      "source": ".loom/index/engineering-index.md",
+      "fallback": "engineering-index.md 不可用时跳过本维度，在报告中注明'索引不可用，跳过影响范围分析'",
+      "severityOverrides": {
+        "breaking-change": "BLOCKER",
+        "parallel-task-conflict": "WARNING",
+        "cross-module": "WARNING",
+        "internal-only": "SUGGESTION"
+      }
     }
   ],
   "severity": {
@@ -155,16 +177,32 @@
       "SPEC_DEVIATION": {
         "description": "实现偏离规格",
         "subLevels": {
-          "Critical": { "action": "失败，派回 implementer 修复", "blocksReview": true },
-          "Important": { "action": "记录，继续质量审查", "blocksReview": false },
-          "Suggestion": { "action": "记录，继续质量审查", "blocksReview": false }
+          "Critical": {
+            "action": "失败，派回 implementer 修复",
+            "blocksReview": true
+          },
+          "Important": {
+            "action": "记录，继续质量审查",
+            "blocksReview": false
+          },
+          "Suggestion": {
+            "action": "记录，继续质量审查",
+            "blocksReview": false
+          }
         }
       }
     }
   },
   "qualityReview": {
-    "description": "5 维质量审查",
-    "dimensions": ["architecture", "code-quality", "security", "performance", "conformance"],
+    "description": "6 维质量审查",
+    "dimensions": [
+      "architecture",
+      "code-quality",
+      "security",
+      "performance",
+      "conformance",
+      "impact-scope"
+    ],
     "verdicts": {
       "QUALITY_PASS": {
         "description": "无 BLOCKER",
@@ -203,12 +241,24 @@
   "customDimensions": {
     "description": "项目可追加自定义维度",
     "source": ".loom/rules/review-dimensions.md",
-    "format": "在默认 5 维基础上追加，格式：序号. 维度名 — 默认等级 — 说明"
+    "format": "在默认 6 维基础上追加，格式：序号. 维度名 — 默认等级 — 说明"
   },
   "implementerStatuses": {
-    "DONE": { "description": "任务完成", "action": "进入审查" },
-    "DONE_WITH_CONCERNS": { "description": "完成但有疑虑", "action": "进入审查，审查员关注 concerns" },
-    "NEEDS_CONTEXT": { "description": "需要更多信息", "action": "等待用户决策" },
-    "BLOCKED": { "description": "被阻塞", "action": "等待用户解决问题" }
+    "DONE": {
+      "description": "任务完成",
+      "action": "进入审查"
+    },
+    "DONE_WITH_CONCERNS": {
+      "description": "完成但有疑虑",
+      "action": "进入审查，审查员关注 concerns"
+    },
+    "NEEDS_CONTEXT": {
+      "description": "需要更多信息",
+      "action": "等待用户决策"
+    },
+    "BLOCKED": {
+      "description": "被阻塞",
+      "action": "等待用户解决问题"
+    }
   }
 }

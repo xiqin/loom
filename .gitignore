@@ -23,3 +23,5 @@ specs/
 
 # Not tracked in repo
 .claudeignore
+opencode.json
+.generate-cache.json

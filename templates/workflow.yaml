@@ -1,32 +1,154 @@
-# 本文件由 `/loom-init-project` 自动生成，请根据项目实际情况完善
+# workflow.yaml — loom 流水线定义
+# 由 `/loom-init-project` 初始化，支持按任务类型选择不同流水线
+#
+# 使用方式：
+#   在 skill 或 CLI 中通过 `pipeline_type` 参数指定，例如：
+#   /loom-brainstorm type=feature
+#   loom run --type bugfix
+#
+#   未指定 type 时，默认使用 feature 流水线。
 
-pipeline:
-  name: loom-development
-  steps:
-    - id: brainstorming
-      skill: loom-brainstorming
-      next: planning
-      description: "需求头脑风暴，输出 spec.md"
-    - id: planning
-      skill: loom-writing-plans
-      next: approved
-      description: "拆解实现计划，输出 plan.md"
-    - id: approved
-      gate: human-approval
-      description: "等待用户确认 plan 后才能继续"
-      next: git-worktree
-    - id: git-worktree
-      skill: loom-using-git-worktrees
-      next: executing
-      description: "创建隔离分支"
-    - id: executing
-      skill: loom-subagent-driven-development
-      next: verification
-      description: "编码执行"
-    - id: verification
-      skill: loom-verification-before-completion
-      next: synced
-      description: "完成前验证"
-    - id: synced
-      skill: loom-index-update
-      description: "索引同步，流水线结束"
+# ─────────────────────────────────────────
+# 全局配置
+# ─────────────────────────────────────────
+defaults:
+  pipeline_type: feature        # 未指定时的默认流水线
+  max_retries: 3                # subagent 全局最大重试次数（可被 step 覆盖）
+  timeout_minutes: 30           # 单个 step 超时时间（分钟）
+
+# ─────────────────────────────────────────
+# 流水线定义
+# ─────────────────────────────────────────
+pipelines:
+
+  # 新功能开发 — 完整六步
+  feature:
+    description: "新功能开发，从需求到上线的完整流程"
+    steps:
+      - id: brainstorming
+        skill: loom-brainstorming
+        next: planning
+        description: "需求头脑风暴，探索 2-3 种实现方案，输出 spec.md"
+
+      - id: planning
+        skill: loom-writing-plans
+        next: approved
+        description: "分层拆解实现计划，输出 plan.md"
+
+      - id: approved
+        gate: human-approval
+        description: "等待用户确认 plan 后继续"
+        next: git-worktree
+
+      - id: git-worktree
+        skill: loom-using-git-worktrees
+        next: executing
+        description: "创建隔离 feature 分支"
+
+      - id: executing
+        skill: loom-subagent-driven-development
+        next: verification
+        description: "subagent 并行编码执行"
+
+      - id: verification
+        skill: loom-verification-before-completion
+        next: synced
+        description: "完成前验证：spec 覆盖 / 类型一致性 / 编译测试"
+
+      - id: synced
+        skill: loom-index-update
+        description: "工程索引同步，流水线结束"
+
+  # Bug 修复 — 跳过头脑风暴和隔离分支
+  bugfix:
+    description: "已定位的 bug 修复，跳过需求探索和分支创建"
+    steps:
+      - id: planning
+        skill: loom-writing-plans
+        next: approved
+        description: "拆解修复计划，明确根因和改动范围，输出 plan.md"
+
+      - id: approved
+        gate: human-approval
+        description: "确认修复方案后继续"
+        next: executing
+
+      - id: executing
+        skill: loom-subagent-driven-development
+        next: verification
+        description: "执行修复"
+
+      - id: verification
+        skill: loom-verification-before-completion
+        next: synced
+        description: "验证修复：回归测试 / 边界用例"
+
+      - id: synced
+        skill: loom-index-update
+        description: "索引同步，流水线结束"
+
+  # 紧急热修复 — 最小步骤，直接执行
+  hotfix:
+    description: "生产紧急问题，最小化流程，人工把控"
+    steps:
+      - id: approved
+        gate: human-approval
+        description: "确认热修复范围和方案（必填：issue 描述 + 预期改动）"
+        next: executing
+
+      - id: executing
+        skill: loom-subagent-driven-development
+        next: verification
+        description: "执行热修复"
+        config:
+          max_retries: 1        # 热修复不允许无限重试，失败立即上报
+
+      - id: verification
+        skill: loom-verification-before-completion
+        description: "最小验证：编译通过 + 核心路径冒烟测试"
+
+  # 重构 — 有 brainstorm，但跳过独立 worktree（在当前分支操作）
+  refactor:
+    description: "代码重构，需要方案对比，但不开新分支"
+    steps:
+      - id: brainstorming
+        skill: loom-brainstorming
+        next: planning
+        description: "对比重构策略（如：逐步迁移 vs 整体替换）"
+
+      - id: planning
+        skill: loom-writing-plans
+        next: approved
+        description: "拆解重构步骤，明确回滚边界"
+
+      - id: approved
+        gate: human-approval
+        description: "确认重构计划"
+        next: executing
+
+      - id: executing
+        skill: loom-subagent-driven-development
+        next: verification
+        description: "执行重构"
+
+      - id: verification
+        skill: loom-verification-before-completion
+        next: synced
+        description: "验证：行为一致性 / 性能对比 / 类型检查"
+
+      - id: synced
+        skill: loom-index-update
+        description: "更新工程索引（重构后模块结构可能变化）"
+
+  # 小改动 — 无需审批，直接执行后验证
+  chore:
+    description: "依赖升级、配置调整、文档更新等低风险改动"
+    steps:
+      - id: executing
+        skill: loom-subagent-driven-development
+        next: verification
+        description: "执行改动"
+
+      - id: verification
+        skill: loom-verification-before-completion
+        description: "基础验证：lint / 编译"

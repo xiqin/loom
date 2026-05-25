@@ -111,6 +111,6 @@ git branch --show-current
 - **只清理自己创建的 worktree**（验证路径在 superpower 管理目录下）
 - 目录创建前必须确认 `.gitignore` 规则
 
-## 完成条件与下一步
+## 完成条件
 
-分支创建并验证测试基线后，按 AGENTS.md 流水线规则更新进度并进入下一步。
+分支创建并验证测试基线。

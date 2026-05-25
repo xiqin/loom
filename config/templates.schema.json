@@ -66,6 +66,7 @@
       "outputPath": ".loom/memory/MEMORY.md",
       "description": "记忆文件 — 踩坑、偏好、状态、变更记录",
       "requiredVariables": [
+        "INIT_DATE",
         "TECH_STACK_SUMMARY"
       ],
       "optionalVariables": []

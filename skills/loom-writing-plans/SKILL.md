@@ -80,6 +80,6 @@ node <skill-dir>/scripts/validate-plan.mjs --spec-dir specs/<date+feature>
 - 需要设计判断或广泛的代码库理解 → 最强模型
 <!-- /loom:generate:model-selection -->
 
-## 完成条件与下一步
+## 完成条件
 
-`plan.md`、所有 `tasks/TN.md` 和自动校验完成后，等待用户确认 plan；用户确认后继续 git-worktree。
+`plan.md`、所有 `tasks/TN.md` 和自动校验完成。

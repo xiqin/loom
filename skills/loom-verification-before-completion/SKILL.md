@@ -56,6 +56,6 @@ node <skill-dir>/scripts/verify-artifacts.mjs --spec-dir specs/<date+feature>
 读取 `.loom/rules/constitution.md` 中的 BUILD_CMD/VET_CMD/TEST_CMD 并执行验证。
 <!-- /loom:generate:rule:build-vet-test-cmd -->
 
-## 完成条件与下一步
+## 完成条件
 
-验证通过后进入 index-update；验证失败时标记失败，输出修复指令，禁止全量重跑 Step 4。
+验证失败时标记失败，输出修复指令，禁止全量重跑 Step 4。
