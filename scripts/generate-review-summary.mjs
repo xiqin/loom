@@ -27,7 +27,7 @@ function loadSchema() {
 }
 
 function generateReviewSummaryMd(schema) {
-  let md = `### 5 维审查\n\n`;
+  let md = `### 6 维审查\n\n`;
   md += `| 维度 | 关键检查项 |\n`;
   md += `|------|----------|\n`;
   for (const dim of schema.dimensions) {

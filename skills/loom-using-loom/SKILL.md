@@ -7,7 +7,7 @@ description: >
 
 # Using loom — AI 工程化框架
 
-loom 是一个 AI 工程化框架，提供 6 步流水线（brainstorming → writing-plans → git-worktree → subagent-dev → verification → index-update）、5 维审查、Skills 系统等能力。流水线由 `.loom/workflow.yaml` 集中定义。
+loom 是一个 AI 工程化框架，把需求、规范、上下文、执行过程"织"成一套稳定工程流程。流水线由 `.loom/workflow.yaml` 集中定义。
 
 <!-- loom:generate:rule:no-skip-step -->
 **严令禁止跳步**
@@ -51,10 +51,8 @@ loom 是一个 AI 工程化框架，提供 6 步流水线（brainstorming → wr
 | loom-finishing-a-development-branch | 分支完成流程 , +选项展示（Merge/PR/Keep/Discard） |
 <!-- /loom:generate:skills-catalog -->
 
-## 5 维审查
-
 <!-- loom:generate:review-summary -->
-### 5 维审查
+### 6 维审查
 
 | 维度 | 关键检查项 |
 |------|----------|
