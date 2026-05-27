@@ -60,7 +60,9 @@ loom init-project
 AGENTS.md                       # 选择 Codex/OpenCode/Claude Code 时
 CLAUDE.md               # 选择 Claude Code 时
 .cursor/rules/loom.mdc                  # 检测到 Cursor 时
+.cursor/rules/loom-session-init.mdc     # Cursor 等价 session-start hook（新增）
 .github/copilot-instructions.md         # 检测到 GitHub Copilot 时
+.github/workflows/loom-verify.yml       # 可选：CI 规范门禁（询问用户是否生成）
 ```
 
 ## 人工检查清单

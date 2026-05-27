@@ -33,8 +33,10 @@ description: >
 
 - 每个 task 是一个可独立验证的交付物。
 - 每个 task 包含层级、复杂度、依赖、涉及文件、TDD 步骤、测试说明。
+- **每个 task 文件必须声明 YAML frontmatter**，包含 `owns`（独占写入的文件/目录）、`reads`（只读依赖）、`depends_on`（前置 task）、`complexity`。这些字段驱动 `loom tasks` 命令的冲突检测和批次调度。
 - 依赖必须无循环；有循环依赖时拆开或合并。
 - 后续 task 使用的类型、方法签名和属性名必须与前序 task 匹配。
+- **`owns` 集合不得有交集**：两个 task 不能同时 owns 同一文件/目录，否则不能并行执行。
 
 ## 自动校验
 
@@ -45,6 +47,12 @@ node <skill-dir>/scripts/validate-plan.mjs --spec-dir specs/<date+feature>
 ```
 
 脚本失败时，先修复计划文件，再进入用户确认 gate。
+
+如已安装 loom CLI，追加运行冲突检测（有冲突则必须修改 owns 声明或调整并行策略）：
+
+```bash
+loom tasks --spec-dir specs/<date+feature> --validate
+```
 
 ## 检查清单
 

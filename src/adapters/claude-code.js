@@ -30,7 +30,28 @@ export class ClaudeCodeAdapter extends BaseAdapter {
     log.push(`Installing loom@${version} → ${this.toolName} (user-level)`);
     this._registerPlugin(loomRoot, version, log);
     this._ensureIgnore(log);
+    this._ensureMcpConfig(log);
     return log;
+  }
+
+  _ensureMcpConfig(log) {
+    const settingsPath = join(this.getUserDir(), 'settings.json');
+    let settings = {};
+    if (existsSync(settingsPath)) {
+      try { settings = JSON.parse(readFileSync(settingsPath, 'utf-8')); } catch {}
+    }
+    if (!settings.mcpServers) settings.mcpServers = {};
+    if (settings.mcpServers.loom) {
+      log.push('  mcp: loom server already configured');
+      return;
+    }
+    settings.mcpServers.loom = {
+      command: 'loom',
+      args: ['mcp-serve']
+    };
+    mkdirSync(dirname(settingsPath), { recursive: true });
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
+    log.push('  mcp: loom server added to settings.json');
   }
 
   uninstall(loomRoot) {

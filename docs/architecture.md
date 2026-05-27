@@ -177,3 +177,67 @@ tests/
 npm test            # 运行所有测试
 npm run test:watch  # 监听模式
 ```
+
+## v2.0 新增模块
+
+### 执行引擎 (方向1)
+
+```
+src/core/
+├── pipeline-engine.js    — 状态机控制器（检查产物→推进阶段→校验→阻断）
+├── state-store.js        — 每 spec 独立的 pipeline.state.json + task-states/*.state.json
+├── lock.js               — PID 文件锁（.loom-run.lock）防重复启动
+└── artifact-checker.js   — 产物存在性 + 内容校验 + 阶段推断
+
+src/commands/
+├── run.js                — loom run (init / advance / approve / fail / recover / task-state)
+└── status.js             — loom status (单 spec 详情 / 全景视图)
+```
+
+**状态隔离设计：**
+
+```
+specs/2026-05-27+user-auth/
+  pipeline.state.json     ← 只由管理该 spec 的 loom run 进程写
+  .loom-run.lock          ← PID 文件锁
+  task-states/
+    T1.state.json         ← 只由 T1 的 subagent 写
+    T2.state.json
+  handoffs/
+    T1.json
+    T2.json
+  progress.md             ← 由 state-store 汇总生成（只读视图）
+```
+
+每一层的写入者唯一，不需要锁、不需要事务。
+
+### 结构化记忆 (方向2)
+
+```
+src/core/memory-store.js  — JSON 文件存储（.loom/memory/store.json）
+src/commands/memory.js    — loom memory add/list/export/merge/remove/archive
+```
+
+MEMORY.md 变为只读导出视图，由 `loom memory export` 生成。
+
+### MCP Server (方向3)
+
+```
+src/mcp/
+├── server.js             — stdio transport JSON-RPC 服务
+├── tools.js              — 8 个 MCP 工具定义 + 执行
+└── session-store.js      — 连接级 spec 绑定（loom_attach_spec）
+```
+
+配置方式：
+```json
+{ "mcpServers": { "loom": { "command": "loom", "args": ["mcp-serve"] } } }
+```
+
+### Skill 质量度量 (方向5)
+
+```
+src/core/compliance-tracker.js  — 读 verify-report + stage_history，写 .loom/compliance/history.json
+```
+
+`loom doctor` 展示高风险 skill 列表（遵守率 < 80%）。

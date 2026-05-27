@@ -34,7 +34,32 @@ timeout_minutes: 30     # 单个 subagent 的超时时间（分钟）
 
 **每个 task 独立计算重试次数**，不跨 task 累计。
 
-## 执行流程
+## 执行前准备
+
+启动执行阶段前，若 loom CLI 已安装，运行批次调度分析：
+
+```bash
+loom tasks --spec-dir specs/<date+feature>
+```
+
+输出会告知哪些 task 可以并行（无 owns 冲突 + 无依赖），哪些必须串行。**以此结果决定派发策略，而非自行判断**。
+
+## Handoff 协议（任务交接）
+
+每个 subagent task **完成后必须生成交接文件** `specs/<date+feature>/handoffs/TN.yaml`，格式：
+
+```yaml
+task_id: T1
+status: done          # done | partial | blocked
+exported_interfaces:
+  - name: Authenticate
+    path: src/auth/index.ts
+    signature: "(token: string) => Promise<User>"
+breaking_changes: []  # 影响其他 task 的接口变更
+notes: "JWT 密钥从环境变量 JWT_SECRET 读取，未硬编码"
+```
+
+下游 task 的 subagent **派发前必须读取所有上游 handoff 文件**（来自 `depends_on` 中列出的 task），再开始实现，避免对上游接口的猜测性假设。
 
 1. 读取 `plan.md` Task 概览和 `tasks/TN.md` 详细内容，创建任务追踪列表。
 2. 读取 `.loom/workflow.yaml` 的 `defaults`，获取 `max_retries` 和 `timeout_minutes`；当前 step 有 `config` 字段时以 step 级别为准。

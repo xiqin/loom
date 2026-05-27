@@ -14,6 +14,8 @@ program
   .version(pkg.version)
   .enablePositionalOptions();
 
+// ── 项目初始化 ──────────────────────────────────────────────────────────────
+
 program
   .command('init-project')
   .description('Initialize loom project context in the current repository')
@@ -24,6 +26,8 @@ program
     const { default: initProjectCommand } = await import('./commands/init-project.js');
     await initProjectCommand(options);
   });
+
+// ── 安装 / 卸载 / 更新 ──────────────────────────────────────────────────────
 
 program
   .command('install')
@@ -48,15 +52,6 @@ program
   });
 
 program
-  .command('doctor')
-  .description('Diagnose loom installation')
-  .option('--tool <target>', 'Target tool (auto-detect if omitted)')
-  .action(async (options) => {
-    const { default: doctor } = await import('./commands/doctor.js');
-    await doctor(options);
-  });
-
-program
   .command('uninstall')
   .description('Remove user-level installation for CLI tool')
   .requiredOption('--tool <target>', 'Target tool: claude-code | opencode | cursor | copilot | codex')
@@ -64,6 +59,17 @@ program
   .action(async (options) => {
     const { default: uninstallCommand } = await import('./commands/uninstall.js');
     await uninstallCommand(options);
+  });
+
+// ── 诊断 ────────────────────────────────────────────────────────────────────
+
+program
+  .command('doctor')
+  .description('Diagnose loom installation and project health')
+  .option('--tool <target>', 'Target tool (auto-detect if omitted)')
+  .action(async (options) => {
+    const { default: doctor } = await import('./commands/doctor.js');
+    await doctor(options);
   });
 
 program
@@ -74,5 +80,157 @@ program
     const { default: list } = await import('./commands/list.js');
     await list(options);
   });
+
+// ── 方向1: 执行引擎 ─────────────────────────────────────────────────────────
+
+program
+  .command('run')
+  .description('Pipeline execution engine: init, advance, approve, recover')
+  .requiredOption('--spec-dir <path>', 'Path to spec directory')
+  .option('--cwd <path>', 'Project root')
+  .option('--advance', 'Advance to next stage')
+  .option('--approve', 'Approve human-approval gate')
+  .option('--fail <reason>', 'Mark current stage as failed')
+  .option('--recover <stage>', 'Recover from failed to target stage')
+  .option('--task <id>', 'Task ID (for task-state updates)')
+  .option('--task-status <status>', 'Task status: pending|executing|reviewing|done|failed|blocked')
+  .option('--blocker <reason>', 'Blocker reason (with --task-status blocked)')
+  .option('--context', 'Output stage context as JSON (for MCP / AI)')
+  .option('--type <pipeline>', 'Pipeline type for init: feature|bugfix|hotfix|refactor|chore')
+  .option('--force', 'Override spec lock')
+  .action(async (options) => {
+    const { default: runCommand } = await import('./commands/run.js');
+    await runCommand(options);
+  });
+
+program
+  .command('status')
+  .description('Show pipeline status for all specs or a single spec')
+  .option('--spec-dir <path>', 'Single spec detail view')
+  .option('--cwd <path>', 'Project root')
+  .option('--all', 'Show all specs (default behavior)')
+  .option('--json', 'JSON output')
+  .action(async (options) => {
+    const { default: statusCommand } = await import('./commands/status.js');
+    await statusCommand(options);
+  });
+
+// ── 方向1 continued: tasks / index / start ──────────────────────────────────
+
+program
+  .command('tasks')
+  .description('Analyse task file ownership and output safe parallel execution batches')
+  .requiredOption('--spec-dir <path>', 'Path to spec directory')
+  .option('--validate', 'Conflict-check only; exit 1 if conflicts found')
+  .action(async (options) => {
+    const { default: tasksCommand } = await import('./commands/tasks.js');
+    await tasksCommand(options);
+  });
+
+program
+  .command('index')
+  .description('Scan project source and generate/update engineering-index.md')
+  .option('--cwd <path>', 'Project root')
+  .option('--check', 'Check staleness only; exit 1 if outdated')
+  .action(async (options) => {
+    const { default: indexCommand } = await import('./commands/index.js');
+    await indexCommand(options);
+  });
+
+program
+  .command('start')
+  .description('Print project loom status for pasting into any AI session')
+  .option('--cwd <path>', 'Project root')
+  .option('--format <mode>', 'Output: paste (default) | full', 'paste')
+  .action(async (options) => {
+    const { default: startCommand } = await import('./commands/start.js');
+    await startCommand(options);
+  });
+
+// ── 方向2: 结构化记忆 ───────────────────────────────────────────────────────
+
+const memoryCmd = program
+  .command('memory')
+  .description('Structured project memory: add, list, export, merge');
+
+memoryCmd
+  .command('add')
+  .description('Add a memory entry')
+  .requiredOption('--type <type>', 'Type: 决策 | 踩坑 | 偏好 | 状态 | adr')
+  .requiredOption('--content <text>', 'One-line description')
+  .option('--context <text>', 'Background reason (for ADRs)')
+  .option('--author <name>', 'Author name')
+  .option('--tags <csv>', 'Comma-separated tags')
+  .option('--cwd <path>', 'Project root')
+  .action(async (options) => {
+    const { default: memoryCommand } = await import('./commands/memory.js');
+    await memoryCommand('add', options);
+  });
+
+memoryCmd
+  .command('list')
+  .description('List memory entries')
+  .option('--type <type>', 'Filter by type')
+  .option('--author <name>', 'Filter by author')
+  .option('--limit <n>', 'Max entries', '20')
+  .option('--json', 'JSON output')
+  .option('--cwd <path>', 'Project root')
+  .action(async (options) => {
+    const { default: memoryCommand } = await import('./commands/memory.js');
+    await memoryCommand('list', options);
+  });
+
+memoryCmd
+  .command('export')
+  .description('Generate MEMORY.md from structured store')
+  .option('--cwd <path>', 'Project root')
+  .action(async (options) => {
+    const { default: memoryCommand } = await import('./commands/memory.js');
+    await memoryCommand('export', options);
+  });
+
+memoryCmd
+  .command('merge')
+  .description('Merge another store.json (for team collaboration)')
+  .requiredOption('--from <path>', 'Path to other store.json')
+  .option('--cwd <path>', 'Project root')
+  .action(async (options) => {
+    const { default: memoryCommand } = await import('./commands/memory.js');
+    await memoryCommand('merge', options);
+  });
+
+memoryCmd
+  .command('remove')
+  .description('Remove entry by ID')
+  .requiredOption('--id <id>', 'Entry ID')
+  .option('--cwd <path>', 'Project root')
+  .action(async (options) => {
+    const { default: memoryCommand } = await import('./commands/memory.js');
+    await memoryCommand('remove', options);
+  });
+
+memoryCmd
+  .command('archive')
+  .description('Archive a session')
+  .requiredOption('--slug <name>', 'Feature slug')
+  .option('--file <path>', 'Session content file')
+  .option('--cwd <path>', 'Project root')
+  .action(async (options) => {
+    const { default: memoryCommand } = await import('./commands/memory.js');
+    await memoryCommand('archive', options);
+  });
+
+// ── 方向3: MCP Server ───────────────────────────────────────────────────────
+
+program
+  .command('mcp-serve')
+  .description('Start loom MCP server over stdio')
+  .option('--help', 'Show MCP configuration examples')
+  .action(async (options) => {
+    const { default: mcpServe } = await import('./commands/mcp-serve.js');
+    await mcpServe(options);
+  });
+
+// ── 解析 ────────────────────────────────────────────────────────────────────
 
 program.parse();

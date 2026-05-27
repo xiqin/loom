@@ -28,7 +28,20 @@ description: >
 
 路径 A：graphify 可用时，调用 graphify skill 完整执行 `/graphify . --update` 或 `/graphify .`，以知识图谱替代手动维护 ENGINEERING-INDEX.md。
 
-路径 B：graphify 不可用时，按项目实际分层手动更新 `.loom/index/engineering-index.md`。更新顺序从底层到上层：数据源 → 模型 → 业务逻辑 → 接口/UI → 路由/配置 → 调用链。
+路径 B：graphify 不可用时，**优先使用 `loom index` 命令自动生成**，再由 AI 审查并补充调用链：
+
+```bash
+# 自动扫描源码，生成 .loom/index/engineering-index.md
+loom index
+
+# 检查生成结果是否与实际代码一致（可选，用于 CI）
+loom index --check
+```
+
+`loom index` 基于静态分析，自动提取：路由定义、控制器/服务/模型/仓库层的导出符号。生成后**必须人工或 AI 审查**以下内容并补充：
+- `## Call Chains` 章节（关键请求链路，无法自动推断）
+- 自动检测遗漏的路由或模块（如动态注册的路由）
+- 确认提取的函数签名与源码一致
 
 ### Step 3：更新 MEMORY.md
 

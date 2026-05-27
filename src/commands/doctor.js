@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getUserAdapter, USER_TOOL_IDS } from '../core/installer.js';
@@ -7,13 +7,50 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..', '..');
 const pkg = JSON.parse(readFileSync(join(PROJECT_ROOT, 'package.json'), 'utf-8'));
 
+// 检查 .loom/index/engineering-index.md 是否过期
+function checkIndexStaleness(cwd) {
+  const indexPath = join(cwd, '.loom', 'index', 'engineering-index.md');
+  if (!existsSync(indexPath)) return { exists: false };
+
+  const indexMtime = statSync(indexPath).mtimeMs;
+  const srcDirs = ['src', 'app', 'lib', 'pkg', 'cmd', 'internal']
+    .map(d => join(cwd, d))
+    .filter(existsSync);
+  if (srcDirs.length === 0) return { exists: true, stale: false };
+
+  const SKIP = new Set(['node_modules', '.git', 'dist', 'build', '__pycache__', 'vendor']);
+  const CODE_EXTS = new Set(['.go', '.py', '.js', '.ts', '.mjs', '.cjs', '.jsx', '.tsx', '.rb', '.rs']);
+
+  let latestSrc = 0;
+  function walk(dir, depth = 0) {
+    if (depth > 6) return;
+    try {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (SKIP.has(entry.name)) continue;
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) { walk(full, depth + 1); continue; }
+        if (CODE_EXTS.has(entry.name.slice(entry.name.lastIndexOf('.')))) {
+          const m = statSync(full).mtimeMs;
+          if (m > latestSrc) latestSrc = m;
+        }
+      }
+    } catch {}
+  }
+  for (const d of srcDirs) walk(d);
+
+  const stale = latestSrc > indexMtime;
+  const ageMin = Math.round((Date.now() - indexMtime) / 60000);
+  return { exists: true, stale, ageMin };
+}
+
 export default async function doctor(options) {
   const tools = options.tool ? [options.tool] : USER_TOOL_IDS;
+  const cwd = process.cwd();
 
   console.log(`\n  loom doctor — Diagnosis Report\n`);
 
+  // ── 工具安装状态 ──────────────────────────────────────────────────────────
   let foundAny = false;
-
   for (const tool of tools) {
     if (!USER_TOOL_IDS.includes(tool)) {
       console.log(`  Unknown tool: "${tool}". Supported: ${USER_TOOL_IDS.join(', ')}`);
@@ -22,7 +59,6 @@ export default async function doctor(options) {
 
     const adapter = await getUserAdapter(tool);
     const userDir = adapter.getUserDir();
-
     let hasSkills = false;
     let hasCommands = false;
 
@@ -31,9 +67,10 @@ export default async function doctor(options) {
     } else {
       const skillsDir = adapter.getSkillsDir();
       const cmdDir = adapter.getCommandsDir();
-
-      hasSkills = skillsDir && existsSync(skillsDir) && readdirSync(skillsDir, { withFileTypes: true }).some(e => e.isDirectory());
-      hasCommands = cmdDir && existsSync(cmdDir) && readdirSync(cmdDir, { withFileTypes: true }).some(e => e.isFile() && e.name.endsWith('.md'));
+      hasSkills = skillsDir && existsSync(skillsDir) &&
+        readdirSync(skillsDir, { withFileTypes: true }).some(e => e.isDirectory());
+      hasCommands = cmdDir && existsSync(cmdDir) &&
+        readdirSync(cmdDir, { withFileTypes: true }).some(e => e.isFile() && e.name.endsWith('.md'));
     }
 
     if (!hasSkills && !hasCommands) continue;
@@ -48,9 +85,11 @@ export default async function doctor(options) {
         const mdcFiles = readdirSync(rulesDir).filter(f => f.startsWith('loom-') && f.endsWith('.mdc'));
         const skillCount = mdcFiles.filter(f => !f.startsWith('loom-cmd-')).length;
         const cmdCount = mdcFiles.filter(f => f.startsWith('loom-cmd-')).length;
+        const hasSessionInit = mdcFiles.includes('loom-session-init.mdc');
         console.log(`    rules:     ${rulesDir}`);
         console.log(`    skills:    ${skillCount} skill(s) as .mdc`);
         if (cmdCount > 0) console.log(`    commands:  ${cmdCount} command(s) as .mdc`);
+        console.log(`    session-init: ${hasSessionInit ? '✓ installed' : '✗ missing (run loom update --tool cursor)'}`);
       }
     } else {
       const skillsDir = adapter.getSkillsDir();
@@ -58,7 +97,6 @@ export default async function doctor(options) {
         const count = countSkillDirs(skillsDir);
         console.log(`    skills:    ${skillsDir} (${count} skill(s))`);
       }
-
       const cmdDir = adapter.getCommandsDir();
       if (cmdDir) {
         if (existsSync(cmdDir)) {
@@ -73,24 +111,63 @@ export default async function doctor(options) {
     if (adapter.supportsPlugin()) {
       console.log(`    plugin:    registered`);
     }
-
     console.log('');
   }
 
   if (!foundAny) {
     console.log('  No loom installation detected. Run "loom install --tool <target>" to install.');
   }
+
+  // ── 项目健康度检查（当前目录有 .loom/ 时执行）──────────────────────────
+  const loomDir = join(cwd, '.loom');
+  if (!existsSync(loomDir)) {
+    console.log('  Project: .loom/ not found in current directory (not a loom project).\n');
+    return;
+  }
+
+  console.log('  [project health]');
+  console.log(`    root:  ${cwd}`);
+
+  // constitution 占位符检查
+  const constPath = join(loomDir, 'rules', 'constitution.md');
+  if (existsSync(constPath)) {
+    const content = readFileSync(constPath, 'utf-8');
+    const placeholders = [...new Set(content.match(/\{\{[A-Z_]+\}\}/g) || [])];
+    if (placeholders.length > 0) {
+      console.log(`    constitution: ⚠  ${placeholders.length} unrendered placeholder(s): ${placeholders.join(', ')}`);
+    } else {
+      console.log(`    constitution: ✓`);
+    }
+  } else {
+    console.log(`    constitution: ✗ missing`);
+  }
+
+  // workflow.yaml 检查
+  const workflowPath = join(loomDir, 'workflow.yaml');
+  console.log(`    workflow.yaml: ${existsSync(workflowPath) ? '✓' : '✗ missing'}`);
+
+  // memory 检查
+  const memoryPath = join(loomDir, 'memory', 'MEMORY.md');
+  console.log(`    MEMORY.md:     ${existsSync(memoryPath) ? '✓' : '✗ missing'}`);
+
+  // 索引新鲜度检查 ← 新增
+  const staleness = checkIndexStaleness(cwd);
+  if (!staleness.exists) {
+    console.log(`    index:         ✗ missing — run: loom index`);
+  } else if (staleness.stale) {
+    console.log(`    index:         ⚠  stale (${staleness.ageMin}min old, source files changed) — run: loom index`);
+  } else {
+    console.log(`    index:         ✓ up to date`);
+  }
+
+  console.log('');
 }
 
 function countSkillDirs(dir) {
   let count = 0;
   try {
-    const entries = readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        const skillMd = join(dir, entry.name, 'SKILL.md');
-        if (existsSync(skillMd)) count++;
-      }
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory() && existsSync(join(dir, entry.name, 'SKILL.md'))) count++;
     }
   } catch {}
   return count;
@@ -101,7 +178,44 @@ function checkCursorMdc(adapter) {
     const rulesDir = adapter.getRulesDir();
     if (!rulesDir || !existsSync(rulesDir)) return false;
     return readdirSync(rulesDir).some(f => f.startsWith('loom-') && f.endsWith('.mdc'));
-  } catch {
-    return false;
+  } catch { return false; }
+}
+
+// ── 方向5: Skill 遵守率报告 ────────────────────────────────────────────────
+// 在 doctor 末尾追加 compliance 统计（如有数据）
+
+import { ComplianceTracker } from '../core/compliance-tracker.js';
+
+export async function doctorCompliance(cwd) {
+  const tracker = new ComplianceTracker(cwd);
+  const stats = tracker.aggregate();
+  if (stats.length === 0) return;
+
+  console.log('  [skill compliance]');
+  console.log('');
+  console.log('    Skill                                    Total  Pass  Rate');
+  console.log('    ─────────────────────────────────────    ─────  ────  ────');
+
+  for (const s of stats) {
+    const name = s.skill.padEnd(40);
+    const total = String(s.total).padStart(5);
+    const passed = String(s.passed).padStart(4);
+    const rate = s.rate.padStart(4);
+    const warn = parseFloat(s.rate) < 80 ? '  ⚠ high-risk' : '';
+    console.log(`    ${name}  ${total}  ${passed}  ${rate}${warn}`);
   }
+
+  const highrisk = stats.filter(s => parseFloat(s.rate) < 80);
+  if (highrisk.length > 0) {
+    console.log('');
+    console.log('    Top violations on high-risk skills:');
+    for (const s of highrisk) {
+      if (s.topViolations.length === 0) continue;
+      console.log(`      ${s.skill}:`);
+      for (const v of s.topViolations.slice(0, 3)) {
+        console.log(`        · ${v}`);
+      }
+    }
+  }
+  console.log('');
 }

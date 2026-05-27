@@ -1,0 +1,76 @@
+# loom-verify.yml — loom 规范自动化门禁
+# 由 `loom init-project` 可选生成到 .github/workflows/loom-verify.yml
+# 覆盖：缺陷1（规范强制）/ 缺陷4（索引新鲜度）/ 缺陷5（任务冲突检测）
+
+name: loom verify
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'app/**'
+      - 'lib/**'
+      - 'specs/**'
+      - '.loom/**'
+
+jobs:
+  loom-checks:
+    name: loom integrity checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install loom
+        run: npm install -g loom-engineering
+
+      # ── 缺陷1：规范完整性校验 ─────────────────────────────────────────────
+      - name: Check constitution placeholders
+        run: |
+          if [ -f .loom/rules/constitution.md ]; then
+            if grep -qE '\{\{[A-Z_]+\}\}' .loom/rules/constitution.md; then
+              echo "::error::constitution.md contains unrendered placeholders"
+              grep -oE '\{\{[A-Z_]+\}\}' .loom/rules/constitution.md | sort -u
+              exit 1
+            fi
+          fi
+
+      - name: Check workflow.yaml exists
+        run: |
+          if [ ! -f .loom/workflow.yaml ]; then
+            echo "::error::.loom/workflow.yaml is missing"
+            exit 1
+          fi
+
+      # ── 缺陷4：索引新鲜度检测 ───────────────────────────────────────────
+      - name: Check engineering-index staleness
+        run: loom index --check
+        # exit 1 if index is older than source files
+
+      # ── 缺陷5：任务冲突检测（specs/ 有变更时触发）───────────────────────
+      - name: Check task file ownership conflicts
+        run: |
+          for spec_dir in specs/*/; do
+            if [ -d "${spec_dir}tasks" ]; then
+              echo "Checking ${spec_dir}..."
+              loom tasks --spec-dir "${spec_dir}" --validate
+            fi
+          done
+
+      # ── 产物完整性校验（已有脚本）──────────────────────────────────────
+      - name: Verify spec artifacts
+        run: |
+          for spec_dir in specs/*/; do
+            if [ -f "${spec_dir}spec.md" ]; then
+              echo "Verifying ${spec_dir}..."
+              node node_modules/.bin/loom-verify-artifacts \
+                --spec-dir "${spec_dir}" 2>/dev/null || \
+              node "$(npm root -g)/loom-engineering/skills/loom-verification-before-completion/scripts/verify-artifacts.mjs" \
+                --spec-dir "${spec_dir}" || true
+            fi
+          done

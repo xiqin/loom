@@ -49,6 +49,7 @@ describe('session-start handler', () => {
     writeFileSync(join(dir, 'package.json'), '{}');
     mkdirSync(join(dir, '.loom', 'memory'), { recursive: true });
     writeFileSync(join(dir, '.loom', 'memory', 'constitution.md'), '# Constitution');
+    writeFileSync(join(dir, '.loom', 'workflow.yaml'), 'version: 1');
     process.chdir(dir);
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     handler();
