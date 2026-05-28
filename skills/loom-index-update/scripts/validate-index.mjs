@@ -13,9 +13,12 @@ export function validateIndex(options = {}) {
 
   const indexPath = join(root, '.loom', 'index', 'engineering-index.md');
   const memoryPath = join(root, '.loom', 'memory', 'MEMORY.md');
+  const codegraphPath = join(root, '.codegraph');
 
-  if (!existsSync(indexPath)) {
-    errors.push('Missing required file: .loom/index/engineering-index.md');
+  if (existsSync(codegraphPath)) {
+    // codegraph is the live index — engineering-index.md not required
+  } else if (!existsSync(indexPath)) {
+    errors.push('Missing required file: .loom/index/engineering-index.md (run: loom index)');
   } else {
     const content = readFileSync(indexPath, 'utf8');
     const requiredSections = ['routes', 'controllers', 'services', 'models', 'call chains'];

@@ -314,23 +314,9 @@
       ],
       "outputs": [
         {
-          "path": "graphify-out/graph.json",
-          "action": "created_or_modified",
-          "note": "graphify 可用时生成，与 ENGINEERING-INDEX.md 互斥"
-        },
-        {
-          "path": "graphify-out/GRAPH_REPORT.md",
-          "action": "created_or_modified",
-          "note": "graphify 可用时生成，与 ENGINEERING-INDEX.md 互斥"
-        },
-        {
-          "path": "graphify-out/graph.html",
-          "action": "created_or_modified",
-          "note": "graphify 可用时生成，与 ENGINEERING-INDEX.md 互斥"
-        },
-        {
           "path": ".loom/index/engineering-index.md",
-          "action": "modified"
+          "action": "modified",
+          "note": "仅 codegraph 不可用时生成（loom index 降级）；codegraph 可用时此文件不需要"
         },
         {
           "path": ".loom/memory/MEMORY.md",
@@ -343,8 +329,6 @@
       ],
       "reads": [
         ".loom/index/engineering-index.md",
-        "graphify-out/graph.json",
-        "graphify-out/GRAPH_REPORT.md",
         ".loom/memory/MEMORY.md",
         "源码文件"
       ],

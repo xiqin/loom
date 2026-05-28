@@ -1,14 +1,22 @@
 # 索引更新检查清单
 
-> **graphify 优先原则**：当 graphify 已安装且图谱可用时，下表中 ENGINEERING-INDEX.md 的所有更新项由 `/graphify . --update`（增量）或 `/graphify .`（首次）自动完成。graphify 通过 AST 提取 + 语义分析自动构建知识图谱，包含路由、依赖、调用链等结构化关系，无需手动维护 ENGINEERING-INDEX.md。仅在 graphify 不可用时才需要手动按此表更新 ENGINEERING-INDEX.md。
+> **codegraph 优先原则**：当 codegraph 已初始化（`.codegraph/` 目录存在）时，**无需维护 ENGINEERING-INDEX.md**。AI 直接通过 MCP 工具（`codegraph_context`、`codegraph_trace` 等）按需查询实时索引。仅在 codegraph 不可用时才需要 `loom index` 生成 ENGINEERING-INDEX.md。
 
 ## 变更检测 → 更新映射
 
-检测到以下代码变更时，需更新对应的索引文件节：
+### 路径 A：codegraph 可用
 
-### ENGINEERING-INDEX.md（仅 graphify 不可用时使用）
+只需确认 codegraph 索引已同步（`codegraph status`）。无需手动更新任何索引文件。
 
-> 以下表格仅在 graphify 不可用时需手动执行。graphify 可用时，这些结构关系由知识图谱自动维护。
+| 查询需求 | 使用工具 |
+|---------|---------|
+| 查找符号定义/上下文 | `codegraph_context` |
+| 调用链追踪 | `codegraph_trace` / `codegraph_callers` / `codegraph_callees` |
+| 改动影响范围 | `codegraph_impact` |
+| 模块/文件结构 | `codegraph_files` |
+| 全文搜索 | `codegraph_search` |
+
+### 路径 B：codegraph 不可用 → ENGINEERING-INDEX.md（`loom index`）
 
 | 代码变更 | 需更新的节 | 更新方式 |
 |---------|-----------|---------|
@@ -26,9 +34,9 @@
 | 队列消费者新增 | 队列消费者 | 添加表行 |
 | 公共包新增 | 公共包速查 | 添加表行 |
 | 依赖注入结构变更 | 依赖注入结构 | 更新 DI 树 |
-| 新增调用链 | 调用链速查 | 添加典型链路示例 |
+| 新增调用链 | 调用链速查 | 添加典型链路示例（手动补充） |
 
-### MEMORY.md
+### MEMORY.md（两条路径都需要）
 
 | 事件 | 需更新的节 |
 |------|-----------|
@@ -36,7 +44,7 @@
 | 用户表达偏好 | 用户偏好 |
 | 项目重大变更 | 项目状态 |
 
-### {{ENTRY_FILE}}
+### {{ENTRY_FILE}}（两条路径都需要）
 
 | 事件 | 需更新的节 |
 |------|-----------|
@@ -45,11 +53,7 @@
 | 开发流程变更 | 开发流程 |
 | 新增约定 | 对应节 |
 
-## 签名格式标准
-
-> 签名格式由 init-project 根据项目语言生成。以下为通用描述，具体格式见 subagent-context.md。
-
-### 各层签名格式
+## 签名格式标准（路径 B 适用）
 
 - **接口层签名**：类/结构体 + 构造函数 + 所有公开方法（含参数和返回值类型）
 - **业务逻辑层签名**：类/结构体 + 构造函数 + 所有公开方法（标注调用链）
@@ -64,14 +68,8 @@
 
 ## 更新顺序
 
-1. **先检测** — 确认变更范围 + 检测 graphify 可用性
+1. **先检测** — 确认变更范围 + 检测 codegraph 可用性（`.codegraph/` 是否存在）
 2. **选择路径**：
-   - **graphify 可用** → 执行 `/graphify . --update`（增量）或 `/graphify .`（首次），跳过手动 ENGINEERING-INDEX.md 更新
-   - **graphify 不可用** → 按依赖顺序手动更新（从底层到上层）：
-     - 先更新底层数据源（数据库表等）
-     - 再更新数据模型层
-     - 再更新业务逻辑层
-     - 再更新接口层
-     - 最后更新路由层
-3. **更新调用链** — 基于以上更新串联（graphify 可用时由图谱自动维护）
-4. **更新 MEMORY/ENTRY** — 按需（两条路径都需要）
+   - **codegraph 可用** → `codegraph status` 确认同步，无需更新索引文件
+   - **codegraph 不可用** → `loom index` 扫描，按依赖顺序更新（底层→上层）
+3. **更新 MEMORY/ENTRY** — 按需（两条路径都需要）

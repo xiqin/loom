@@ -18,29 +18,45 @@ description: >
 
 ## 执行流程
 
-### Step 1：检测变更范围和 graphify
+### Step 1：检测变更范围和索引后端
 
 1. 运行 `git diff --name-only HEAD` 确认变更文件。
 2. 按 `references/update-checklist.md` 判断需要更新哪些索引。
-3. 检测 graphify 是否可用；可用则判断是增量更新还是首次构建。
+3. 检测 codegraph 是否可用：`.codegraph/` 目录存在，或 `codegraph status` 返回 0。
 
 ### Step 2：更新工程结构索引
 
-路径 A：graphify 可用时，调用 graphify skill 完整执行 `/graphify . --update` 或 `/graphify .`，以知识图谱替代手动维护 ENGINEERING-INDEX.md。
+路径 A：**codegraph 可用**时，**不生成 engineering-index.md**，AI 直接通过 MCP 工具按需查询：
 
-路径 B：graphify 不可用时，**优先使用 `loom index` 命令自动生成**，再由 AI 审查并补充调用链：
+```bash
+# 首次初始化（项目内尚无 .codegraph/）
+codegraph init
+
+# 已初始化时确认索引已同步
+codegraph status
+```
+
+codegraph 基于 tree-sitter AST 解析，提取符号、路由、调用链并存入 SQLite，通过 MCP 实时查询：
+- `codegraph_context` — 查询符号上下文
+- `codegraph_trace` / `codegraph_callers` / `codegraph_callees` — 查询调用链
+- `codegraph_impact` — 确认改动影响半径
+- `codegraph_files` — 查询模块结构
+
+engineering-index.md **不再需要**，codegraph 本身即索引。
+
+路径 B：**codegraph 不可用**时，使用 `loom index` 正则扫描降级生成：
 
 ```bash
 # 自动扫描源码，生成 .loom/index/engineering-index.md
 loom index
 
-# 检查生成结果是否与实际代码一致（可选，用于 CI）
+# 检查生成结果是否与实际代码一致（用于 CI）
 loom index --check
 ```
 
-`loom index` 基于静态分析，自动提取：路由定义、控制器/服务/模型/仓库层的导出符号。生成后**必须人工或 AI 审查**以下内容并补充：
-- `## Call Chains` 章节（关键请求链路，无法自动推断）
-- 自动检测遗漏的路由或模块（如动态注册的路由）
+`loom index` 基于静态分析，自动提取路由定义、控制器/服务/模型/仓库层导出符号。生成后**必须人工或 AI 审查**：
+- `## Call Chains` 章节（无法自动推断，需手动补充）
+- 自动检测遗漏的路由或模块（如动态注册路由）
 - 确认提取的函数签名与源码一致
 
 ### Step 3：更新 MEMORY.md
@@ -82,15 +98,15 @@ YYYY-MM-DD | <类型> | <一句话描述>
 
 报告模板见：
 
-- `assets/report-graphify-template.md`
-- `assets/report-manual-template.md`
+- `assets/report-codegraph-template.md`（路径 A）
+- `assets/report-manual-template.md`（路径 B）
 
 ## 约束
 
 - 只更新索引和记忆文件，不修改业务代码。
 - 索引内容必须与实际代码一致。
 - 新增表名、路由路径、方法签名必须与源码完全一致。
-- graphify 与 ENGINEERING-INDEX.md 互斥：graphify 可用时使用知识图谱，否则回退手动索引。
+- codegraph 可用时优先用路径 A；不可用时降级路径 B（`loom index`）。
 
 ## 完成条件与下一步
 

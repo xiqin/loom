@@ -26,7 +26,7 @@ description: >
 - [ ] 静态分析通过（VET_CMD）
 - [ ] 所有测试通过（TEST_CMD）
 - [ ] 代码符合项目编码红线
-- [ ] 工程结构索引已更新（graphify 可用时为知识图谱，否则为 ENGINEERING-INDEX.md）
+- [ ] 工程结构索引已就绪（codegraph 可用时直接查询 `.codegraph/`，否则 `loom index` 生成 engineering-index.md）
 
 ## 执行流程
 
