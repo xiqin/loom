@@ -5,11 +5,36 @@
  * 每个工具是一个纯函数，接收参数返回结果，不持有状态。
  */
 
-import { resolve, join } from 'node:path';
+import { resolve, join, sep } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { PipelineEngine } from '../core/pipeline-engine.js';
 import { PipelineStateStore, scanAllSpecs } from '../core/state-store.js';
 import { MemoryStore } from '../core/memory-store.js';
+import { SpecLock } from '../core/lock.js';
+
+/**
+ * 把 specDir 解析为绝对路径，并强制限制在 projectRoot 内。
+ * MCP 工具的 spec_dir 来自 AI 输入，未经校验会被 "../../etc" 逃逸到项目外读写。
+ */
+function safeResolveSpecDir(projectRoot, specDir) {
+  const root = resolve(projectRoot);
+  const abs = resolve(root, specDir);
+  if (abs !== root && !abs.startsWith(root + sep)) {
+    throw new Error(`spec_dir escapes project root: ${specDir}`);
+  }
+  return abs;
+}
+
+/** 在 spec 锁保护下执行写操作；拿不到锁则返回 busy 错误，不破坏单一写入者约束 */
+function withSpecLock(absSpecDir, fn) {
+  const lock = new SpecLock(absSpecDir);
+  const res = lock.acquire();
+  if (!res.acquired) {
+    return { error: `spec is locked by PID ${res.pid} (started: ${res.startedAt || 'unknown'})` };
+  }
+  try { return fn(); }
+  finally { lock.release(); }
+}
 
 // ── 工具定义 ───────────────────────────────────────────────────────────────
 
@@ -145,7 +170,7 @@ export function executeToolCall(toolName, args, sessionStore, sessionId) {
 
     case 'loom_get_pipeline_context': {
       if (!specDir) return { error: 'No spec_dir. Call loom_attach_spec first or pass spec_dir.' };
-      const engine = new PipelineEngine(projectRoot, resolve(projectRoot, specDir));
+      const engine = new PipelineEngine(projectRoot, safeResolveSpecDir(projectRoot, specDir));
       const ctx = engine.getStageContext();
       if (!ctx) return { error: 'Pipeline not initialized' };
       return ctx;
@@ -153,19 +178,20 @@ export function executeToolCall(toolName, args, sessionStore, sessionId) {
 
     case 'loom_advance_pipeline': {
       if (!specDir) return { error: 'No spec_dir' };
-      const engine = new PipelineEngine(projectRoot, resolve(projectRoot, specDir));
-      return engine.advance();
+      const abs = safeResolveSpecDir(projectRoot, specDir);
+      return withSpecLock(abs, () => new PipelineEngine(projectRoot, abs).advance());
     }
 
     case 'loom_approve_gate': {
       if (!specDir) return { error: 'No spec_dir' };
-      const engine = new PipelineEngine(projectRoot, resolve(projectRoot, specDir));
-      return engine.approve();
+      const abs = safeResolveSpecDir(projectRoot, specDir);
+      return withSpecLock(abs, () => new PipelineEngine(projectRoot, abs).approve());
     }
 
     case 'loom_update_task_state': {
       if (!specDir) return { error: 'No spec_dir' };
-      const store = new PipelineStateStore(resolve(projectRoot, specDir));
+      const abs = safeResolveSpecDir(projectRoot, specDir);
+      const store = new PipelineStateStore(abs);
       const patch = { status: args.status };
       if (args.blocker) patch.blocker = args.blocker;
       if (args.status === 'failed') {

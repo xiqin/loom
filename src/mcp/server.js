@@ -11,15 +11,26 @@
  */
 
 import { createInterface } from 'node:readline';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import { TOOL_DEFINITIONS, executeToolCall } from './tools.js';
 import { SessionStore } from './session-store.js';
 
 const SERVER_NAME = 'loom-mcp-server';
-const SERVER_VERSION = '2.0.0';
+// 版本从 package.json 单源读取，避免与发布版本不同步
+const SERVER_VERSION = (() => {
+  try {
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+    return JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8')).version || '0.0.0';
+  } catch { return '0.0.0'; }
+})();
 const PROTOCOL_VERSION = '2025-03-26';
 
 const sessionStore = new SessionStore();
-let sessionId = 'default'; // stdio 模式只有一个连接
+// 每个 server 进程对应一个 stdio 连接，握手时生成唯一 sessionId
+let sessionId = randomUUID();
 
 // ── JSON-RPC 处理 ──────────────────────────────────────────────────────────
 
@@ -37,6 +48,7 @@ function handleRequest(msg) {
   switch (method) {
 
     case 'initialize':
+      sessionId = randomUUID(); // 新握手 → 新会话，清掉上一连接的 spec 绑定残留
       return makeResponse(id, {
         protocolVersion: PROTOCOL_VERSION,
         capabilities: { tools: {} },

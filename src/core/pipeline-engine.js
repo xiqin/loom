@@ -28,6 +28,18 @@ import {
  * 只处理 loom 约定的固定两级结构（defaults + pipelines.*.steps[]），
  * 不引入第三方依赖。
  */
+/** 去行内注释，但不剥离引号内的 #（避免破坏 "url#anchor" 这类值）*/
+function stripComment(line) {
+  let inSingle = false, inDouble = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === "'" && !inDouble) inSingle = !inSingle;
+    else if (c === '"' && !inSingle) inDouble = !inDouble;
+    else if (c === '#' && !inSingle && !inDouble) return line.slice(0, i);
+  }
+  return line;
+}
+
 function parseWorkflowYaml(content) {
   const result = { defaults: {}, pipelines: {} };
   const lines = content.split('\n');
@@ -35,7 +47,7 @@ function parseWorkflowYaml(content) {
   // Pass 1: 提取 defaults 块的 key: value
   let inDefaults = false;
   for (const line of lines) {
-    const stripped = line.replace(/#.*$/, '');  // 去注释
+    const stripped = stripComment(line);  // 去注释
     if (/^defaults:\s*$/.test(stripped)) { inDefaults = true; continue; }
     if (inDefaults) {
       if (/^\S/.test(stripped) && stripped.trim()) { inDefaults = false; continue; }
@@ -53,7 +65,7 @@ function parseWorkflowYaml(content) {
   let currentStep = null;
 
   for (const raw of lines) {
-    const line = raw.replace(/#.*$/, ''); // 去注释
+    const line = stripComment(raw); // 去注释
     if (!line.trim()) continue;
 
     // 检测 pipeline 名称（2 空格缩进直接在 pipelines 下）
@@ -116,7 +128,15 @@ function parseWorkflowYaml(content) {
 export function loadWorkflow(projectRoot) {
   const wfPath = join(projectRoot, '.loom', 'workflow.yaml');
   if (!existsSync(wfPath)) return null;
-  return parseWorkflowYaml(readFileSync(wfPath, 'utf-8'));
+  const parsed = parseWorkflowYaml(readFileSync(wfPath, 'utf-8'));
+  // 解析出 0 条 pipeline 几乎一定是格式/缩进问题 → 大声报错，不要静默返回空导致全盘失效
+  if (Object.keys(parsed.pipelines).length === 0) {
+    throw new Error(
+      `Failed to parse any pipelines from ${wfPath}. ` +
+      `Check indentation (2-space) and structure (pipelines: <name>: steps: - id: ...).`
+    );
+  }
+  return parsed;
 }
 
 // ── PipelineEngine ─────────────────────────────────────────────────────────

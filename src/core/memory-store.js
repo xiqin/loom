@@ -13,11 +13,23 @@
 
 import {
   existsSync, readFileSync, writeFileSync,
-  mkdirSync, readdirSync
+  mkdirSync, readdirSync, renameSync, rmSync
 } from 'node:fs';
 import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, randomBytes } from 'node:crypto';
 import { execSync } from 'node:child_process';
+
+/** 原子写：temp + rename，避免半写损坏 store.json */
+function writeFileAtomic(path, content) {
+  const tmp = `${path}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
+  try {
+    writeFileSync(tmp, content, 'utf-8');
+    renameSync(tmp, path);
+  } catch (err) {
+    try { rmSync(tmp, { force: true }); } catch {}
+    throw err;
+  }
+}
 
 function now() { return new Date().toISOString(); }
 function today() { return now().slice(0, 10); }
@@ -41,7 +53,7 @@ export class MemoryStore {
 
   _save(data) {
     mkdirSync(this.memDir, { recursive: true });
-    writeFileSync(this.storePath, JSON.stringify(data, null, 2) + '\n', 'utf-8');
+    writeFileAtomic(this.storePath, JSON.stringify(data, null, 2) + '\n');
   }
 
   // ── CRUD ──────────────────────────────────────────────────────────────────

@@ -9,9 +9,10 @@
 
 import {
   existsSync, readFileSync, writeFileSync,
-  mkdirSync, readdirSync
+  mkdirSync, readdirSync, renameSync, rmSync
 } from 'node:fs';
 import { join } from 'node:path';
+import { randomBytes } from 'node:crypto';
 
 // ── 常量 ───────────────────────────────────────────────────────────────────
 
@@ -24,13 +25,42 @@ export const TASK_STATUSES = ['pending', 'executing', 'reviewing', 'done', 'fail
 
 // ── 工具函数 ───────────────────────────────────────────────────────────────
 
+/**
+ * 读 JSON。
+ * - 文件不存在 → 返回 fallback（正常的"未初始化"）
+ * - 文件存在但解析失败 → 抛错（损坏状态绝不能被静默当成不存在，否则会被覆盖丢失）
+ */
 function readJSON(path, fallback = null) {
-  try { return JSON.parse(readFileSync(path, 'utf-8')); }
+  if (!existsSync(path)) return fallback;
+  let raw;
+  try { raw = readFileSync(path, 'utf-8'); }
   catch { return fallback; }
+  try { return JSON.parse(raw); }
+  catch (err) {
+    throw new Error(`Corrupt state file: ${path} (${err.message}). Fix or delete it manually.`);
+  }
 }
 
+/** 读 JSON，损坏时跳过并告警（用于批量读取 task 列表，单个坏文件不应中断全部）*/
+function readJSONLenient(path) {
+  try { return JSON.parse(readFileSync(path, 'utf-8')); }
+  catch (err) {
+    process.stderr.write(`[loom] skipping unreadable state file ${path}: ${err.message}\n`);
+    return null;
+  }
+}
+
+/** 原子写：写临时文件后 rename，避免进程中途崩导致半写 JSON */
 function writeJSON(path, data) {
-  writeFileSync(path, JSON.stringify(data, null, 2) + '\n', 'utf-8');
+  const tmp = `${path}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
+  const payload = JSON.stringify(data, null, 2) + '\n';
+  try {
+    writeFileSync(tmp, payload, 'utf-8');
+    renameSync(tmp, path); // rename 在同一文件系统上是原子的
+  } catch (err) {
+    try { rmSync(tmp, { force: true }); } catch {}
+    throw err;
+  }
 }
 
 function now() { return new Date().toISOString(); }
@@ -157,7 +187,7 @@ export class PipelineStateStore {
     if (!existsSync(this.taskStatesDir)) return [];
     return readdirSync(this.taskStatesDir)
       .filter(f => f.endsWith('.state.json'))
-      .map(f => readJSON(join(this.taskStatesDir, f)))
+      .map(f => readJSONLenient(join(this.taskStatesDir, f)))
       .filter(Boolean)
       .sort((a, b) => {
         const na = parseInt(a.task_id?.replace(/\D/g, '') || '0');
@@ -191,7 +221,7 @@ export class PipelineStateStore {
     if (!existsSync(this.handoffsDir)) return [];
     return readdirSync(this.handoffsDir)
       .filter(f => f.endsWith('.json'))
-      .map(f => readJSON(join(this.handoffsDir, f)))
+      .map(f => readJSONLenient(join(this.handoffsDir, f)))
       .filter(Boolean);
   }
 
@@ -290,7 +320,12 @@ export function scanAllSpecs(projectRoot) {
     .map(e => {
       const specDir = join(specsDir, e.name);
       const store = new PipelineStateStore(specDir);
-      return store.snapshot();
+      try { return store.snapshot(); }
+      catch (err) {
+        // 单个 spec 损坏不应中断全局扫描
+        process.stderr.write(`[loom] skipping spec ${e.name}: ${err.message}\n`);
+        return { spec_dir: specDir, pipeline: null, tasks: [], handoffs: [] };
+      }
     })
     .filter(s => s.pipeline !== null)  // 只返回有 pipeline.state.json 的
     .sort((a, b) => {
