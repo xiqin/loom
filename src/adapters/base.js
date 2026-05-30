@@ -8,6 +8,20 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..', '..');
 const MANAGED_SKILL_PREFIX = 'loom-';
 
+/**
+ * codegraph（https://github.com/colbymchenry/codegraph）的 MCP server 描述符，
+ * 仅当 CLI 在 PATH 时返回，否则 null（避免注册一个起不来的 server）。
+ * loom 索引以 codegraph 为首选后端；注册它让 AI 会话能调用 codegraph_* 实时查图。
+ */
+export function codegraphMcpDescriptor() {
+  try {
+    execSync('codegraph --version', { stdio: 'ignore', timeout: 10_000 });
+    return { command: 'codegraph', args: ['serve', '--mcp'] };
+  } catch {
+    return null;
+  }
+}
+
 export class BaseAdapter {
   get toolName() { throw new Error('must implement toolName'); }
 

@@ -12,6 +12,38 @@
 
 import { existsSync, readFileSync, writeFileSync, readdirSync, statSync, mkdirSync } from 'node:fs';
 import { join, relative, extname, basename } from 'node:path';
+import { spawnSync } from 'node:child_process';
+
+// ─── codegraph 委派 ──────────────────────────────────────────────────────────
+//
+// codegraph（https://github.com/colbymchenry/codegraph）是外部独立工具：
+// tree-sitter AST → SQLite 图，零配置，存于项目内 .codegraph/。
+// 可用时它即索引后端，loom index 委派给它，不再生成 engineering-index.md；
+// 不可用时降级为本文件的正则静态扫描器。
+
+/** 检测项目是否启用 codegraph：已建图（.codegraph/）或 CLI 在 PATH。 */
+function codegraphAvailable(root) {
+  if (existsSync(join(root, '.codegraph'))) return true;
+  try {
+    const r = spawnSync('codegraph', ['--version'], { stdio: 'ignore', shell: process.platform === 'win32' });
+    return r.status === 0;
+  } catch {
+    return false;
+  }
+}
+
+/** 委派给 codegraph。生成模式 → sync；--check → status 退出码。返回退出码。 */
+function delegateToCodegraph(root, checkOnly) {
+  const args = checkOnly ? ['status'] : ['sync', root];
+  const label = checkOnly ? 'codegraph status' : 'codegraph sync';
+  console.log(`\n  loom index → ${label} (codegraph backend)\n`);
+  const r = spawnSync('codegraph', args, {
+    cwd: root,
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+  });
+  return r.status ?? 0;
+}
 
 // ─── 静态扫描规则 ──────────────────────────────────────────────────────────
 
@@ -253,6 +285,14 @@ export default async function indexCommand(options) {
   const root = options.cwd || process.cwd();
   const checkOnly = options.check || false;
 
+  // ── 路径 A：codegraph 可用 → 委派，跳过静态扫描 ──────────────────────────
+  // commander 把 --no-codegraph 存为 options.codegraph === false
+  if (options.codegraph !== false && codegraphAvailable(root)) {
+    process.exitCode = delegateToCodegraph(root, checkOnly);
+    return;
+  }
+
+  // ── 路径 B：降级为正则静态扫描器 ─────────────────────────────────────────
   const loomDir = join(root, '.loom');
   const indexDir = join(loomDir, 'index');
   const indexPath = join(indexDir, 'engineering-index.md');

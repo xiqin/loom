@@ -40,9 +40,10 @@ loom install --tool claude-code
 
 | Flag              | 作用                                                            |
 | ----------------- | --------------------------------------------------------------- |
-| `--tool <target>` | 目标工具（必填）：claude-code, opencode, cursor, copilot, codex |
+| `--tool <target>` | 目标工具（必填，可重复）：claude-code, opencode, cursor, copilot, codex |
 | `--dry-run`       | 预览安装文件，不实际写入                                        |
 | `--from-release`  | 从 GitHub release tag 下载（可重现安装）                        |
+| `--version <ver>` | 指定下载版本（配合 `--from-release` 使用）                      |
 
 ## 安装后验证
 
@@ -52,6 +53,17 @@ loom list      # 列出可用 skills 和 commands
 ```
 
 工具将在下次会话中自动发现 loom 的 skills 和 commands。
+
+## 在项目中初始化
+
+安装是用户级（全局）的。要在某个仓库中使用 loom 的流水线与上下文，需在该仓库根目录初始化：
+
+```bash
+cd your-project
+loom init-project                       # 生成 .loom/ 上下文（宪章、工程结构、记忆等）
+loom init-project --tools claude-code   # 指定写入哪些工具的项目级配置
+loom init-project --force               # 覆盖已存在的 loom 托管文件
+```
 
 ## 卸载
 

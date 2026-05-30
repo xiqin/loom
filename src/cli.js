@@ -22,6 +22,7 @@ program
   .option('--cwd <path>', 'Project root (default: current working directory)')
   .option('--tools <list>', 'Comma-separated tools: claude-code,codex,cursor,copilot,opencode')
   .option('--force', 'Overwrite existing loom-managed files')
+  .option('--no-codegraph', 'Skip codegraph init even if CLI is available')
   .action(async (options) => {
     const { default: initProjectCommand } = await import('./commands/init-project.js');
     await initProjectCommand(options);
@@ -129,9 +130,10 @@ program
 
 program
   .command('index')
-  .description('Scan project source and generate/update engineering-index.md')
+  .description('Update engineering index: delegate to codegraph if available, else static scan')
   .option('--cwd <path>', 'Project root')
   .option('--check', 'Check staleness only; exit 1 if outdated')
+  .option('--no-codegraph', 'Force static scanner, skip codegraph delegation')
   .action(async (options) => {
     const { default: indexCommand } = await import('./commands/index.js');
     await indexCommand(options);

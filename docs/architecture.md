@@ -10,11 +10,19 @@ loom/
 ├── src/
 │   ├── cli.js              # CLI 命令注册（commander）
 │   ├── commands/           # CLI 命令实现
+│   │   ├── init-project.js # loom init-project（项目上下文初始化）
 │   │   ├── install.js      # loom install
 │   │   ├── uninstall.js    # loom uninstall
 │   │   ├── update.js       # loom update
 │   │   ├── doctor.js       # loom doctor
-│   │   └── list.js         # loom list
+│   │   ├── list.js         # loom list
+│   │   ├── run.js          # loom run（流水线执行引擎）
+│   │   ├── status.js       # loom status（流水线状态）
+│   │   ├── tasks.js        # loom tasks（任务并行批次分析）
+│   │   ├── index.js        # loom index（codegraph 委派 / 静态扫描降级）
+│   │   ├── start.js        # loom start（输出可粘贴的项目状态）
+│   │   ├── memory.js       # loom memory（结构化记忆）
+│   │   └── mcp-serve.js    # loom mcp-serve（MCP server）
 │   ├── adapters/           # 工具适配器（user-level）
 │   │   ├── base.js         # BaseAdapter 基类
 │   │   ├── claude-code.js  # Claude Code 适配器
@@ -32,7 +40,9 @@ loom/
 │   ├── hooks.schema.json   # Hook 系统定义
 │   ├── pipeline.schema.json # 流水线状态机
 │   ├── review.schema.json  # 审查框架
-│   └── templates.schema.json # 模板定义
+│   ├── templates.schema.json # 模板定义
+│   ├── model-selection.schema.json # 模型选择策略
+│   └── shared-rules.json   # 共享规则定义
 ├── skills/                 # Skills 定义
 ├── commands/               # Commands 定义
 ├── hooks/                  # Hook 系统
@@ -44,13 +54,17 @@ loom/
 ├── templates/              # 项目模板
 ├── .claude-plugin/         # 插件元数据
 ├── scripts/                # 构建脚本
+│   ├── generate-incremental.mjs # 增量生成总入口（npm run generate）
 │   ├── generate-tooling.mjs
 │   ├── generate-plugin-meta.mjs
 │   ├── generate-skills-catalog.mjs
 │   ├── generate-review-summary.mjs
 │   ├── generate-model-selection.mjs
 │   ├── generate-shared-rules.mjs
-│   └── sync-version.mjs
+│   ├── generate-progress-rules.mjs
+│   ├── sync-version.mjs
+│   ├── common.sh           # Shell 公共函数（install.sh 等）
+│   └── common.ps1          # PowerShell 公共函数
 └── tests/                  # 测试套件
 ```
 
@@ -64,7 +78,18 @@ bin/loom.js → src/cli.js → src/commands/*.js
 
 - `bin/loom.js`：Node.js 入口，加载 `src/cli.js`
 - `src/cli.js`：使用 commander 注册命令
-- `src/commands/`：每个命令一个文件
+- `src/commands/`：每个命令一个文件，命令通过动态 `import()` 懒加载
+
+**命令分组：**
+
+| 分组       | 命令                                               |
+| ---------- | -------------------------------------------------- |
+| 项目初始化 | `init-project`                                     |
+| 安装管理   | `install` / `update` / `uninstall`                 |
+| 诊断       | `doctor` / `list`                                  |
+| 执行引擎   | `run` / `status` / `tasks` / `index` / `start`     |
+| 结构化记忆 | `memory add\|list\|export\|merge\|remove\|archive` |
+| MCP        | `mcp-serve`                                        |
 
 ### 适配器层
 
@@ -138,12 +163,12 @@ hooks/session-start (shell wrapper)
 
 ### Fallback 策略
 
-| 策略 | 行为 | 退出码 |
-|------|------|--------|
-| `skip` | 静默跳过 | 0 |
-| `warn` | 输出警告，继续执行 | 0 |
-| `error` | 输出错误，终止 | 1 |
-| `retry` | 重试 N 次后仍失败则 error | 1 |
+| 策略    | 行为                      | 退出码 |
+| ------- | ------------------------- | ------ |
+| `skip`  | 静默跳过                  | 0      |
+| `warn`  | 输出警告，继续执行        | 0      |
+| `error` | 输出错误，终止            | 1      |
+| `retry` | 重试 N 次后仍失败则 error | 1      |
 
 ## Schema 驱动
 
@@ -154,12 +179,16 @@ loom 使用 JSON Schema 定义配置：
 - `pipeline.schema.json` → 驱动流水线状态机
 - `review.schema.json` → 驱动审查框架
 - `templates.schema.json` → 驱动模板渲染和验证
+- `model-selection.schema.json` → 驱动模型选择策略
+- `shared-rules.json` → 驱动共享规则生成
 
-修改 schema 后需要重新生成：
+修改 schema 后需要重新生成（增量生成总入口）：
 
 ```bash
-node scripts/generate-tooling.mjs    # 重新生成 tooling.js
-node scripts/sync-version.mjs        # 同步版本号
+npm run generate          # 增量生成所有产物（generate-incremental.mjs）
+npm run generate:force    # 强制全量重新生成
+npm run generate:check    # 只检查是否过期（用于 CI）
+npm run sync-version      # 同步版本号
 ```
 
 ## 测试架构
@@ -178,9 +207,7 @@ npm test            # 运行所有测试
 npm run test:watch  # 监听模式
 ```
 
-## v2.0 新增模块
-
-### 执行引擎 (方向1)
+### 执行引擎
 
 ```
 src/core/
@@ -191,8 +218,28 @@ src/core/
 
 src/commands/
 ├── run.js                — loom run (init / advance / approve / fail / recover / task-state)
-└── status.js             — loom status (单 spec 详情 / 全景视图)
+├── status.js             — loom status (单 spec 详情 / 全景视图)
+├── tasks.js              — loom tasks (任务文件归属分析 → 安全并行批次)
+├── index.js              — loom index (codegraph 委派 / 静态扫描降级，--check 检查过期)
+└── start.js              — loom start (输出可粘贴进任意 AI 会话的项目状态)
 ```
+
+### 工程索引后端：codegraph 集成
+
+`loom index` 是统一入口，按 codegraph 可用性自动选后端：
+
+```
+loom index
+  → codegraphAvailable(root)?  (.codegraph/ 存在 或 `codegraph --version` 成功)
+    ├─ 是 → 委派 `codegraph sync`（--check → `codegraph status`），不生成 engineering-index.md
+    └─ 否 → 正则静态扫描器降级 → 写 .loom/index/engineering-index.md
+```
+
+- **codegraph**（https://github.com/colbymchenry/codegraph）是**外部独立工具**，非 npm 依赖：tree-sitter AST → SQLite 图，零配置，索引存项目内 `.codegraph/`。
+- **建图**：`loom init-project` 检测到 codegraph CLI 时自动跑 `codegraph init`（`--no-codegraph` 跳过）。
+- **MCP**：安装时各 adapter 的 `_ensureMcpConfig` 在 codegraph CLI 可用时注册 `codegraph serve --mcp`，AI 会话可实时调 `codegraph_*` 工具查图。
+- **降级**：codegraph 缺失时全链路回落到自带静态扫描器，loom 仍零外部依赖可用。
+- **诊断**：`loom doctor` 的 index 检查识别 `.codegraph/`，存在则报告 codegraph 后端而非 engineering-index.md 缺失。
 
 **状态隔离设计：**
 
@@ -211,7 +258,7 @@ specs/2026-05-27+user-auth/
 
 每一层的写入者唯一，不需要锁、不需要事务。
 
-### 结构化记忆 (方向2)
+### 结构化记忆
 
 ```
 src/core/memory-store.js  — JSON 文件存储（.loom/memory/store.json）
@@ -220,7 +267,7 @@ src/commands/memory.js    — loom memory add/list/export/merge/remove/archive
 
 MEMORY.md 变为只读导出视图，由 `loom memory export` 生成。
 
-### MCP Server (方向3)
+### MCP Server
 
 ```
 src/mcp/
@@ -230,11 +277,12 @@ src/mcp/
 ```
 
 配置方式：
+
 ```json
 { "mcpServers": { "loom": { "command": "loom", "args": ["mcp-serve"] } } }
 ```
 
-### Skill 质量度量 (方向5)
+### Skill 质量度量
 
 ```
 src/core/compliance-tracker.js  — 读 verify-report + stage_history，写 .loom/compliance/history.json

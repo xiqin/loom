@@ -22,7 +22,7 @@ describe('init-project command', () => {
 
     const sp = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { default: initProjectCommand } = await import('../../src/commands/init-project.js');
-    await initProjectCommand({ cwd: TEST_DIR, tools: 'codex' });
+    await initProjectCommand({ cwd: TEST_DIR, tools: 'codex', codegraph: false });
 
     expect(existsSync(join(TEST_DIR, 'AGENTS.md'))).toBe(true);
     expect(existsSync(join(TEST_DIR, '.loom', 'rules', 'constitution.md'))).toBe(true);
@@ -41,7 +41,7 @@ describe('init-project command', () => {
 
     const sp = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { default: initProjectCommand } = await import('../../src/commands/init-project.js');
-    await initProjectCommand({ cwd: TEST_DIR, tools: 'claude-code', interactive: false });
+    await initProjectCommand({ cwd: TEST_DIR, tools: 'claude-code', interactive: false, codegraph: false });
 
     expect(existsSync(join(TEST_DIR, 'AGENTS.md'))).toBe(true);
     expect(existsSync(join(TEST_DIR, 'CLAUDE.md'))).toBe(true);

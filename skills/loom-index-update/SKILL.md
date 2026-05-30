@@ -18,43 +18,37 @@ description: >
 
 ## 执行流程
 
-### Step 1：检测变更范围和索引后端
+### Step 1：检测变更范围
 
 1. 运行 `git diff --name-only HEAD` 确认变更文件。
 2. 按 `references/update-checklist.md` 判断需要更新哪些索引。
-3. 检测 codegraph 是否可用：`.codegraph/` 目录存在，或 `codegraph status` 返回 0。
 
 ### Step 2：更新工程结构索引
 
-路径 A：**codegraph 可用**时，**不生成 engineering-index.md**，AI 直接通过 MCP 工具按需查询：
+**统一入口 `loom index` 会自动选择后端**：检测到 codegraph（`.codegraph/` 存在或 CLI 在 PATH）即委派给它，否则降级为正则静态扫描。日常只需：
 
 ```bash
-# 首次初始化（项目内尚无 .codegraph/）
-codegraph init
+loom index            # 同步索引（自动路由 codegraph sync 或静态扫描）
+loom index --check    # 检查索引是否过期（用于 CI / pre-commit）
+loom index --no-codegraph   # 强制走静态扫描器
+```
 
-# 已初始化时确认索引已同步
-codegraph status
+路径 A：**codegraph 可用**时，`loom index` 委派 `codegraph sync`，**不生成 engineering-index.md**，AI 直接通过 MCP 工具按需查询：
+
+```bash
+codegraph init        # 仅首次：项目内尚无 .codegraph/ 时建图（loom init-project 已自动执行）
 ```
 
 codegraph 基于 tree-sitter AST 解析，提取符号、路由、调用链并存入 SQLite，通过 MCP 实时查询：
+- `codegraph_search` — 按名称搜索符号
 - `codegraph_context` — 查询符号上下文
 - `codegraph_trace` / `codegraph_callers` / `codegraph_callees` — 查询调用链
 - `codegraph_impact` — 确认改动影响半径
-- `codegraph_files` — 查询模块结构
+- `codegraph_files` / `codegraph_explore` — 查询模块结构
 
 engineering-index.md **不再需要**，codegraph 本身即索引。
 
-路径 B：**codegraph 不可用**时，使用 `loom index` 正则扫描降级生成：
-
-```bash
-# 自动扫描源码，生成 .loom/index/engineering-index.md
-loom index
-
-# 检查生成结果是否与实际代码一致（用于 CI）
-loom index --check
-```
-
-`loom index` 基于静态分析，自动提取路由定义、控制器/服务/模型/仓库层导出符号。生成后**必须人工或 AI 审查**：
+路径 B：**codegraph 不可用**时，`loom index` 自动降级为正则静态扫描，生成 `.loom/index/engineering-index.md`，自动提取路由定义、控制器/服务/模型/仓库层导出符号。生成后**必须人工或 AI 审查**：
 - `## Call Chains` 章节（无法自动推断，需手动补充）
 - 自动检测遗漏的路由或模块（如动态注册路由）
 - 确认提取的函数签名与源码一致
@@ -106,7 +100,7 @@ YYYY-MM-DD | <类型> | <一句话描述>
 - 只更新索引和记忆文件，不修改业务代码。
 - 索引内容必须与实际代码一致。
 - 新增表名、路由路径、方法签名必须与源码完全一致。
-- codegraph 可用时优先用路径 A；不可用时降级路径 B（`loom index`）。
+- 统一调 `loom index`，由它按 codegraph 可用性自动选后端（路径 A 委派 / 路径 B 静态扫描）。
 
 ## 完成条件与下一步
 

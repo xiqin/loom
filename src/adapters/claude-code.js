@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 
-import { BaseAdapter } from './base.js';
+import { BaseAdapter, codegraphMcpDescriptor } from './base.js';
 
 const EXEC_OPTS = { stdio: 'pipe', timeout: 10_000 };
 const CLAUDE_CMD = process.platform === 'win32' ? 'claude.cmd' : 'claude';
@@ -41,17 +41,32 @@ export class ClaudeCodeAdapter extends BaseAdapter {
       try { settings = JSON.parse(readFileSync(settingsPath, 'utf-8')); } catch {}
     }
     if (!settings.mcpServers) settings.mcpServers = {};
+    let changed = false;
+
     if (settings.mcpServers.loom) {
       log.push('  mcp: loom server already configured');
-      return;
+    } else {
+      settings.mcpServers.loom = { command: 'loom', args: ['mcp-serve'] };
+      log.push('  mcp: loom server added to settings.json');
+      changed = true;
     }
-    settings.mcpServers.loom = {
-      command: 'loom',
-      args: ['mcp-serve']
-    };
+
+    if (settings.mcpServers.codegraph) {
+      log.push('  mcp: codegraph server already configured');
+    } else {
+      const codegraph = codegraphMcpDescriptor();
+      if (codegraph) {
+        settings.mcpServers.codegraph = codegraph;
+        log.push('  mcp: codegraph server added to settings.json');
+        changed = true;
+      } else {
+        log.push('  mcp: codegraph CLI not found, skipped (loom index uses static scanner)');
+      }
+    }
+
+    if (!changed) return;
     mkdirSync(dirname(settingsPath), { recursive: true });
     writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
-    log.push('  mcp: loom server added to settings.json');
   }
 
   uninstall(loomRoot) {

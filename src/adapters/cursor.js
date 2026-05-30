@@ -2,6 +2,7 @@ import { mkdirSync, rmSync, readdirSync, existsSync, cpSync, readFileSync, write
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { convertAllSkills, convertAllCommands } from './cursor-converter.js';
+import { codegraphMcpDescriptor } from './base.js';
 
 export class CursorAdapter {
   get toolName() { return 'cursor'; }
@@ -49,17 +50,32 @@ export class CursorAdapter {
       try { config = JSON.parse(readFileSync(mcpPath, 'utf-8')); } catch {}
     }
     if (!config.mcpServers) config.mcpServers = {};
+    let changed = false;
+
     if (config.mcpServers.loom) {
       log.push('  mcp: loom server already configured');
-      return;
+    } else {
+      config.mcpServers.loom = { command: 'loom', args: ['mcp-serve'] };
+      log.push('  mcp: loom server added to .cursor/mcp/mcp.json');
+      changed = true;
     }
-    config.mcpServers.loom = {
-      command: 'loom',
-      args: ['mcp-serve']
-    };
+
+    if (config.mcpServers.codegraph) {
+      log.push('  mcp: codegraph server already configured');
+    } else {
+      const codegraph = codegraphMcpDescriptor();
+      if (codegraph) {
+        config.mcpServers.codegraph = codegraph;
+        log.push('  mcp: codegraph server added to .cursor/mcp/mcp.json');
+        changed = true;
+      } else {
+        log.push('  mcp: codegraph CLI not found, skipped (loom index uses static scanner)');
+      }
+    }
+
+    if (!changed) return;
     mkdirSync(mcpDir, { recursive: true });
     writeFileSync(mcpPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
-    log.push('  mcp: loom server added to .cursor/mcp/mcp.json');
   }
 
   _installSessionInit(loomRoot, destDir, log) {

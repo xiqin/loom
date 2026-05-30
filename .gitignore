@@ -25,3 +25,5 @@ specs/
 .claudeignore
 opencode.json
 .generate-cache.json
+
+outputs/

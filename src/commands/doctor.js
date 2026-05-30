@@ -150,14 +150,18 @@ export default async function doctor(options) {
   const memoryPath = join(loomDir, 'memory', 'MEMORY.md');
   console.log(`    MEMORY.md:     ${existsSync(memoryPath) ? '✓' : '✗ missing'}`);
 
-  // 索引新鲜度检查 ← 新增
-  const staleness = checkIndexStaleness(cwd);
-  if (!staleness.exists) {
-    console.log(`    index:         ✗ missing — run: loom index`);
-  } else if (staleness.stale) {
-    console.log(`    index:         ⚠  stale (${staleness.ageMin}min old, source files changed) — run: loom index`);
+  // 索引检查：codegraph 为首选后端，存在时即索引；否则查静态 engineering-index.md
+  if (existsSync(join(cwd, '.codegraph'))) {
+    console.log(`    index:         ✓ codegraph backend (.codegraph/) — sync: loom index`);
   } else {
-    console.log(`    index:         ✓ up to date`);
+    const staleness = checkIndexStaleness(cwd);
+    if (!staleness.exists) {
+      console.log(`    index:         ✗ missing — run: loom index`);
+    } else if (staleness.stale) {
+      console.log(`    index:         ⚠  stale (${staleness.ageMin}min old, source files changed) — run: loom index`);
+    } else {
+      console.log(`    index:         ✓ up to date (static scanner)`);
+    }
   }
 
   console.log('');
