@@ -1,7 +1,8 @@
 /**
  * tools.js — MCP 工具定义
  *
- * 8 个工具覆盖五个方向的核心能力。
+ * 工具按 group 分组（pipeline / context / memory / session / meta），
+ * 配合 loom_list_capabilities 做"虚拟 Skill"按需加载，减少上下文占用。
  * 每个工具是一个纯函数，接收参数返回结果，不持有状态。
  */
 
@@ -11,6 +12,7 @@ import { PipelineEngine } from '../core/pipeline-engine.js';
 import { PipelineStateStore, scanAllSpecs } from '../core/state-store.js';
 import { MemoryStore } from '../core/memory-store.js';
 import { SpecLock } from '../core/lock.js';
+import { loadContextIndex, DOC_KEYS } from '../core/context-index.js';
 
 /**
  * 把 specDir 解析为绝对路径，并强制限制在 projectRoot 内。
@@ -40,7 +42,34 @@ function withSpecLock(absSpecDir, fn) {
 
 export const TOOL_DEFINITIONS = [
   {
+    name: 'loom_list_capabilities',
+    group: 'meta',
+    description: 'START HERE. Returns a grouped catalog of loom capabilities (pipeline, context, memory, retrieval) so you can load only the tools relevant to the task instead of scanning every tool.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        project_root: { type: 'string', description: 'Project root directory (optional if attached)' }
+      }
+    }
+  },
+  {
+    name: 'loom_get_context',
+    group: 'context',
+    description: 'Progressive disclosure of context files. Without a section, returns the OUTLINE (L0: section titles + token sizes). With a section, returns that section full text (L1). Auto-falls back to the WHOLE file (with a "fallback" field) when a level would yield empty content — so you never lose info. Use this instead of reading whole constitution/index/memory files.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        doc: { type: 'string', description: `Context doc key: ${DOC_KEYS.join(', ')}` },
+        section: { type: 'string', description: 'Section title to fetch full text (omit for outline)' },
+        full: { type: 'boolean', description: 'Escape hatch: return the WHOLE file (use if outline/section seems to drop info, e.g. content before the first heading)' },
+        project_root: { type: 'string', description: 'Project root directory (optional if attached)' }
+      },
+      required: ['doc']
+    }
+  },
+  {
     name: 'loom_get_project_status',
+    group: 'pipeline',
     description: 'Get the loom status of the current project: active pipelines, stages, task summaries, and health issues.',
     inputSchema: {
       type: 'object',
@@ -51,6 +80,7 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'loom_get_pipeline_context',
+    group: 'pipeline',
     description: 'Get the current pipeline stage context for a spec: stage, skill, tasks, defaults. Use this to understand what to do next.',
     inputSchema: {
       type: 'object',
@@ -61,6 +91,7 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'loom_advance_pipeline',
+    group: 'pipeline',
     description: 'Advance the pipeline to the next stage. Validates artifacts before advancing. Returns error if preconditions not met.',
     inputSchema: {
       type: 'object',
@@ -71,6 +102,7 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'loom_approve_gate',
+    group: 'pipeline',
     description: 'Approve a human-approval gate (e.g. after user confirms plan). Only works when current stage is a gate.',
     inputSchema: {
       type: 'object',
@@ -81,6 +113,7 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'loom_update_task_state',
+    group: 'pipeline',
     description: 'Update a single task state. Only the responsible subagent should call this.',
     inputSchema: {
       type: 'object',
@@ -95,6 +128,7 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'loom_get_memory',
+    group: 'memory',
     description: 'Read project memory entries: gotchas, decisions, preferences. Filter by type.',
     inputSchema: {
       type: 'object',
@@ -106,6 +140,7 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'loom_add_memory',
+    group: 'memory',
     description: 'Write a new memory entry (decision, gotcha, preference).',
     inputSchema: {
       type: 'object',
@@ -119,6 +154,7 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'loom_attach_spec',
+    group: 'session',
     description: 'Bind this session to a specific spec directory. Subsequent calls can omit spec_dir.',
     inputSchema: {
       type: 'object',
@@ -131,6 +167,39 @@ export const TOOL_DEFINITIONS = [
   }
 ];
 
+/**
+ * 分组级"虚拟 Skill"描述（②）。模型先调 loom_list_capabilities 读这份目录，
+ * 判断任务需要哪一组，再按需使用该组工具——而非把每个工具的细节都吃进上下文。
+ */
+export const CAPABILITY_GROUPS = {
+  context: {
+    title: '上下文（渐进式披露）',
+    when: '需要项目宪章 / 工程索引 / 记忆里的某块信息时。先取目录（不带 section）看有什么，再按节召回，避免整文件进上下文。',
+    tools: ['loom_get_context'],
+  },
+  pipeline: {
+    title: '流水线（状态机）',
+    when: '推进开发流程、查当前阶段该做什么、推进/审批/更新任务状态时。强调"状态感知"：先读 pipeline context 了解现状，再决定动作。',
+    tools: ['loom_get_project_status', 'loom_get_pipeline_context', 'loom_advance_pipeline', 'loom_approve_gate', 'loom_update_task_state'],
+  },
+  memory: {
+    title: '结构化记忆',
+    when: '需要历史决策 / 踩坑 / 偏好，或要记录新结论时。读用 loom_get_memory，写用 loom_add_memory。',
+    tools: ['loom_get_memory', 'loom_add_memory'],
+  },
+  retrieval: {
+    title: '多路检索（codegraph，外部 MCP）',
+    when: '需要符号定义、调用链、改动影响半径时。codegraph 可用时优先用其 codegraph_* 工具（search / context / trace / callers / callees / impact / explore），原则：精确到代码块，宁可多检索一次。',
+    tools: ['codegraph_search', 'codegraph_context', 'codegraph_trace', 'codegraph_callers', 'codegraph_callees', 'codegraph_impact', 'codegraph_explore'],
+    external: true,
+  },
+  session: {
+    title: '会话绑定',
+    when: '开始处理某个 spec 时先 attach，后续调用可省略 spec_dir。',
+    tools: ['loom_attach_spec'],
+  },
+};
+
 // ── 工具执行 ───────────────────────────────────────────────────────────────
 
 export function executeToolCall(toolName, args, sessionStore, sessionId) {
@@ -138,6 +207,56 @@ export function executeToolCall(toolName, args, sessionStore, sessionId) {
   const projectRoot = sessionStore.resolveProjectRoot(sessionId, args.project_root);
 
   switch (toolName) {
+
+    case 'loom_list_capabilities': {
+      const root = args.project_root || projectRoot;
+      const codegraphReady = existsSync(join(root, '.codegraph'));
+      const groups = Object.entries(CAPABILITY_GROUPS)
+        .filter(([key]) => key !== 'retrieval' || codegraphReady)
+        .map(([key, g]) => ({
+          group: key,
+          title: g.title,
+          when: g.when,
+          tools: g.tools,
+          external: Boolean(g.external),
+        }));
+      return {
+        hint: 'Pick the group that matches the task, then call only those tools. For context files, prefer loom_get_context over reading whole files.',
+        codegraph_available: codegraphReady,
+        groups,
+      };
+    }
+
+    case 'loom_get_context': {
+      if (!args.doc) return { error: `Missing doc. One of: ${DOC_KEYS.join(', ')}` };
+      const root = args.project_root || projectRoot;
+      const idx = loadContextIndex(join(root, '.loom'), args.doc);
+      if (!idx) return { error: `Context doc not found: ${args.doc}` };
+      // 回退闸：显式 full 或全局开关 → 整篇原文（绕过分节，防前言丢失）
+      if (args.full || process.env.LOOM_CONTEXT_FULL) return idx.full();
+
+      // L0 目录路径
+      if (!args.section) {
+        const out = idx.outline();
+        // 自动兜底：文档无任何 ## 节 → 目录为空，正文全在前言区会丢失 → 回全文
+        if (out.section_count === 0) return { ...idx.full(), fallback: 'no-sections' };
+        return out;
+      }
+
+      // L1 取节路径
+      const section = idx.getSection(args.section);
+      // 命中且有正文 → 正常分级返回（省 token）
+      if (section && section.content && section.content.trim()) return section;
+      // 文档根本无分节 → 没法匹配，回全文兜底
+      if (idx.sections.length === 0) return { ...idx.full(), fallback: 'no-sections' };
+      // 命中但正文为空 → 回全文兜底，避免空响应丢信息
+      if (section) return { ...idx.full(), fallback: 'empty-section', requested_section: args.section };
+      // 有节但没匹配上 = 大概率拼错节名 → 给目录廉价重试，不整篇 dump
+      return {
+        error: `Section "${args.section}" not found in ${args.doc}`,
+        available_sections: idx.outline().sections.map(s => s.title),
+      };
+    }
 
     case 'loom_get_project_status': {
       const root = args.project_root || projectRoot;

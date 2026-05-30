@@ -1,7 +1,7 @@
 /**
  * server.js — loom MCP Server（stdio transport）
  *
- * 实现 MCP 协议（JSON-RPC over stdin/stdout），暴露 8 个工具。
+ * 实现 MCP 协议（JSON-RPC over stdin/stdout），暴露 loom 工具集。
  * 无第三方 MCP SDK 依赖，直接实现协议子集（足以被 Claude Code / Cursor 调用）。
  *
  * 启动方式：
@@ -59,8 +59,9 @@ function handleRequest(msg) {
       return null; // 无需响应
 
     case 'tools/list':
+      // 只回 MCP 规范字段；group 是 loom 内部分组元数据，剥掉避免严格客户端报错。
       return makeResponse(id, {
-        tools: TOOL_DEFINITIONS
+        tools: TOOL_DEFINITIONS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema }))
       });
 
     case 'tools/call': {

@@ -271,8 +271,8 @@ MEMORY.md 变为只读导出视图，由 `loom memory export` 生成。
 
 ```
 src/mcp/
-├── server.js             — stdio transport JSON-RPC 服务
-├── tools.js              — 8 个 MCP 工具定义 + 执行
+├── server.js             — stdio transport JSON-RPC 服务（tools/list 剥掉内部 group 字段）
+├── tools.js              — MCP 工具定义 + 执行 + CAPABILITY_GROUPS 分组目录
 └── session-store.js      — 连接级 spec 绑定（loom_attach_spec）
 ```
 
@@ -281,6 +281,30 @@ src/mcp/
 ```json
 { "mcpServers": { "loom": { "command": "loom", "args": ["mcp-serve"] } } }
 ```
+
+工具按 `group` 分组（pipeline / context / memory / session / meta）：
+
+| group    | 工具                                                                                                                               | 用途                                             |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| meta     | `loom_list_capabilities`                                                                                                           | 分组能力目录（"虚拟 Skill"），先调它再按需用工具 |
+| context  | `loom_get_context`                                                                                                                 | 上下文文件渐进式披露（见下）                     |
+| pipeline | `loom_get_project_status` / `loom_get_pipeline_context` / `loom_advance_pipeline` / `loom_approve_gate` / `loom_update_task_state` | 流水线状态机                                     |
+| memory   | `loom_get_memory` / `loom_add_memory`                                                                                              | 结构化记忆读写                                   |
+| session  | `loom_attach_spec`                                                                                                                 | 连接级 spec 绑定                                 |
+
+### 上下文渐进式披露（Context 工程）
+
+`src/core/context-index.js` 把 markdown 上下文文件按 `##` 切节，避免整文件进上下文：
+
+```
+loom_get_context(doc)            → L0 目录：节标题 + token 估算（不含正文）
+loom_get_context(doc, section)   → L1 详情：按标题模糊匹配返回单节全文
+```
+
+- `doc` 键：`constitution` / `project-structure` / `index` / `memory` （→ `.loom/` 下路径）。
+- 每节软上限 `SECTION_TOKEN_BUDGET=1500`，超出在 outline 标 `oversized`。
+- `loom start` 输出宪章**目录**（节标题）而非整篇，引导 AI 用 `loom_get_context` 按需取。
+- `loom_list_capabilities` 配合分组，让模型只加载相关工具组（"先给目录，按需翻"）。
 
 ### Skill 质量度量
 

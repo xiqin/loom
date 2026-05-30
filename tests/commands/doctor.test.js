@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
+import { checkSubagentContextStale } from '../../src/commands/doctor.js';
 
 const TEST_DIR = join(import.meta.dirname, '__test_doctor__');
 
@@ -88,5 +89,45 @@ describe('doctor command', () => {
     expect(output).toContain('loom doctor');
     expect(output).toContain('1 skill(s)');
     sp.mockRestore();
+  });
+});
+
+describe('checkSubagentContextStale', () => {
+  function seed(loomDir, { ctx = true, constitution = true } = {}) {
+    mkdirSync(join(loomDir, 'contexts'), { recursive: true });
+    mkdirSync(join(loomDir, 'rules'), { recursive: true });
+    if (ctx) writeFileSync(join(loomDir, 'contexts', 'subagent-context.md'), '# ctx');
+    if (constitution) writeFileSync(join(loomDir, 'rules', 'constitution.md'), '# 宪章');
+  }
+
+  it('returns exists:false when subagent-context.md missing', () => {
+    const loomDir = join(TEST_DIR, '.loom');
+    seed(loomDir, { ctx: false });
+    expect(checkSubagentContextStale(loomDir)).toEqual({ exists: false });
+  });
+
+  it('not stale when constitution older than subagent-context', () => {
+    const loomDir = join(TEST_DIR, '.loom');
+    seed(loomDir);
+    const old = new Date(Date.now() - 60_000);
+    utimesSync(join(loomDir, 'rules', 'constitution.md'), old, old);
+    const r = checkSubagentContextStale(loomDir);
+    expect(r.exists).toBe(true);
+    expect(r.stale).toBe(false);
+  });
+
+  it('stale when constitution newer than subagent-context', () => {
+    const loomDir = join(TEST_DIR, '.loom');
+    seed(loomDir);
+    const old = new Date(Date.now() - 60_000);
+    utimesSync(join(loomDir, 'contexts', 'subagent-context.md'), old, old);
+    const r = checkSubagentContextStale(loomDir);
+    expect(r.stale).toBe(true);
+  });
+
+  it('not stale when constitution missing', () => {
+    const loomDir = join(TEST_DIR, '.loom');
+    seed(loomDir, { constitution: false });
+    expect(checkSubagentContextStale(loomDir)).toEqual({ exists: true, stale: false });
   });
 });

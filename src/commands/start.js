@@ -14,6 +14,7 @@
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { loadContextIndex } from '../core/context-index.js';
 
 const PROJECT_MARKERS = [
   'package.json', 'go.mod', 'pyproject.toml', 'Cargo.toml',
@@ -109,11 +110,19 @@ export default async function start(options) {
   const memoryContent = readFileSafe(memoryPath);
   const memorySummary = extractMemorySummary(memoryContent);
 
+  // L0 渐进式披露：只输出宪章的"目录"（节标题），详情让 AI 按需用 loom_get_context 取
+  const constitutionIdx = loadContextIndex(loomDir, 'constitution');
+  const constitutionOutline = constitutionIdx
+    ? constitutionIdx.outline().sections.map(s => s.title)
+    : [];
+  // 自动兜底：宪章存在但无任何 ## 节 → 目录会空，改提示整篇读，防丢正文
+  const constitutionFullFallback = !!constitutionIdx && constitutionOutline.length === 0;
+
   // ─── 输出 ────────────────────────────────────────────────────────────────
   if (format === 'full') {
-    printFull({ projectRoot, issues, activeSpecs, memorySummary, loomDir });
+    printFull({ projectRoot, issues, activeSpecs, memorySummary, constitutionOutline, constitutionFullFallback, loomDir });
   } else {
-    printPaste({ projectRoot, issues, activeSpecs, memorySummary });
+    printPaste({ projectRoot, issues, activeSpecs, memorySummary, constitutionOutline, constitutionFullFallback });
   }
 }
 
@@ -128,7 +137,7 @@ function extractMemorySummary(content) {
   return lines;
 }
 
-function printPaste({ projectRoot, issues, activeSpecs, memorySummary }) {
+function printPaste({ projectRoot, issues, activeSpecs, memorySummary, constitutionOutline = [], constitutionFullFallback = false }) {
   const lines = [];
   lines.push('');
   lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -160,16 +169,32 @@ function printPaste({ projectRoot, issues, activeSpecs, memorySummary }) {
     for (const m of memorySummary) lines.push(`  ${m.trim()}`);
   }
 
+  if (process.env.LOOM_CONTEXT_FULL) {
+    // 回退闸：判定分节披露不可靠时，指示整篇读，绕过 L0/L1
+    lines.push('');
+    lines.push('📖 宪章: 请整篇读 .loom/rules/constitution.md（LOOM_CONTEXT_FULL 已开）');
+  } else if (constitutionFullFallback) {
+    // 自动兜底：宪章无 ## 分节，目录为空，整篇读避免丢正文
+    lines.push('');
+    lines.push('📖 宪章: 无分节结构，请整篇读 .loom/rules/constitution.md');
+  } else if (constitutionOutline.length > 0) {
+    lines.push('');
+    lines.push('📖 宪章目录（按需取，勿整篇读）:');
+    for (const t of constitutionOutline) lines.push(`  · ${t}`);
+  }
+
   lines.push('');
-  lines.push('请读取 .loom/workflow.yaml 了解流水线配置，');
-  lines.push('读取 .loom/rules/constitution.md 了解项目约束。');
+  lines.push('渐进式披露：用 MCP 工具 loom_get_context 按节取上下文，');
+  lines.push('  · loom_get_context(doc) → 看目录   · loom_get_context(doc, section) → 取该节');
+  lines.push('  doc 可选: constitution / project-structure / index / memory / workflow');
+  lines.push('不支持 MCP 时再按需读 .loom/rules/constitution.md、.loom/workflow.yaml。');
   lines.push('');
 
   console.log(lines.join('\n'));
 }
 
-function printFull({ projectRoot, issues, activeSpecs, memorySummary, loomDir }) {
-  printPaste({ projectRoot, issues, activeSpecs, memorySummary });
+function printFull({ projectRoot, issues, activeSpecs, memorySummary, constitutionOutline, loomDir }) {
+  printPaste({ projectRoot, issues, activeSpecs, memorySummary, constitutionOutline });
   console.log('─── 详细路径 ───────────────────────────────────');
   console.log(`  .loom 目录:     ${loomDir}`);
   console.log(`  constitution:   ${join(loomDir, 'rules', 'constitution.md')}`);

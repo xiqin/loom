@@ -43,6 +43,19 @@ function checkIndexStaleness(cwd) {
   return { exists: true, stale, ageMin };
 }
 
+/**
+ * subagent-context.md 是 init-project 时冻结渲染的，constitution 之后变更不会自动同步。
+ * 比较两者 mtime：宪章更新 → 提示重新生成，防止 subagent 拿到过期红线/约束。
+ */
+export function checkSubagentContextStale(loomDir) {
+  const ctxPath = join(loomDir, 'contexts', 'subagent-context.md');
+  if (!existsSync(ctxPath)) return { exists: false };
+  const constPath = join(loomDir, 'rules', 'constitution.md');
+  if (!existsSync(constPath)) return { exists: true, stale: false };
+  const stale = statSync(constPath).mtimeMs > statSync(ctxPath).mtimeMs;
+  return { exists: true, stale };
+}
+
 export default async function doctor(options) {
   const tools = options.tool ? [options.tool] : USER_TOOL_IDS;
   const cwd = process.cwd();
@@ -162,6 +175,16 @@ export default async function doctor(options) {
     } else {
       console.log(`    index:         ✓ up to date (static scanner)`);
     }
+  }
+
+  // subagent-context 新鲜度：宪章变更后未重新生成会让 subagent 拿到过期约束
+  const sub = checkSubagentContextStale(loomDir);
+  if (!sub.exists) {
+    console.log(`    subagent-context: – not generated`);
+  } else if (sub.stale) {
+    console.log(`    subagent-context: ⚠  stale (constitution.md newer) — regenerate via /loom-init-project`);
+  } else {
+    console.log(`    subagent-context: ✓`);
   }
 
   console.log('');
