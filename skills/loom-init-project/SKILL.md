@@ -71,7 +71,7 @@ CLAUDE.md               # 选择 Claude Code 时
 
 1. `.loom/rules/constitution.md` 中技术栈、构建命令、测试命令是否准确。
 2. `.loom/rules/project-structure.md` 中目录树和架构模式是否符合实际项目。
-3. `.loom/index/engineering-index.md` 是否需要补充路由、模块、公开方法和调用链。
+3. 工程索引：codegraph 可用时 `loom init-project` 已自动 `codegraph init` 建图（`.codegraph/` 即索引，engineering-index.md 不再使用）；codegraph 不可用时检查 `.loom/index/engineering-index.md` 是否需要补充路由、模块、公开方法和调用链。
 4. `.loom/memory/MEMORY.md` 是否有需要保留的用户偏好、踩坑和长期决策。
 5. 入口文件是否轻量：它们应该指向 `.loom/`，不要复制大段规则。
 

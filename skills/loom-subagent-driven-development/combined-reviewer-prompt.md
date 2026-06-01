@@ -6,7 +6,9 @@
 - `specs/<date+feature>/spec.md`（完整需求）
 - `specs/<date+feature>/tasks/TN.md`（当前 task 详细内容）
 - `.loom/contexts/subagent-context.md`（精简项目约束）
-- `.loom/index/engineering-index.md`（模块依赖和调用链索引）
+- 工程索引（模块依赖和调用链），后端二选一：
+  - **codegraph 可用**：通过 MCP 工具实时查询（`codegraph_impact` / `codegraph_callers` / `codegraph_callees` / `codegraph_search`），无 engineering-index.md
+  - **codegraph 不可用**：`.loom/index/engineering-index.md`（静态扫描生成）
 - git diff（仅变更部分）
 
 ## Part 1：规格审查
@@ -51,7 +53,13 @@
 
 ### 维度 6：变更影响范围（阻断 / 警告）
 
-读取 `.loom/index/engineering-index.md`，对照本次 git diff，分析：
+先确定索引后端，再对照本次 git diff 分析：
+
+- **codegraph 可用**（`.codegraph/` 存在或 MCP 工具可调）：用 `codegraph_impact` 确认改动影响半径，`codegraph_callers` / `codegraph_callees` 查上下游调用方，`codegraph_search` 定位符号。**优先走此路径**。
+- **codegraph 不可用**：读取 `.loom/index/engineering-index.md`（静态扫描生成）替代。
+- **两者都不可用**：跳过本维度，报告中注明"索引不可用，跳过影响范围分析"。
+
+分析项：
 
 1. **下游影响**：本次变更的函数、接口、类型是否被其他模块引用？列出受影响的调用方。
 2. **Breaking change 检测**：
@@ -64,7 +72,7 @@
    - 影响跨模块调用链 → 中风险，警告
    - 影响公开接口或共享数据结构 → 高风险，阻断，需要补充影响说明
 
-**若 engineering-index.md 不可用**，跳过本维度并在报告中注明"索引不可用，跳过影响范围分析"。
+影响范围判定见上方后端选择：codegraph 优先，降级 engineering-index.md，皆无则跳过并注明。
 
 ### 质量结果
 

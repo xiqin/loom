@@ -68,8 +68,6 @@ loom tasks --spec-dir specs/<date+feature> --validate
 - [ ] 分层顺序来自 project-structure.md。
 - [ ] 遵守 constitution.md 编码红线。
 
-## 模型选择策略
-
 <!-- loom:generate:model-selection -->
 ## 模型选择策略
 

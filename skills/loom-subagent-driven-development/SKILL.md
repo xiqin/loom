@@ -145,8 +145,6 @@ notes: "JWT 密钥从环境变量 JWT_SECRET 读取，未硬编码"
 - 禁止在熔断后自动继续，必须等待用户指示。
 - 禁止对超时任务自动重试。
 
-## 模型选择策略
-
 <!-- loom:generate:model-selection -->
 ## 模型选择策略
 

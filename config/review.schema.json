@@ -93,14 +93,14 @@
       "defaultSeverity": "BLOCKER",
       "description": "下游调用方识别、breaking change 检测、并行 task 冲突",
       "checks": [
-        "本次变更的函数、接口、类型是否被其他模块引用（读取 engineering-index.md）",
+        "本次变更的函数、接口、类型是否被其他模块引用（codegraph 可用时查 codegraph_impact/codegraph_callers，否则读 engineering-index.md）",
         "公开接口的参数签名是否变化（新增必填参数、删除字段、类型变更）",
         "数据库 schema、消息格式、配置项是否有不向后兼容的变更",
         "本次变更的文件或模块是否与其他正在进行的 task 有重叠",
         "影响范围风险评级：仅模块内部（低）/ 跨模块调用链（中）/ 公开接口或共享数据结构（高）"
       ],
-      "source": ".loom/index/engineering-index.md",
-      "fallback": "engineering-index.md 不可用时跳过本维度，在报告中注明'索引不可用，跳过影响范围分析'",
+      "source": "codegraph（codegraph_impact/codegraph_callers/codegraph_callees，优先）或 .loom/index/engineering-index.md（codegraph 不可用时降级）",
+      "fallback": "codegraph 与 engineering-index.md 均不可用时跳过本维度，在报告中注明'索引不可用，跳过影响范围分析'",
       "severityOverrides": {
         "breaking-change": "BLOCKER",
         "parallel-task-conflict": "WARNING",

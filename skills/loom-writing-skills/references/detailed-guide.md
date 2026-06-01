@@ -1,3 +1,5 @@
+# Skill 编写详细指南
+
 ## References 文件
 
 如果 skill 需要大量参考信息，放在 `references/` 目录：

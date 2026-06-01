@@ -50,22 +50,22 @@ git log --oneline -10
 **功能：** <feature-name>
 **分支：** feature/<date>-<feature-name>
 
-### 变更统计
+## 变更统计
 
 <git diff --stat 输出>
 
-### 主要变更
+## 主要变更
 
 1. <变更说明 1>
 2. <变更说明 2>
 
-### 重点关注
+## 重点关注
 
 1. 架构设计：xxx
 2. 安全性：xxx
 3. 性能：xxx
 
-### 自测情况
+## 自测情况
 
 - [x] 编译通过（BUILD_CMD）
 - [x] 静态分析通过（VET_CMD）
@@ -73,14 +73,14 @@ git log --oneline -10
 - [x] 代码符合编码红线
 - [x] ENGINEERING-INDEX.md 已更新
 
-### 变更详情
+## 变更详情
 
 | 文件          | 变更类型 | 说明            |
 | ------------- | -------- | --------------- |
 | path/to/file1 | 新增     | XxxService 实现 |
 | path/to/file2 | 修改     | 新增方法        |
 
-### 审查重点
+## 审查重点
 
 - [ ] 架构合规性
 - [ ] 代码质量
