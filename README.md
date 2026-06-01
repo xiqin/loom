@@ -19,11 +19,11 @@ AI 工程化框架。把需求、规范、上下文、执行过程"织"成一套
 | Codex          | full     | `AGENTS.md`                       | ✅     | ✗     | ✗           |
 | Cursor         | full     | `.cursor/rules/*.mdc`             | ✅     | ✗     | ✗           |
 | GitHub Copilot | full     | `.github/copilot-instructions.md` | ✅     | ✗     | ✗           |
-| OpenCode       | full     | `AGENTS.md`                       | ✅     | ✗     | ✅          |
+| OpenCode       | full     | `AGENTS.md`                       | ✅     | ✅    | ✅          |
 
 - **full**：完整支持，适配器已实现
 - **planned**：计划中，适配器待实现
-- **Hooks**：仅 Claude Code 支持会话级钩子（session-start）
+- **Hooks**：Claude Code 用 `session-start` 钩子，OpenCode 用原生 `event` 钩子，二者共用同一套项目健康检查（`hooks/handlers/health-check.cjs`）；Codex / Cursor / Copilot 无事件机制（Cursor 靠 `alwaysApply` rule 做文本级伪钩子）
 
 ## 安装
 

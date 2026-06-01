@@ -1,6 +1,10 @@
 import { existsSync, readdirSync, mkdirSync, cpSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { createRequire } from 'node:module';
+
+const _require = createRequire(import.meta.url);
+const { checkProject, formatReport } = _require('./hooks/handlers/health-check.cjs');
 
 const USER_DIR = join(homedir(), '.config', 'opencode');
 const SKILLS_DIR = join(USER_DIR, 'skills');
@@ -82,7 +86,27 @@ function copyTemplates(packageDir, log) {
   log.push('  templates: copied to loom-init-project skill dir');
 }
 
-export const Plugin = async ({ directory }) => {
+// 把检查结果推给用户。优先 OpenCode toast（用户可见），失败回落到 console。
+async function surfaceReport(client, lines) {
+  if (lines.length === 0) return;
+  const message = lines.join('\n');
+  try {
+    if (client?.tui?.showToast) {
+      await client.tui.showToast({ body: { message, variant: 'warning' } });
+      return;
+    }
+  } catch {}
+  // 回落：写进 OpenCode 插件日志
+  for (const line of lines) console.log(`[loom] ${line}`);
+}
+
+// 提取 session id，兼容多种 event payload 结构。
+function extractSessionId(event) {
+  const p = event?.properties ?? {};
+  return p.info?.id ?? p.sessionID ?? p.session?.id ?? p.id ?? null;
+}
+
+export const Plugin = async ({ directory, worktree, client }) => {
   const log = [];
   log.push(`Loom plugin initializing...`);
 
@@ -90,5 +114,26 @@ export const Plugin = async ({ directory }) => {
   copyCommands(directory, log);
   copyTemplates(directory, log);
 
-  return {};
+  // OpenCode 原生 hook：等价 Claude Code 的 session-start。
+  // 每个 session 首次活动时跑一次 loom 项目健康检查并提示用户。
+  const projectRoot = worktree || directory || process.cwd();
+  const checkedSessions = new Set();
+
+  return {
+    event: async ({ event }) => {
+      if (!event || typeof event.type !== 'string') return;
+      if (!event.type.startsWith('session.')) return;
+
+      const sessionId = extractSessionId(event) ?? '__global__';
+      if (checkedSessions.has(sessionId)) return;
+      checkedSessions.add(sessionId);
+
+      try {
+        const result = checkProject(projectRoot);
+        await surfaceReport(client, formatReport(result));
+      } catch {
+        // 健康检查永不阻塞会话
+      }
+    },
+  };
 };
