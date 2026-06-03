@@ -4,7 +4,10 @@
 
 开始编码、调试或代码审查前，先按需读取：
 
-{{REQUIRED_CONTEXT}}
+1. `.loom/rules/constitution.md`：项目原则、技术栈、验证命令和红线。
+2. `.loom/rules/project-structure.md`：目录分层、架构模式和放置约定。
+3. 工程索引（路由、模块、方法签名、依赖关系和调用链）：codegraph 可用时直接用 MCP 工具查询（`codegraph_search` / `codegraph_context` / `codegraph_impact`），否则读 `.loom/index/engineering-index.md`。
+4. `.loom/memory/MEMORY.md`：长期记忆、踩坑记录和用户偏好。
 
 ## 开发流水线（强制）
 
