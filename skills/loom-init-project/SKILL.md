@@ -19,7 +19,18 @@ description: >
 
 触发本 skill 后，判断当前目录是不是项目根目录，如果不是根目录，询问用户是否在当前目录运行：
 
-如果用户没有明确指定 agent 工具，先询问用户要为哪些工具生成入口文件。可选项为：
+### 第一步：确认角色（多选）
+
+如果用户没有明确指定角色，先询问这个项目给谁用（**可多选，取并集**）：
+
+- `pm`：PM 视角，生成产品上下文 `.loom/rules/product.md`，走 `需求 → spec → 原型` 流水线
+- `dev`：研发视角，生成工程上下文（宪章 / 结构 / 索引 / subagent-context），走完整工程流水线
+
+角色决定生成哪些 `.loom/` 文件；`workflow.yaml` 始终是含全部 pipeline 的单文件，不裁剪。未指定时默认 `dev`（与历史行为一致）。把选择通过 `--roles` 传给脚本，例如 `--roles pm,dev`。
+
+### 第二步：确认 agent 工具
+
+如果用户没有明确指定 agent 工具，再询问要为哪些工具生成入口文件。可选项为：
 
 - `claude-code`：生成 `AGENTS.md`+ `CLAUDE.md`
 - `codex`：生成 `AGENTS.md`
@@ -27,11 +38,23 @@ description: >
 - `cursor`：生成 `.cursor/rules/loom.mdc`
 - `copilot`：生成 `.github/copilot-instructions.md`
 
-拿到用户选择后，把它们通过 `--tools` 显式传给脚本，例如：
+拿到用户选择后，把角色和工具通过 `--roles` / `--tools` 显式传给脚本，例如：
 
 ```bash
-node <skill-dir>/scripts/init-project.mjs --cwd <project-root> --tools claude-code,codex
+node <skill-dir>/scripts/init-project.mjs --cwd <project-root> --roles pm,dev --tools claude-code,codex
 ```
+
+### 第三步：填充产品上下文（仅当选了 `pm`）
+
+脚本对 `pm` 角色只写出 `.loom/rules/product.md` 模板（保留 `{{...}}` 占位符）。脚本运行后，**问用户以下 5 题**，再用 Edit 把答案填进 `product.md`，替换对应占位符：
+
+1. 产品名 + 一句话描述 → `{{PRODUCT_NAME}}` / `{{PRODUCT_ONELINE}}`
+2. 目标用户是谁 → `{{TARGET_USERS}}`
+3. 核心价值 → `{{CORE_VALUE}}`
+4. 主要平台（移动端 / PC / 两者）→ `{{PLATFORM}}`
+5. UI 风格（Material / Ant Design / 简洁 / 无要求）+ 原型受众（研发评审 / 用户测试 / 投资人 demo）→ `{{UI_STYLE}}` / `{{PROTOTYPE_AUDIENCE}}`
+
+填完确认无残留 `{{...}}` 占位符。`## 设计原则` 下的 `[TODO]` 提示用户后续补充，不强制此刻填。
 
 如果当前环境已安装 loom CLI，也可以等价运行：
 
@@ -42,6 +65,7 @@ loom init-project
 可选参数：
 
 - `--force`：覆盖已有 loom 生成文件。
+- `--roles pm,dev`：显式指定角色，决定生成哪些 `.loom/` 文件；不传时默认 `dev`（与历史行为一致）。`pm` 多写 `product.md`，`dev` 写工程上下文，两者取并集。
 - `--tools claude-code,codex,cursor,copilot,opencode`：显式指定要分发的工具；兼容历史别名 `claude`，不传时 CLI 在交互终端会询问用户，非交互环境会自动检测并默认生成 `AGENTS.md`。
 - `--template-dir <path>`：使用指定模板目录，主要用于测试或本地调试；CLI 入口不暴露该参数。
 
@@ -51,12 +75,13 @@ loom init-project
 
 ```text
 .loom/
-  memory/MEMORY.md
-  rules/constitution.md
-  rules/project-structure.md
-  contexts/subagent-context.md
-  index/engineering-index.md
-  workflow.yaml
+  memory/MEMORY.md                        # 所有角色
+  workflow.yaml                           # 所有角色（单文件，含全部 pipeline）
+  rules/product.md                        # 选择 pm 角色时
+  rules/constitution.md                   # 选择 dev 角色时
+  rules/project-structure.md              # 选择 dev 角色时
+  contexts/subagent-context.md            # 选择 dev 角色时
+  index/engineering-index.md              # 选择 dev 角色时
 AGENTS.md                       # 选择 Codex/OpenCode/Claude Code 时
 CLAUDE.md               # 选择 Claude Code 时
 .cursor/rules/loom.mdc                  # 检测到 Cursor 时
@@ -67,13 +92,14 @@ CLAUDE.md               # 选择 Claude Code 时
 
 ## 人工检查清单
 
-脚本完成后必须快速审阅：
+脚本完成后必须快速审阅（按所选角色）：
 
-1. `.loom/rules/constitution.md` 中技术栈、构建命令、测试命令是否准确。
-2. `.loom/rules/project-structure.md` 中目录树和架构模式是否符合实际项目。
-3. 工程索引：codegraph 可用时 `loom init-project` 已自动 `codegraph init` 建图（`.codegraph/` 即索引，engineering-index.md 不再使用）；codegraph 不可用时检查 `.loom/index/engineering-index.md` 是否需要补充路由、模块、公开方法和调用链。
-4. `.loom/memory/MEMORY.md` 是否有需要保留的用户偏好、踩坑和长期决策。
-5. 入口文件是否轻量：它们应该指向 `.loom/`，不要复制大段规则。
+1. 【dev】`.loom/rules/constitution.md` 中技术栈、构建命令、测试命令是否准确。
+2. 【dev】`.loom/rules/project-structure.md` 中目录树和架构模式是否符合实际项目。
+3. 【dev】工程索引：codegraph 可用时 `loom init-project` 已自动 `codegraph init` 建图（`.codegraph/` 即索引，engineering-index.md 不再使用）；codegraph 不可用时检查 `.loom/index/engineering-index.md` 是否需要补充路由、模块、公开方法和调用链。
+4. 【pm】`.loom/rules/product.md` 中 5 项产品上下文已填，无残留 `{{...}}` 占位符。
+5. `.loom/memory/MEMORY.md` 是否有需要保留的用户偏好、踩坑和长期决策。
+6. 入口文件是否轻量：它们应该指向 `.loom/`，不要复制大段规则。
 
 ## 约束
 

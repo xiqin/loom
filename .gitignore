@@ -27,3 +27,4 @@ opencode.json
 .generate-cache.json
 
 outputs/
+.codegraph/

@@ -140,6 +140,24 @@ pipelines:
         skill: loom-index-update
         description: "更新工程索引（重构后模块结构可能变化）"
 
+  # PM 需求到 HTML 原型 — 跳过所有工程步骤，直出可交互原型
+  pm-prototype:
+    description: "PM 用：自然语言需求 → spec.md → 可交互 HTML 原型"
+    steps:
+      - id: brainstorming
+        skill: loom-brainstorming
+        next: spec-approved
+        description: "需求结构化：用户故事 / 功能边界 / 交互逻辑，输出 spec.md"
+
+      - id: spec-approved
+        gate: human-approval
+        description: "PM 审查 spec.md，确认需求无误后继续"
+        next: prototype
+
+      - id: prototype
+        skill: document-skills:web-artifacts-builder
+        description: "基于 spec.md 生成可交互 HTML 原型（布局 + 交互状态 + 基础视觉）"
+
   # 小改动 — 无需审批，直接执行后验证
   chore:
     description: "依赖升级、配置调整、文档更新等低风险改动"

@@ -47,9 +47,14 @@ jobs:
             exit 1
           fi
 
-      # ── 缺陷4：索引新鲜度检测 ───────────────────────────────────────────
+      # ── 缺陷4：索引新鲜度检测（仅 dev 角色有工程索引时）──────────────────
       - name: Check engineering-index staleness
-        run: loom index --check
+        run: |
+          if [ -f .loom/index/engineering-index.md ] || [ -d .codegraph ]; then
+            loom index --check
+          else
+            echo "no engineering index (pm-only project), skipping staleness check"
+          fi
         # exit 1 if index is older than source files
 
       # ── 缺陷5：任务冲突检测（specs/ 有变更时触发）───────────────────────

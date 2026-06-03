@@ -35,6 +35,16 @@ const COMMON_IGNORE = [
   '.worktree/',
 ];
 
+const ROLE_ALIASES = new Map([
+  ['pm', 'pm'],
+  ['product', 'pm'],
+  ['product-manager', 'pm'],
+  ['dev', 'dev'],
+  ['developer', 'dev'],
+  ['engineering', 'dev'],
+  ['engineer', 'dev'],
+]);
+
 const TOOL_ALIASES = new Map([
   ['claude', 'claude-code'],
   ['claudecode', 'claude-code'],
@@ -54,29 +64,47 @@ export function initProject(options = {}) {
   const cwd = options.cwd || process.cwd();
   const force = Boolean(options.force);
   const templateDir = resolveTemplateDir(options.templateDir);
+  const roles = detectRoles(options.roles);
   const facts = analyzeProject(cwd);
   const variables = buildVariables(facts);
+  // 入口文件「必读上下文」按角色裁剪，避免指向未生成的文件
+  variables.REQUIRED_CONTEXT = buildRequiredContext(roles);
   const result = {
     root: cwd,
     projectName: facts.projectName,
     techStack: variables.TECH_STACK_SUMMARY,
+    roles: [...roles].sort(),
     written: [],
     skipped: [],
     detectedTools: [],
   };
 
-  writeRendered(templateDir, 'constitution.md', join(cwd, '.loom', 'rules', 'constitution.md'), variables, result, force);
-  writeRendered(templateDir, 'project-structure.md', join(cwd, '.loom', 'rules', 'project-structure.md'), variables, result, force);
+  // 所有角色共用：记忆 + 流水线定义（workflow 单文件含全部 pipeline）
   writeRendered(templateDir, 'memory.md', join(cwd, '.loom', 'memory', 'MEMORY.md'), variables, result, force);
-  writeRendered(templateDir, 'engineering-index.md', join(cwd, '.loom', 'index', 'engineering-index.md'), variables, result, force);
   writeRendered(templateDir, 'workflow.yaml', join(cwd, '.loom', 'workflow.yaml'), variables, result, force);
 
-  writeFile(
-    join(cwd, '.loom', 'contexts', 'subagent-context.md'),
-    renderSubagentContext(variables),
-    result,
-    force
-  );
+  // dev 角色：工程上下文（宪章 / 结构 / 索引 / subagent 上下文）
+  if (roles.has('dev')) {
+    writeRendered(templateDir, 'constitution.md', join(cwd, '.loom', 'rules', 'constitution.md'), variables, result, force);
+    writeRendered(templateDir, 'project-structure.md', join(cwd, '.loom', 'rules', 'project-structure.md'), variables, result, force);
+    writeRendered(templateDir, 'engineering-index.md', join(cwd, '.loom', 'index', 'engineering-index.md'), variables, result, force);
+    writeFile(
+      join(cwd, '.loom', 'contexts', 'subagent-context.md'),
+      renderSubagentContext(variables),
+      result,
+      force
+    );
+  }
+
+  // pm 角色：产品上下文模板（变量由 SKILL.md 问卷后填充，此处保留占位符待补）
+  if (roles.has('pm')) {
+    writeFile(
+      join(cwd, '.loom', 'rules', 'product.md'),
+      readTemplate(templateDir, 'product.md'),
+      result,
+      force
+    );
+  }
 
   const tools = detectTools(cwd, options.tools);
   result.detectedTools = [...tools].sort();
@@ -348,6 +376,45 @@ function mergeOpenCodeIgnore(configPath, result) {
   }
 }
 
+export function normalizeRoles(value) {
+  const items = Array.isArray(value)
+    ? value
+    : String(value || '').split(',');
+
+  const roles = new Set();
+  for (const item of items) {
+    const normalized = String(item).trim().toLowerCase();
+    if (!normalized) continue;
+    const canonical = ROLE_ALIASES.get(normalized);
+    if (!canonical) {
+      throw new Error(`Unsupported role "${item}". Supported roles: pm, dev.`);
+    }
+    roles.add(canonical);
+  }
+  return [...roles];
+}
+
+function detectRoles(explicitRoles) {
+  if (explicitRoles?.length) return new Set(normalizeRoles(explicitRoles));
+  // 未指定时默认 dev（与历史行为一致：生成完整工程上下文）
+  return new Set(['dev']);
+}
+
+// 按角色生成入口文件「必读上下文」清单，只列出实际会生成的文件
+function buildRequiredContext(roles) {
+  const items = [];
+  if (roles.has('pm')) {
+    items.push('`.loom/rules/product.md`：产品定位、目标用户、原型约束（PM 视角）。');
+  }
+  if (roles.has('dev')) {
+    items.push('`.loom/rules/constitution.md`：项目原则、技术栈、验证命令和红线。');
+    items.push('`.loom/rules/project-structure.md`：目录分层、架构模式和放置约定。');
+    items.push('工程索引（路由、模块、方法签名、依赖关系和调用链）：codegraph 可用时直接用 MCP 工具查询（`codegraph_search` / `codegraph_context` / `codegraph_impact`），否则读 `.loom/index/engineering-index.md`。');
+  }
+  items.push('`.loom/memory/MEMORY.md`：长期记忆、踩坑记录和用户偏好。');
+  return items.map((item, i) => `${i + 1}. ${item}`).join('\n');
+}
+
 export function normalizeToolIds(value) {
   const items = Array.isArray(value)
     ? value
@@ -474,6 +541,7 @@ function parseArgs(argv) {
     const arg = argv[i];
     if (arg === '--cwd') options.cwd = argv[++i];
     else if (arg === '--force') options.force = true;
+    else if (arg === '--roles') options.roles = normalizeRoles(argv[++i]);
     else if (arg === '--tools') options.tools = normalizeToolIds(argv[++i]);
     else if (arg === '--template-dir') options.templateDir = argv[++i];
   }
@@ -482,6 +550,7 @@ function parseArgs(argv) {
 
 function printReport(result) {
   console.log(`loom init-project: ${result.projectName}`);
+  console.log(`roles: ${result.roles.join(', ') || 'none'}`);
   console.log(`tech stack: ${result.techStack}`);
   console.log(`tools: ${result.detectedTools.join(', ') || 'none'}`);
   console.log(`written: ${result.written.length}`);
