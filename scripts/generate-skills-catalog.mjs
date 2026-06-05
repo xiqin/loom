@@ -83,6 +83,7 @@ const GENERAL_SKILLS = [
   'loom-dispatching-parallel-agents', 'loom-writing-skills',
   'loom-finishing-a-development-branch'
 ];
+const QA_SKILLS = ['loom-qa'];
 
 const SKILL_DETAILS = {
   'loom-brainstorming': { output: '`specs/<date+feature>/spec.md`', note: '需求头脑风暴, +可视化伴侣、设计自检、用户审查 Gate' },
@@ -100,6 +101,7 @@ const SKILL_DETAILS = {
   'loom-dispatching-parallel-agents': { note: '并行 agent 派发, +模型选择、并发工作流图' },
   'loom-writing-skills': { note: '编写自定义 skills, +方法论深度、流程图' },
   'loom-finishing-a-development-branch': { note: '分支完成流程 , +选项展示（Merge/PR/Keep/Discard）' },
+  'loom-qa': { output: '`qa/<date+target>/qa-report.md`', note: 'QA 验收流水线，测试人员使用：新功能验证 + 回归 + 集成测试 + 持久化用例库' },
 };
 
 function makeRow(skill) {
@@ -133,13 +135,19 @@ function generateFullCatalog() {
   for (const s of GENERAL_SKILLS) {
     md += makeRow(s) + '\n';
   }
+  md += `\n**测试 Skills：**\n\n`;
+  md += `| Skill      | 输出                           | 说明                                                        |\n`;
+  md += `| ---------- | ------------------------------ | ----------------------------------------------------------- |\n`;
+  for (const s of QA_SKILLS) {
+    md += makeRow(s) + '\n';
+  }
   return md.trimEnd();
 }
 
 function generateSummaryCatalog() {
   const { totalSteps } = loadPipelineSteps();
   let md = '';
-  md += `${totalSteps} 流水线 + ${AUX_SKILLS.length} 辅助 + ${GENERAL_SKILLS.length} 通用 Skill，共 ${PIPELINE_SKILLS.length + AUX_SKILLS.length + GENERAL_SKILLS.length} 个\n\n`;
+  md += `${totalSteps} 流水线 + ${AUX_SKILLS.length} 辅助 + ${GENERAL_SKILLS.length} 通用 + ${QA_SKILLS.length} 测试 Skill，共 ${PIPELINE_SKILLS.length + AUX_SKILLS.length + GENERAL_SKILLS.length + QA_SKILLS.length} 个\n\n`;
   md += `**核心流水线 Skills：**\n\n`;
   md += `| Skill                               | 输出                           | 说明                                               |\n`;
   md += `| ----------------------------------- | ------------------------------ | -------------------------------------------------- |\n`;
@@ -156,6 +164,12 @@ function generateSummaryCatalog() {
   md += `| Skill                               | 说明                                              |\n`;
   md += `| ----------------------------------- | ------------------------------------------------- |\n`;
   for (const s of GENERAL_SKILLS) {
+    md += makeRow(s) + '\n';
+  }
+  md += `\n**测试 Skills：**\n\n`;
+  md += `| Skill      | 输出                           | 说明                                                        |\n`;
+  md += `| ---------- | ------------------------------ | ----------------------------------------------------------- |\n`;
+  for (const s of QA_SKILLS) {
     md += makeRow(s) + '\n';
   }
   md += `\n> 完整定义详见 \`skills/loom-using-loom/SKILL.md\` 或 \`.loom/skills/\` 目录`;

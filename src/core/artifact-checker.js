@@ -21,85 +21,41 @@ function hasPlaceholder(content) {
     || TEMPLATE_VAR_RE.test(content);
 }
 
-// ── 阶段前置条件检查表 ─────────────────────────────────────────────────────
-// 每个阶段需要哪些文件存在才能开始
-
-const PRECONDITIONS = {
-  planning: [
-    { file: 'spec.md', desc: 'spec.md (brainstorming output)' }
-  ],
-  approved: [
-    { file: 'spec.md', desc: 'spec.md' },
-    { file: 'plan.md', desc: 'plan.md (planning output)' }
-  ],
-  'git-worktree': [
-    { file: 'spec.md', desc: 'spec.md' },
-    { file: 'plan.md', desc: 'plan.md' }
-  ],
-  executing: [
-    { file: 'spec.md', desc: 'spec.md' },
-    { file: 'plan.md', desc: 'plan.md' },
-    { file: 'tasks', desc: 'tasks/ directory', isDir: true }
-  ],
-  verification: [
-    { file: 'spec.md', desc: 'spec.md' },
-    { file: 'test-report.md', desc: 'test-report.md (subagent output)' }
-  ],
-  synced: [
-    { file: 'verify-report.md', desc: 'verify-report.md (verification output)' }
-  ]
-};
-
-// ── 阶段产物定义 ────────────────────────────────────────────────────────────
-// 每个阶段完成后应该产生哪些文件
-
-const STAGE_OUTPUTS = {
-  brainstorming: ['spec.md'],
-  planning: ['plan.md'],
-  executing: ['test-report.md'],
-  verification: ['verify-report.md'],
-  synced: []
-};
 
 // ── 核心函数 ───────────────────────────────────────────────────────────────
 
 /**
  * 检查进入某阶段的前置条件
+ * @param {string[]} requires - 元素尾 '/' 表示目录检查
  * @returns {{ ok: boolean, missing: string[] }}
  */
-export function checkPreconditions(specDir, stage) {
-  const required = PRECONDITIONS[stage] || [];
+export function checkPreconditions(specDir, requires) {
   const missing = [];
-
-  for (const req of required) {
-    const path = join(specDir, req.file);
-    if (!existsSync(path)) {
-      missing.push(req.desc);
-    }
+  for (const req of (requires || [])) {
+    const isDir = req.endsWith('/');
+    const rel  = isDir ? req.slice(0, -1) : req;
+    if (!existsSync(join(specDir, rel))) missing.push(req);
   }
-
   return { ok: missing.length === 0, missing };
 }
 
 /**
- * 检查阶段完成后的产物是否落地
+ * 检查阶段完成后的产物是否落地且无占位符
+ * @param {string[]} outputs
  * @returns {{ ok: boolean, missing: string[], withPlaceholders: string[] }}
  */
-export function checkStageOutputs(specDir, stage) {
-  const outputs = STAGE_OUTPUTS[stage] || [];
+export function checkStageOutputs(specDir, outputs) {
   const missing = [];
   const withPlaceholders = [];
 
-  for (const file of outputs) {
+  for (const file of (outputs || [])) {
     const path = join(specDir, file);
     if (!existsSync(path)) {
       missing.push(file);
       continue;
     }
     const content = readFileSync(path, 'utf-8');
-    if (hasPlaceholder(content)) {
-      withPlaceholders.push(file);
-    }
+    if (hasPlaceholder(content)) withPlaceholders.push(file);
   }
 
   return {
@@ -107,6 +63,22 @@ export function checkStageOutputs(specDir, stage) {
     missing,
     withPlaceholders
   };
+}
+
+/**
+ * 通用 verdict 检查：读指定报告文件，verdict===PASS 则通过
+ * @param {string} filename - 相对 specDir 的文件名
+ */
+export function isReportPassing(specDir, filename) {
+  const path = join(specDir, filename);
+  if (!existsSync(path)) return false;
+  const content = readFileSync(path, 'utf-8');
+  const verdict = parseVerdict(content);
+  if (verdict) return verdict === 'PASS';
+  // fallback 启发式（无显式裁定时保守判断）
+  const hasFail = /\bFAIL\b|失败|不通过|\bBLOCKER\b/.test(content);
+  const hasPass = /\bPASS\b|通过|all checks passed/i.test(content);
+  return hasPass && !hasFail;
 }
 
 /**
@@ -153,41 +125,18 @@ export function parseVerdict(content) {
       const v = m[1].toUpperCase();
       if (v === 'PASS' || v === '通过') return 'PASS';
       if (v === 'FAIL' || v === '失败' || v === '不通过' || v === 'BLOCKED') return 'FAIL';
+      if (v === 'PARTIAL' || v === '部分') return 'PARTIAL';
     }
   }
   return null;
 }
 
-/**
- * 检查 test-report.md 是否通过。
- * 优先用结构化裁定；无显式裁定时回退到保守启发式（含 FAIL/失败 即判不通过）。
- */
+/** @deprecated 使用 isReportPassing(specDir, 'test-report.md') */
 export function isTestReportPassing(specDir) {
-  const path = join(specDir, 'test-report.md');
-  if (!existsSync(path)) return false;
-  const content = readFileSync(path, 'utf-8');
-
-  const verdict = parseVerdict(content);
-  if (verdict) return verdict === 'PASS';
-
-  // fallback：无显式裁定，保守判断
-  const hasFail = /\bFAIL\b|失败|不通过/.test(content);
-  const hasPass = /\bPASS\b|通过/.test(content);
-  return hasPass && !hasFail;
+  return isReportPassing(specDir, 'test-report.md');
 }
 
-/**
- * 检查 verify-report.md 是否通过。
- */
+/** @deprecated 使用 isReportPassing(specDir, 'verify-report.md') */
 export function isVerifyReportPassing(specDir) {
-  const path = join(specDir, 'verify-report.md');
-  if (!existsSync(path)) return false;
-  const content = readFileSync(path, 'utf-8');
-
-  const verdict = parseVerdict(content);
-  if (verdict) return verdict === 'PASS';
-
-  const hasFail = /\bFAIL\b|失败|\bBLOCKER\b/.test(content);
-  const hasPass = /\bPASS\b|通过|all checks passed/i.test(content);
-  return hasPass && !hasFail;
+  return isReportPassing(specDir, 'verify-report.md');
 }

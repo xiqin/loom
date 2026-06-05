@@ -1,0 +1,28 @@
+# .loom/qa-suite/features/<module>.yaml — 单功能模块用例文件
+# 复制此模板到 features/<your-module>.yaml 并填写
+
+feature: your-module-name
+covers:
+  # 该功能行为触及的源码路径（影响分析用）
+  # 改动这些路径下的文件时，本 suite 自动进回归
+  # - src/your-module/
+  # - src/shared/some-util.js
+
+cases:
+  - id: TC-001
+    title: "正常流程描述"
+    type: functional              # functional | integration | regression | smoke
+    priority: P0                  # P0 | P1 | P2
+    automated: true               # true = 跑 test_file；false = 进 manual-checklist
+    test_file: tests/your-module/your.test.js
+    test_name: "specific test name"   # 可选，链到具体测试用例
+    steps:
+      - 前置条件
+      - 操作步骤
+    expected: "期望结果"
+    status: active                # active | deprecated | draft
+    added_in: 2026-06-04
+    last_updated: 2026-06-04
+    last_run:
+      date: ~
+      result: ~                   # PASS | FAIL | SKIP | ~（未运行）

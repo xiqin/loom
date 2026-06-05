@@ -28,7 +28,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 ## Skills 清单
 
 <!-- loom:generate:skills-catalog -->
-6 流水线 + 2 辅助 + 7 通用 Skill，共 15 个
+6 流水线 + 2 辅助 + 7 通用 + 1 测试 Skill，共 16 个
 
 **核心流水线 Skills：**
 
@@ -59,6 +59,12 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 | loom-dispatching-parallel-agents | 并行 agent 派发, +模型选择、并发工作流图 |
 | loom-writing-skills | 编写自定义 skills, +方法论深度、流程图 |
 | loom-finishing-a-development-branch | 分支完成流程 , +选项展示（Merge/PR/Keep/Discard） |
+
+**测试 Skills：**
+
+| Skill      | 输出                           | 说明                                                        |
+| ---------- | ------------------------------ | ----------------------------------------------------------- |
+| loom-qa | `qa/<date+target>/qa-report.md` | QA 验收流水线，测试人员使用：新功能验证 + 回归 + 集成测试 + 持久化用例库 |
 
 > 完整定义详见 `skills/loom-using-loom/SKILL.md` 或 `.loom/skills/` 目录
 <!-- /loom:generate:skills-catalog -->

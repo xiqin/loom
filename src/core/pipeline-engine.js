@@ -17,7 +17,7 @@ import { PipelineStateStore } from './state-store.js';
 import { SpecLock } from './lock.js';
 import {
   checkPreconditions, checkStageOutputs,
-  isTestReportPassing, isVerifyReportPassing,
+  isReportPassing,
   inferStageFromArtifacts
 } from './artifact-checker.js';
 
@@ -101,7 +101,15 @@ function parseWorkflowYaml(content) {
 
       // step 属性
       if (currentStep) {
-        const attrMatch = line.match(/^\s+(skill|gate|next|description):\s*"?([^"]*)"?\s*$/);
+        // list 属性：requires / outputs，格式 [a, b/]
+        const listMatch = line.match(/^\s+(requires|outputs):\s*\[([^\]]*)\]\s*$/);
+        if (listMatch) {
+          const items = listMatch[2].split(',').map(s => s.trim()).filter(Boolean);
+          currentStep[listMatch[1]] = items;
+          continue;
+        }
+        // 标量属性：包含 gate_verdict
+        const attrMatch = line.match(/^\s+(skill|gate|next|description|gate_verdict):\s*"?([^"]*)"?\s*$/);
         if (attrMatch) {
           currentStep[attrMatch[1]] = attrMatch[2].trim() || null;
           continue;
@@ -201,7 +209,9 @@ export class PipelineEngine {
   initialize(pipelineType = null) {
     const type = pipelineType || this.workflow?.defaults?.pipeline_type || 'feature';
     const version = this._readVersion();
-    const state = this.store.init(type, version);
+    const steps = this.getSteps(type);
+    const firstStage = steps[0]?.id || 'brainstorming';
+    const state = this.store.init(type, version, firstStage);
     return { ok: true, state };
   }
 
@@ -231,8 +241,10 @@ export class PipelineEngine {
       return { ok: false, error: `Stage "${current}" is a human-approval gate. Use: loom run --approve` };
     }
 
-    // 检查当前阶段的产物是否落地
-    const outputCheck = checkStageOutputs(this.specDir, current);
+    // 从 step 定义读当前阶段产物
+    const steps = this.getSteps();
+    const currentStep = steps.find(s => s.id === current);
+    const outputCheck = checkStageOutputs(this.specDir, currentStep?.outputs ?? []);
     if (!outputCheck.ok) {
       const reasons = [];
       if (outputCheck.missing.length > 0) reasons.push(`missing: ${outputCheck.missing.join(', ')}`);
@@ -240,22 +252,15 @@ export class PipelineEngine {
       return { ok: false, error: `Stage "${current}" outputs incomplete: ${reasons.join('; ')}` };
     }
 
-    // 特殊检查：verification 需要 test-report PASS
-    if (current === 'executing' && next.id === 'verification') {
-      if (!isTestReportPassing(this.specDir)) {
-        return { ok: false, error: 'test-report.md does not contain PASS verdict. Fix tests before advancing.' };
+    // 声明式 verdict 门禁（gate_verdict 在当前 step 声明）
+    if (currentStep?.gate_verdict) {
+      if (!isReportPassing(this.specDir, currentStep.gate_verdict)) {
+        return { ok: false, error: `${currentStep.gate_verdict} does not contain PASS verdict. Fix before advancing.` };
       }
     }
 
-    // 特殊检查：synced 需要 verify-report PASS
-    if (current === 'verification' && next.id === 'synced') {
-      if (!isVerifyReportPassing(this.specDir)) {
-        return { ok: false, error: 'verify-report.md does not contain PASS verdict. Fix blockers before advancing.' };
-      }
-    }
-
-    // 检查下一阶段的前置条件
-    const preCheck = checkPreconditions(this.specDir, next.id);
+    // 检查下一阶段的前置条件（requires 在 next step 声明）
+    const preCheck = checkPreconditions(this.specDir, next.requires ?? []);
     if (!preCheck.ok) {
       return { ok: false, error: `Preconditions for "${next.id}" not met: ${preCheck.missing.join(', ')}` };
     }

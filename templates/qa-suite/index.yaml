@@ -1,0 +1,10 @@
+# .loom/qa-suite/index.yaml — QA 用例库索引
+# 由 loom-init-project 生成，手动维护功能模块登记
+# 用例详情在 features/<module>.yaml，不在此冗余存储
+
+version: 1
+features:
+  # - module: user-auth                    # 功能模块名（对应 features/user-auth.yaml）
+  #   file: features/user-auth.yaml
+  #   cases: 0                             # 用例总数（qa-designer 更新）
+  #   last_updated: 2026-06-04

@@ -7,6 +7,11 @@
 #   loom run --type bugfix
 #
 #   未指定 type 时，默认使用 feature 流水线。
+#
+# 字段说明：
+#   outputs:      离开本阶段前必须产出的文件列表（inline list）
+#   requires:     进入本阶段前必须存在的文件/目录（尾 / 表示目录）
+#   gate_verdict: 离开本阶段前须读取该文件且 verdict===PASS
 
 # ─────────────────────────────────────────
 # 全局配置
@@ -28,11 +33,14 @@ pipelines:
       - id: brainstorming
         skill: loom-brainstorming
         next: planning
+        outputs: [spec.md]
         description: "需求头脑风暴，探索 2-3 种实现方案，输出 spec.md"
 
       - id: planning
         skill: loom-writing-plans
         next: approved
+        requires: [spec.md]
+        outputs: [plan.md]
         description: "分层拆解实现计划，输出 plan.md"
 
       - id: approved
@@ -43,20 +51,30 @@ pipelines:
       - id: git-worktree
         skill: loom-using-git-worktrees
         next: executing
+        requires: [spec.md, plan.md]
+        outputs: []
         description: "创建隔离 feature 分支"
 
       - id: executing
         skill: loom-subagent-driven-development
         next: verification
+        requires: [spec.md, plan.md, tasks/]
+        outputs: [test-report.md]
+        gate_verdict: test-report.md
         description: "subagent 并行编码执行"
 
       - id: verification
         skill: loom-verification-before-completion
         next: synced
+        requires: [spec.md, test-report.md]
+        outputs: [verify-report.md]
+        gate_verdict: verify-report.md
         description: "完成前验证：spec 覆盖 / 类型一致性 / 编译测试"
 
       - id: synced
         skill: loom-index-update
+        requires: [verify-report.md]
+        outputs: []
         description: "工程索引同步，流水线结束"
 
   # Bug 修复 — 跳过头脑风暴和隔离分支
@@ -66,6 +84,7 @@ pipelines:
       - id: planning
         skill: loom-writing-plans
         next: approved
+        outputs: [plan.md]
         description: "拆解修复计划，明确根因和改动范围，输出 plan.md"
 
       - id: approved
@@ -76,15 +95,23 @@ pipelines:
       - id: executing
         skill: loom-subagent-driven-development
         next: verification
+        requires: [plan.md, tasks/]
+        outputs: [test-report.md]
+        gate_verdict: test-report.md
         description: "执行修复"
 
       - id: verification
         skill: loom-verification-before-completion
         next: synced
+        requires: [test-report.md]
+        outputs: [verify-report.md]
+        gate_verdict: verify-report.md
         description: "验证修复：回归测试 / 边界用例"
 
       - id: synced
         skill: loom-index-update
+        requires: [verify-report.md]
+        outputs: []
         description: "索引同步，流水线结束"
 
   # 紧急热修复 — 最小步骤，直接执行
@@ -99,12 +126,16 @@ pipelines:
       - id: executing
         skill: loom-subagent-driven-development
         next: verification
+        outputs: [test-report.md]
+        gate_verdict: test-report.md
         description: "执行热修复"
         config:
           max_retries: 1        # 热修复不允许无限重试，失败立即上报
 
       - id: verification
         skill: loom-verification-before-completion
+        requires: [test-report.md]
+        outputs: []
         description: "最小验证：编译通过 + 核心路径冒烟测试"
 
   # 重构 — 有 brainstorm，但跳过独立 worktree（在当前分支操作）
@@ -114,11 +145,14 @@ pipelines:
       - id: brainstorming
         skill: loom-brainstorming
         next: planning
+        outputs: [spec.md]
         description: "对比重构策略（如：逐步迁移 vs 整体替换）"
 
       - id: planning
         skill: loom-writing-plans
         next: approved
+        requires: [spec.md]
+        outputs: [plan.md]
         description: "拆解重构步骤，明确回滚边界"
 
       - id: approved
@@ -129,15 +163,23 @@ pipelines:
       - id: executing
         skill: loom-subagent-driven-development
         next: verification
+        requires: [plan.md, tasks/]
+        outputs: [test-report.md]
+        gate_verdict: test-report.md
         description: "执行重构"
 
       - id: verification
         skill: loom-verification-before-completion
         next: synced
+        requires: [test-report.md]
+        outputs: [verify-report.md]
+        gate_verdict: verify-report.md
         description: "验证：行为一致性 / 性能对比 / 类型检查"
 
       - id: synced
         skill: loom-index-update
+        requires: [verify-report.md]
+        outputs: []
         description: "更新工程索引（重构后模块结构可能变化）"
 
   # PM 需求到 HTML 原型 — 跳过所有工程步骤，直出可交互原型
@@ -147,6 +189,7 @@ pipelines:
       - id: brainstorming
         skill: loom-brainstorming
         next: spec-approved
+        outputs: [spec.md]
         description: "需求结构化：用户故事 / 功能边界 / 交互逻辑，输出 spec.md"
 
       - id: spec-approved
@@ -156,6 +199,8 @@ pipelines:
 
       - id: prototype
         skill: document-skills:web-artifacts-builder
+        requires: [spec.md]
+        outputs: []
         description: "基于 spec.md 生成可交互 HTML 原型（布局 + 交互状态 + 基础视觉）"
 
   # 小改动 — 无需审批，直接执行后验证
@@ -165,8 +210,53 @@ pipelines:
       - id: executing
         skill: loom-subagent-driven-development
         next: verification
+        outputs: [test-report.md]
+        gate_verdict: test-report.md
         description: "执行改动"
 
       - id: verification
         skill: loom-verification-before-completion
+        requires: [test-report.md]
+        outputs: []
         description: "基础验证：lint / 编译"
+
+  # QA 验收流水线 — 测试人员使用
+  qa:
+    description: "QA 验收流水线：新功能验证 + 回归 + 集成测试，测试人员使用"
+    steps:
+      - id: qa-analysis
+        skill: loom-qa
+        next: qa-design
+        outputs: [qa-plan.md]
+        description: "分析变更范围（git diff + spec），识别受影响功能模块，确定测试矩阵"
+
+      - id: qa-design
+        skill: loom-qa
+        next: qa-approved
+        requires: [qa-plan.md]
+        outputs: [qa-cases.md]
+        description: "生成/更新测试用例，旧用例转 deprecated，输出本次 qa-cases.md"
+
+      - id: qa-approved
+        gate: human-approval
+        description: "测试人员确认测试范围和用例后继续"
+        next: qa-execution
+
+      - id: qa-execution
+        skill: loom-qa
+        next: qa-signoff
+        requires: [qa-cases.md]
+        outputs: [qa-execution-report.md, manual-checklist.md]
+        gate_verdict: qa-execution-report.md
+        description: "执行自动化测试，回写 last_run，生成手动测试 checklist"
+
+      - id: qa-signoff
+        gate: human-approval
+        description: "测试人员执行手动用例、勾选 checklist 后 approve"
+        next: qa-report
+
+      - id: qa-report
+        skill: loom-qa
+        requires: [qa-execution-report.md, manual-checklist.md]
+        outputs: [qa-report.md]
+        description: "汇总自动+手动结果，输出 qa-report.md（verdict: PASS/PARTIAL/FAIL）"

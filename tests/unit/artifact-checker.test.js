@@ -58,17 +58,17 @@ describe('checkStageOutputs placeholders', () => {
   it('flags uppercase TODO/TBD and {{VAR}}', () => {
     const dir = tmp();
     write(dir, 'spec.md', '# Spec\nTODO finish this');
-    expect(checkStageOutputs(dir, 'brainstorming').withPlaceholders).toContain('spec.md');
+    expect(checkStageOutputs(dir, ['spec.md']).withPlaceholders).toContain('spec.md');
 
     const dir2 = tmp();
     write(dir2, 'spec.md', 'see {{FEATURE_NAME}}');
-    expect(checkStageOutputs(dir2, 'brainstorming').withPlaceholders).toContain('spec.md');
+    expect(checkStageOutputs(dir2, ['spec.md']).withPlaceholders).toContain('spec.md');
   });
 
   it('does NOT flag lowercase "todo" prose or time format HH:mm (regression)', () => {
     const dir = tmp();
     write(dir, 'spec.md', '# Spec\nUser sees a todo list at HH:mm format. Complete spec.');
-    const r = checkStageOutputs(dir, 'brainstorming');
+    const r = checkStageOutputs(dir, ['spec.md']);
     expect(r.withPlaceholders).toHaveLength(0);
     expect(r.ok).toBe(true);
   });

@@ -28,3 +28,6 @@ opencode.json
 
 outputs/
 .codegraph/
+
+# QA screenshots (evidence, not source)
+qa/*/screenshots/

@@ -16,11 +16,6 @@ import { randomBytes } from 'node:crypto';
 
 // ── 常量 ───────────────────────────────────────────────────────────────────
 
-export const PIPELINE_STAGES = [
-  'brainstorming', 'planning', 'approved',
-  'git-worktree', 'executing', 'verification', 'synced', 'failed'
-];
-
 export const TASK_STATUSES = ['pending', 'executing', 'reviewing', 'done', 'failed', 'blocked'];
 
 // ── 工具函数 ───────────────────────────────────────────────────────────────
@@ -86,13 +81,13 @@ export class PipelineStateStore {
   }
 
   /** 初始化（首次创建）*/
-  init(pipelineType = 'feature', loomVersion = '2.0.0') {
+  init(pipelineType = 'feature', loomVersion = '2.0.0', firstStage = 'brainstorming') {
     if (existsSync(this.statePath)) return this.read();
     mkdirSync(this.specDir, { recursive: true });
     const state = {
       spec_dir: this.specDir,
       pipeline_type: pipelineType,
-      current_stage: 'brainstorming',
+      current_stage: firstStage,
       loom_version: loomVersion,
       started_at: now(),
       updated_at: now(),

@@ -14,6 +14,9 @@
 import { resolve } from 'node:path';
 import { PipelineEngine } from '../core/pipeline-engine.js';
 import { SpecLock } from '../core/lock.js';
+import { isReportPassing, parseVerdict } from '../core/artifact-checker.js';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 export default async function run(options) {
   const cwd = options.cwd || process.cwd();
@@ -28,6 +31,24 @@ export default async function run(options) {
   const absSpecDir = resolve(cwd, specDir);
   const engine = new PipelineEngine(cwd, absSpecDir);
   const lock = new SpecLock(absSpecDir);
+
+  // ── --verdict: 读 qa-report.md → PASS/PARTIAL/FAIL + exit code ─────────
+  if (options.verdict) {
+    const reportFile = options.verdictFile || 'qa-report.md';
+    const reportPath = join(absSpecDir, reportFile);
+    if (!existsSync(reportPath)) {
+      console.error(`\n  ✗ ${reportFile} not found in ${absSpecDir}\n`);
+      process.exitCode = 1;
+      return;
+    }
+    const content = readFileSync(reportPath, 'utf-8');
+    const verdict = parseVerdict(content) || 'FAIL';
+    console.log(verdict);
+    if (verdict === 'PASS')    { process.exitCode = 0; }
+    else if (verdict === 'PARTIAL') { process.exitCode = 2; }
+    else                       { process.exitCode = 1; }
+    return;
+  }
 
   // ── --context: 只读，不需要锁 ────────────────────────────────────────────
   if (options.context) {

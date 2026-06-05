@@ -25,14 +25,17 @@ pipelines:
       - id: brainstorming
         skill: loom-brainstorming
         next: planning
+        outputs: [spec.md]
       - id: planning
         skill: loom-writing-plans
         next: approved
+        outputs: [plan.md]
       - id: approved
         gate: human-approval
         next: synced
       - id: synced
         skill: loom-index-update
+        outputs: []
 `;
 
 describe('loadWorkflow / parser', () => {
