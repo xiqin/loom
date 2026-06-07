@@ -40,7 +40,7 @@ loom install --tool claude-code
 
 | Flag              | 作用                                                            |
 | ----------------- | --------------------------------------------------------------- |
-| `--tool <target>` | 目标工具（必填，可重复）：claude-code, opencode, cursor, copilot, codex |
+| `--tool <targets>` | 目标工具（必填，逗号分隔或 "all"）：claude-code, opencode, cursor, copilot, codex |
 | `--dry-run`       | 预览安装文件，不实际写入                                        |
 | `--from-release`  | 从 GitHub release tag 下载（可重现安装）                        |
 | `--version <ver>` | 指定下载版本（配合 `--from-release` 使用）                      |
@@ -77,10 +77,10 @@ loom uninstall --tool claude-code
 
 ## 支持的 tools
 
-| Tool ID     | 工具名称       | skills | commands | plugin 注册 |
-| ----------- | -------------- | ------ | -------- | ----------- |
-| claude-code | Claude Code    | ✓      | ✓        | ✓           |
-| opencode    | OpenCode       | ✓      | ✓        | ✓           |
-| cursor      | Cursor         | ✓      | ✓        | ✗           |
-| copilot     | GitHub Copilot | ✓      | ✓        | ✗           |
-| codex       | Codex CLI      | ✓      | ✗        | ✗           |
+| Tool ID     | 工具名称       | skills | commands | plugin | hooks | MCP 配置 |
+| ----------- | -------------- | ------ | -------- | ------ | ----- | -------- |
+| claude-code | Claude Code    | ✓      | ✓        | ✓      | ✓     | ✓        |
+| opencode    | OpenCode       | ✓      | ✓        | ✓      | ✗     | ✓        |
+| cursor      | Cursor         | ✓      | ✓        | ✗      | ✗     | ✓        |
+| copilot     | GitHub Copilot | ✓      | ✓        | ✗      | ✗     | ✗        |
+| codex       | Codex CLI      | ✓      | ✗        | ✗      | ✗     | ✗        |

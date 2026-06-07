@@ -42,7 +42,7 @@ function makeError(id, code, message) {
   return { jsonrpc: '2.0', id, error: { code, message } };
 }
 
-function handleRequest(msg) {
+async function handleRequest(msg) {
   const { id, method, params } = msg;
 
   switch (method) {
@@ -58,11 +58,15 @@ function handleRequest(msg) {
     case 'notifications/initialized':
       return null; // 无需响应
 
-    case 'tools/list':
-      // 只回 MCP 规范字段；group 是 loom 内部分组元数据，剥掉避免严格客户端报错。
-      return makeResponse(id, {
-        tools: TOOL_DEFINITIONS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema }))
-      });
+    case 'tools/list': {
+      // LOOM_LAZY_TOOLS=1 时按 session loadedGroups 过滤；默认全量注册（向后兼容）
+      const tools = process.env.LOOM_LAZY_TOOLS === '1'
+        ? TOOL_DEFINITIONS
+            .filter(t => sessionStore.getLoadedGroups(sessionId).has(t.group))
+            .map(({ name, description, inputSchema }) => ({ name, description, inputSchema }))
+        : TOOL_DEFINITIONS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));
+      return makeResponse(id, { tools });
+    }
 
     case 'tools/call': {
       const toolName = params?.name;
@@ -74,7 +78,7 @@ function handleRequest(msg) {
       if (!tool) return makeError(id, -32602, `Unknown tool: ${toolName}`);
 
       try {
-        const result = executeToolCall(toolName, args, sessionStore, sessionId);
+        const result = await executeToolCall(toolName, args, sessionStore, sessionId);
         return makeResponse(id, {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
         });
@@ -103,13 +107,13 @@ export function startServer() {
 
   process.stdin.setEncoding('utf-8');
 
-  rl.on('line', (line) => {
+  rl.on('line', async (line) => {
     const trimmed = line.trim();
     if (!trimmed) return;
 
     try {
       const msg = JSON.parse(trimmed);
-      const response = handleRequest(msg);
+      const response = await handleRequest(msg);
       if (response) {
         const json = JSON.stringify(response);
         process.stdout.write(json + '\n');

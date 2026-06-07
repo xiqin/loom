@@ -13,8 +13,13 @@
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadContextIndex } from '../core/context-index.js';
+import { SkillLoader } from '../core/skill-loader.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const SKILLS_DIR = join(__dirname, '..', '..', 'skills');
 
 const PROJECT_MARKERS = [
   'package.json', 'go.mod', 'pyproject.toml', 'Cargo.toml',
@@ -119,10 +124,14 @@ export default async function start(options) {
   const constitutionFullFallback = !!constitutionIdx && constitutionOutline.length === 0;
 
   // ─── 输出 ────────────────────────────────────────────────────────────────
+  // Skill L0 摘要
+  const skillLoader = new SkillLoader(SKILLS_DIR);
+  const skillSummaries = skillLoader.listSummaries();
+
   if (format === 'full') {
-    printFull({ projectRoot, issues, activeSpecs, memorySummary, constitutionOutline, constitutionFullFallback, loomDir });
+    printFull({ projectRoot, issues, activeSpecs, memorySummary, constitutionOutline, constitutionFullFallback, loomDir, skillSummaries });
   } else {
-    printPaste({ projectRoot, issues, activeSpecs, memorySummary, constitutionOutline, constitutionFullFallback });
+    printPaste({ projectRoot, issues, activeSpecs, memorySummary, constitutionOutline, constitutionFullFallback, skillSummaries });
   }
 }
 
@@ -137,7 +146,7 @@ function extractMemorySummary(content) {
   return lines;
 }
 
-function printPaste({ projectRoot, issues, activeSpecs, memorySummary, constitutionOutline = [], constitutionFullFallback = false }) {
+function printPaste({ projectRoot, issues, activeSpecs, memorySummary, constitutionOutline = [], constitutionFullFallback = false, skillSummaries = [] }) {
   const lines = [];
   lines.push('');
   lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -183,6 +192,17 @@ function printPaste({ projectRoot, issues, activeSpecs, memorySummary, constitut
     for (const t of constitutionOutline) lines.push(`  · ${t}`);
   }
 
+  // Skill L0 摘要
+  if (skillSummaries.length > 0) {
+    lines.push('');
+    lines.push('🔧 可用 Skills（摘要，勿全量加载）:');
+    for (const s of skillSummaries) {
+      const label = s.description || s.name;
+      lines.push(`  · ${s.name} — ${label}`);
+    }
+    lines.push('  获取完整内容: loom_get_skill_context(skill="技能名")');
+  }
+
   lines.push('');
   lines.push('渐进式披露：用 MCP 工具 loom_get_context 按节取上下文，');
   lines.push('  · loom_get_context(doc) → 看目录   · loom_get_context(doc, section) → 取该节');
@@ -193,8 +213,8 @@ function printPaste({ projectRoot, issues, activeSpecs, memorySummary, constitut
   console.log(lines.join('\n'));
 }
 
-function printFull({ projectRoot, issues, activeSpecs, memorySummary, constitutionOutline, loomDir }) {
-  printPaste({ projectRoot, issues, activeSpecs, memorySummary, constitutionOutline });
+function printFull({ projectRoot, issues, activeSpecs, memorySummary, constitutionOutline, loomDir, skillSummaries }) {
+  printPaste({ projectRoot, issues, activeSpecs, memorySummary, constitutionOutline, skillSummaries });
   console.log('─── 详细路径 ───────────────────────────────────');
   console.log(`  .loom 目录:     ${loomDir}`);
   console.log(`  constitution:   ${join(loomDir, 'rules', 'constitution.md')}`);

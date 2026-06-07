@@ -17,6 +17,7 @@
 | ---------------------------------- | --------- | -------------------------------- |
 | `~/.config/opencode/commands/`     | directory | command 定义文件                 |
 | `~/.config/opencode/opencode.json` | 追加配置  | plugin 列表添加 loom-engineering |
+| `~/.config/opencode/opencode.json` | 追加配置  | `mcp.loom` MCP server 注册       |
 
 ### Cursor
 

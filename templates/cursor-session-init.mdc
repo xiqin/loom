@@ -9,11 +9,11 @@ alwaysApply: true
 
 1. 检查 `.loom/` 目录是否存在。若不存在，提示用户运行 `/loom-init-project`，然后停止。
 2. 读取 `.loom/workflow.yaml` 了解当前项目的流水线配置。
-3. 读取 `.loom/memory/MEMORY.md`（若存在），加载项目记忆：踩坑记录、用户偏好、架构决策。
-4. 读取 `.loom/rules/constitution.md`（若存在），加载编码约束和技术栈信息（dev 角色）。
-5. 读取 `.loom/rules/product.md`（若存在），加载产品定位与原型约束（pm 角色）。
-6. 检查 `specs/` 目录下是否有进行中的开发任务（有 spec.md 但无 verify-report.md 的目录），若有，列出当前阶段。
+3. **渐进式加载上下文文件**（避免整文件读取挤爆上下文）：
+   - `.loom/rules/constitution.md`：先用 `loom_get_context(doc="constitution")` 取目录，按需取节。
+   - `.loom/memory/MEMORY.md`：先用 `loom_get_context(doc="memory")` 取目录。
+   - `.loom/rules/product.md`：若存在，仅读取关键章节。
+4. **渐进式加载技能文件**：用 `loom_get_skill_context()` 获取所有技能的 L0 摘要（~1.2K token），仅当需要执行某技能时用 `loom_get_skill_context(skill="技能名")` 获取完整内容。**禁止一次加载所有 SKILL.md 全文**。
+5. 检查 `specs/` 目录下是否有进行中的开发任务（有 spec.md 但无 verify-report.md 的目录），若有，列出当前阶段。
 
 完成以上检查后，简要输出状态，然后响应用户请求。
-
-> 此规则由 `loom install --tool cursor` 自动生成。

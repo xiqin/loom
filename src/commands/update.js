@@ -7,15 +7,21 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..', '..');
 const pkg = JSON.parse(readFileSync(join(PROJECT_ROOT, 'package.json'), 'utf-8'));
 
+function parseTools(raw) {
+  const input = Array.isArray(raw) ? raw.join(',') : String(raw || '');
+  if (!input || input.trim() === 'all') return [...USER_TOOL_IDS];
+  return input.split(/[,\s]+/).map(t => t.trim()).filter(Boolean);
+}
+
 export default async function update(options) {
   const version = options.version || pkg.version;
-  const tools = options.tool ? [options.tool] : USER_TOOL_IDS;
+  const tools = parseTools(options.tool);
 
   console.log(`\n  loom update v${version}\n`);
 
   for (const tool of tools) {
     if (!USER_TOOL_IDS.includes(tool)) {
-      console.log(`  Unknown tool: "${tool}". Supported: ${USER_TOOL_IDS.join(', ')}`);
+      console.log(`  ✗ ${tool}: unknown. Supported: ${USER_TOOL_IDS.join(', ')}`);
       continue;
     }
 
@@ -27,11 +33,13 @@ export default async function update(options) {
       console.log(`    user dir:  ${adapter.getUserDir()}`);
       const cmdDir = adapter.getCommandsDir();
       if (cmdDir) console.log(`    commands:  ${cmdDir}`);
+      console.log('');
       continue;
     }
 
     const log = adapter.install(PROJECT_ROOT, version);
     console.log(log.join('\n'));
+    console.log('');
   }
 
   console.log('');

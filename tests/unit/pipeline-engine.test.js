@@ -50,7 +50,30 @@ describe('loadWorkflow / parser', () => {
 
   it('throws (loud) when no pipelines parse', () => {
     const root = setupProject('garbage: true\nnothing here\n');
+    expect(() => loadWorkflow(root)).toThrow();
+  });
+
+  it('throws when YAML is valid but has no pipelines', () => {
+    const root = setupProject('defaults:\n  pipeline_type: feature\n');
     expect(() => loadWorkflow(root)).toThrow(/Failed to parse any pipelines/);
+  });
+
+  it('throws YAML syntax error with line number for malformed YAML', () => {
+    const root = setupProject('defaults:\n  pipeline_type: feature\npipelines:\n  feature:\n    steps:\n      - id: test\n        skill: test\n        outputs: [unbalanced bracket\n');
+    expect(() => loadWorkflow(root)).toThrow(/YAML syntax error.*line/);
+  });
+
+  it('throws when a step is missing id', () => {
+    const root = setupProject(`
+defaults:
+  pipeline_type: feature
+pipelines:
+  feature:
+    steps:
+      - skill: test
+        next: done
+`);
+    expect(() => loadWorkflow(root)).toThrow(/missing "id"/);
   });
 });
 
@@ -68,6 +91,8 @@ describe('PipelineEngine flow', () => {
     const r = engine.advance();
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/outputs incomplete/);
+    expect(r.hint).toBeDefined();
+    expect(r.hint).toMatch(/TBD|TODO|FIXME|XXX|占位符|placeholder/);
   });
 
   it('advances once stage output present', () => {
@@ -86,6 +111,7 @@ describe('PipelineEngine flow', () => {
     const r = engine.advance();
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/human-approval gate/);
+    expect(r.hint).toBeDefined();
   });
 
   it('approve() passes the gate', () => {

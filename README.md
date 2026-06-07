@@ -13,13 +13,13 @@ AI 工程化框架。把需求、规范、上下文、执行过程"织"成一套
 
 ## 支持工具矩阵
 
-| 工具           | 支持等级 | 入口文件                          | Skills | Hooks | Plugin 注册 |
-| -------------- | -------- | --------------------------------- | ------ | ----- | ----------- |
-| Claude Code    | full     | `CLAUDE.md`                       | ✅     | ✅    | ✅          |
-| Codex          | full     | `AGENTS.md`                       | ✅     | ✗     | ✗           |
-| Cursor         | full     | `.cursor/rules/*.mdc`             | ✅     | ✗     | ✗           |
-| GitHub Copilot | full     | `.github/copilot-instructions.md` | ✅     | ✗     | ✗           |
-| OpenCode       | full     | `AGENTS.md`                       | ✅     | ✅    | ✅          |
+| 工具           | 支持等级 | 入口文件                          | Skills | Hooks | Plugin | MCP 配置 |
+| -------------- | -------- | --------------------------------- | ------ | ----- | ------ | -------- |
+| Claude Code    | full     | `CLAUDE.md`                       | ✅     | ✅    | ✅     | ✅       |
+| Codex          | full     | `AGENTS.md`                       | ✅     | ✗     | ✗      | ✗        |
+| Cursor         | full     | `.cursor/rules/*.mdc`             | ✅     | ✗     | ✗      | ✅       |
+| GitHub Copilot | full     | `.github/copilot-instructions.md` | ✅     | ✗     | ✗      | ✗        |
+| OpenCode       | full     | `AGENTS.md`                       | ✅     | ✅    | ✅     | ✅       |
 
 - **full**：完整支持，适配器已实现
 - **planned**：计划中，适配器待实现
@@ -61,7 +61,7 @@ loom install --tool claude-code
 
 | Flag              | 作用                                     |
 | ----------------- | ---------------------------------------- |
-| `--tool <target>` | 目标工具（必填，可重复）                 |
+| `--tool <targets>` | 目标工具（必填，逗号分隔或 "all"）     |
 | `--dry-run`       | 预览，不实际写入                         |
 | `--from-release`  | 从 GitHub release tag 下载（可重现安装） |
 | `--version <ver>` | 指定下载版本（配合 `--from-release`）    |

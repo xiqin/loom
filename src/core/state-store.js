@@ -7,10 +7,7 @@
  *   - progress.md          → 由 state-store 汇总生成，不由 AI 直接写
  */
 
-import {
-  existsSync, readFileSync, writeFileSync,
-  mkdirSync, readdirSync, renameSync, rmSync
-} from 'node:fs';
+import { NodeFileSystem } from './fs-interface.js';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 
@@ -25,10 +22,10 @@ export const TASK_STATUSES = ['pending', 'executing', 'reviewing', 'done', 'fail
  * - 文件不存在 → 返回 fallback（正常的"未初始化"）
  * - 文件存在但解析失败 → 抛错（损坏状态绝不能被静默当成不存在，否则会被覆盖丢失）
  */
-function readJSON(path, fallback = null) {
-  if (!existsSync(path)) return fallback;
+function readJSON(path, fallback = null, fs) {
+  if (!fs.existsSync(path)) return fallback;
   let raw;
-  try { raw = readFileSync(path, 'utf-8'); }
+  try { raw = fs.readFileSync(path, 'utf-8'); }
   catch { return fallback; }
   try { return JSON.parse(raw); }
   catch (err) {
@@ -37,8 +34,8 @@ function readJSON(path, fallback = null) {
 }
 
 /** 读 JSON，损坏时跳过并告警（用于批量读取 task 列表，单个坏文件不应中断全部）*/
-function readJSONLenient(path) {
-  try { return JSON.parse(readFileSync(path, 'utf-8')); }
+function readJSONLenient(path, fs) {
+  try { return JSON.parse(fs.readFileSync(path, 'utf-8')); }
   catch (err) {
     process.stderr.write(`[loom] skipping unreadable state file ${path}: ${err.message}\n`);
     return null;
@@ -46,14 +43,14 @@ function readJSONLenient(path) {
 }
 
 /** 原子写：写临时文件后 rename，避免进程中途崩导致半写 JSON */
-function writeJSON(path, data) {
+function writeJSON(path, data, fs) {
   const tmp = `${path}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   const payload = JSON.stringify(data, null, 2) + '\n';
   try {
-    writeFileSync(tmp, payload, 'utf-8');
-    renameSync(tmp, path); // rename 在同一文件系统上是原子的
+    fs.writeFileSync(tmp, payload, 'utf-8');
+    fs.renameSync(tmp, path); // rename 在同一文件系统上是原子的
   } catch (err) {
-    try { rmSync(tmp, { force: true }); } catch {}
+    try { fs.rmSync(tmp, { force: true }); } catch {}
     throw err;
   }
 }
@@ -66,24 +63,25 @@ export class PipelineStateStore {
   /**
    * @param {string} specDir  绝对或相对路径，e.g. "specs/2026-05-27+user-auth"
    */
-  constructor(specDir) {
+  constructor(specDir, { fs } = {}) {
     this.specDir = specDir;
     this.statePath = join(specDir, 'pipeline.state.json');
     this.taskStatesDir = join(specDir, 'task-states');
     this.handoffsDir = join(specDir, 'handoffs');
+    this.fs = fs || new NodeFileSystem();
   }
 
   // ── 流水线状态 ────────────────────────────────────────────────────────────
 
   /** 读取流水线状态，不存在返回 null */
   read() {
-    return readJSON(this.statePath);
+    return readJSON(this.statePath, null, this.fs);
   }
 
   /** 初始化（首次创建）*/
   init(pipelineType = 'feature', loomVersion = '2.0.0', firstStage = 'brainstorming') {
-    if (existsSync(this.statePath)) return this.read();
-    mkdirSync(this.specDir, { recursive: true });
+    if (this.fs.existsSync(this.statePath)) return this.read();
+    this.fs.mkdirSync(this.specDir, { recursive: true });
     const state = {
       spec_dir: this.specDir,
       pipeline_type: pipelineType,
@@ -94,7 +92,7 @@ export class PipelineStateStore {
       stage_history: [],
       metadata: {}
     };
-    writeJSON(this.statePath, state);
+    writeJSON(this.statePath, state, this.fs);
     return state;
   }
 
@@ -117,7 +115,7 @@ export class PipelineStateStore {
     state.updated_at = now();
     if (meta.data) Object.assign(state.metadata, meta.data);
 
-    writeJSON(this.statePath, state);
+    writeJSON(this.statePath, state, this.fs);
     this._rebuildProgress();
     return state;
   }
@@ -139,7 +137,7 @@ export class PipelineStateStore {
     state.updated_at = now();
     state.failure_reason = reason;
 
-    writeJSON(this.statePath, state);
+    writeJSON(this.statePath, state, this.fs);
     this._rebuildProgress();
   }
 
@@ -147,9 +145,9 @@ export class PipelineStateStore {
 
   /** 初始化单个 task 状态 */
   initTask(taskId, agentSessionId = null) {
-    mkdirSync(this.taskStatesDir, { recursive: true });
+    this.fs.mkdirSync(this.taskStatesDir, { recursive: true });
     const path = join(this.taskStatesDir, `${taskId}.state.json`);
-    if (existsSync(path)) return readJSON(path);
+    if (this.fs.existsSync(path)) return readJSON(path, null, this.fs);
 
     const state = {
       task_id: taskId,
@@ -162,27 +160,27 @@ export class PipelineStateStore {
       last_reviewer_result: null,
       blocker: null
     };
-    writeJSON(path, state);
+    writeJSON(path, state, this.fs);
     return state;
   }
 
   /** 更新 task 状态（只有该 task 的负责方调用）*/
   updateTask(taskId, patch) {
-    mkdirSync(this.taskStatesDir, { recursive: true });
+    this.fs.mkdirSync(this.taskStatesDir, { recursive: true });
     const path = join(this.taskStatesDir, `${taskId}.state.json`);
-    const state = readJSON(path) || this.initTask(taskId);
+    const state = readJSON(path, null, this.fs) || this.initTask(taskId);
     Object.assign(state, patch, { updated_at: now() });
-    writeJSON(path, state);
+    writeJSON(path, state, this.fs);
     this._rebuildProgress();
     return state;
   }
 
   /** 读取所有 task 状态 */
   readAllTasks() {
-    if (!existsSync(this.taskStatesDir)) return [];
-    return readdirSync(this.taskStatesDir)
+    if (!this.fs.existsSync(this.taskStatesDir)) return [];
+    return this.fs.readdirSync(this.taskStatesDir)
       .filter(f => f.endsWith('.state.json'))
-      .map(f => readJSONLenient(join(this.taskStatesDir, f)))
+      .map(f => readJSONLenient(join(this.taskStatesDir, f), this.fs))
       .filter(Boolean)
       .sort((a, b) => {
         const na = parseInt(a.task_id?.replace(/\D/g, '') || '0');
@@ -194,39 +192,149 @@ export class PipelineStateStore {
   /** 读取单个 task 状态 */
   readTask(taskId) {
     const path = join(this.taskStatesDir, `${taskId}.state.json`);
-    return readJSON(path);
+    return readJSON(path, null, this.fs);
   }
 
   // ── Handoff ────────────────────────────────────────────────────────────────
 
   writeHandoff(taskId, handoff) {
-    mkdirSync(this.handoffsDir, { recursive: true });
+    this.fs.mkdirSync(this.handoffsDir, { recursive: true });
     writeJSON(join(this.handoffsDir, `${taskId}.json`), {
       ...handoff,
       task_id: taskId,
       written_at: now()
-    });
+    }, this.fs);
   }
 
   readHandoff(taskId) {
-    return readJSON(join(this.handoffsDir, `${taskId}.json`));
+    return readJSON(join(this.handoffsDir, `${taskId}.json`), null, this.fs);
   }
 
   readAllHandoffs() {
-    if (!existsSync(this.handoffsDir)) return [];
-    return readdirSync(this.handoffsDir)
+    if (!this.fs.existsSync(this.handoffsDir)) return [];
+    return this.fs.readdirSync(this.handoffsDir)
       .filter(f => f.endsWith('.json'))
-      .map(f => readJSONLenient(join(this.handoffsDir, f)))
+      .map(f => readJSONLenient(join(this.handoffsDir, f), this.fs))
       .filter(Boolean);
   }
 
-  // ── Progress.md 汇总生成 ───────────────────────────────────────────────────
+  // ── Progress.md 增量更新 ───────────────────────────────────────────────────
 
   _rebuildProgress() {
     const pipeline = this.read();
     const tasks = this.readAllTasks();
-    const lines = [];
+    const progressPath = join(this.specDir, 'progress.md');
 
+    // 尝试增量追加：如果已有 progress.md 且 pipeline 阶段未变，只更新变动部分
+    if (this.fs.existsSync(progressPath)) {
+      const existing = this.fs.readFileSync(progressPath, 'utf-8');
+      const incremental = this._tryIncrementalUpdate(existing, pipeline, tasks);
+      if (incremental) {
+        this.fs.writeFileSync(progressPath, incremental, 'utf-8');
+        return;
+      }
+    }
+
+    // 首次生成或结构变化时全量重建
+    this.fs.writeFileSync(progressPath, this._buildFullProgress(pipeline, tasks), 'utf-8');
+  }
+
+  /**
+   * 增量更新策略：
+   * - Pipeline 阶段变化 → 追加一行变更日志，保留历史记录
+   * - Task 状态变化 → 只更新 Tasks 表格区域
+   * - 结构无法识别 → 返回 null，走全量重建
+   */
+  _tryIncrementalUpdate(existing, pipeline, tasks) {
+    // 检查现有 progress.md 是否是 loom 生成的
+    if (!existing.includes('Auto-generated by loom')) return null;
+
+    // 更新 timestamp
+    let updated = existing.replace(
+      /> Last updated:.*$/m,
+      `> Last updated: ${now()}`
+    );
+
+    // 如果 pipeline 阶段变化，追加变更日志
+    const currentStageMatch = updated.match(/\| Stage \| `([^`]+)` \|/);
+    const prevStage = currentStageMatch ? currentStageMatch[1] : null;
+
+    if (pipeline && prevStage !== pipeline.current_stage) {
+      // 更新 Pipeline 表格中的 Stage 行
+      updated = updated.replace(
+        /\| Stage \| `[^`]+` \|/,
+        `| Stage | \`${pipeline.current_stage}\` |`
+      );
+      updated = updated.replace(
+        /\| Updated \| [^|]+ \|/,
+        `| Updated | ${pipeline.updated_at?.slice(0, 16).replace('T', ' ')} |`
+      );
+
+      // 处理失败状态
+      if (pipeline.failure_reason) {
+        if (!updated.includes('| Failure |')) {
+          updated = updated.replace(
+            /\| Updated \| [^|]+ \|/,
+            `| Updated | ${pipeline.updated_at?.slice(0, 16).replace('T', ' ')} |\n| Failure | ${pipeline.failure_reason} |`
+          );
+        }
+      }
+    }
+
+    // 重建 Tasks 表格（task 状态变化频繁，整块替换）
+    const taskSectionStart = updated.indexOf('## Tasks');
+    if (taskSectionStart >= 0 && tasks.length > 0) {
+      const taskBlock = this._buildTaskBlock(tasks);
+      // 找到 Tasks section 结束位置（下一个 ## 或文件结尾）
+      const afterTasks = updated.indexOf('\n## ', taskSectionStart + 1);
+      if (afterTasks > taskSectionStart) {
+        updated = updated.slice(0, taskSectionStart) + taskBlock + updated.slice(afterTasks);
+      } else {
+        updated = updated.slice(0, taskSectionStart) + taskBlock;
+      }
+    } else if (tasks.length > 0) {
+      // 没有 Tasks section，追加
+      updated += '\n' + this._buildTaskBlock(tasks);
+    }
+
+    return updated;
+  }
+
+  _buildTaskBlock(tasks) {
+    const lines = [];
+    lines.push('## Tasks');
+    lines.push('');
+    lines.push('| Task | Status | Retries | Updated |');
+    lines.push('|------|--------|---------|---------|');
+
+    const statusIcon = {
+      pending: '⏳', executing: '▶', reviewing: '🔍',
+      done: '✅', failed: '❌', blocked: '🚫'
+    };
+
+    for (const t of tasks) {
+      const icon = statusIcon[t.status] || '?';
+      const retries = t.retry_count ?? 0;
+      const updated = t.updated_at?.slice(0, 16).replace('T', ' ') || '-';
+      lines.push(`| \`${t.task_id}\` | ${icon} ${t.status} | ${retries} | ${updated} |`);
+    }
+    lines.push('');
+
+    const blocked = tasks.filter(t => t.blocker);
+    if (blocked.length > 0) {
+      lines.push('### Blockers');
+      lines.push('');
+      for (const t of blocked) {
+        lines.push(`- **${t.task_id}**: ${t.blocker}`);
+      }
+      lines.push('');
+    }
+
+    return lines.join('\n');
+  }
+
+  _buildFullProgress(pipeline, tasks) {
+    const lines = [];
     lines.push('# Progress');
     lines.push('');
     lines.push(`> Auto-generated by loom. Do not edit manually.`);
@@ -261,36 +369,10 @@ export class PipelineStateStore {
     }
 
     if (tasks.length > 0) {
-      lines.push('## Tasks');
-      lines.push('');
-      lines.push('| Task | Status | Retries | Updated |');
-      lines.push('|------|--------|---------|---------|');
-
-      const statusIcon = {
-        pending: '⏳', executing: '▶', reviewing: '🔍',
-        done: '✅', failed: '❌', blocked: '🚫'
-      };
-
-      for (const t of tasks) {
-        const icon = statusIcon[t.status] || '?';
-        const retries = t.retry_count ?? 0;
-        const updated = t.updated_at?.slice(0, 16).replace('T', ' ') || '-';
-        lines.push(`| \`${t.task_id}\` | ${icon} ${t.status} | ${retries} | ${updated} |`);
-      }
-      lines.push('');
-
-      const blocked = tasks.filter(t => t.blocker);
-      if (blocked.length > 0) {
-        lines.push('### Blockers');
-        lines.push('');
-        for (const t of blocked) {
-          lines.push(`- **${t.task_id}**: ${t.blocker}`);
-        }
-        lines.push('');
-      }
+      lines.push(this._buildTaskBlock(tasks));
     }
 
-    writeFileSync(join(this.specDir, 'progress.md'), lines.join('\n'), 'utf-8');
+    return lines.join('\n');
   }
 
   // ── 汇总快照（用于 loom status）──────────────────────────────────────────
@@ -307,14 +389,14 @@ export class PipelineStateStore {
 
 // ── 全局扫描（用于 loom status --all）────────────────────────────────────
 
-export function scanAllSpecs(projectRoot) {
+export function scanAllSpecs(projectRoot, { fs = new NodeFileSystem() } = {}) {
   const specsDir = join(projectRoot, 'specs');
-  if (!existsSync(specsDir)) return [];
-  return readdirSync(specsDir, { withFileTypes: true })
+  if (!fs.existsSync(specsDir)) return [];
+  return fs.readdirSync(specsDir, { withFileTypes: true })
     .filter(e => e.isDirectory())
     .map(e => {
       const specDir = join(specsDir, e.name);
-      const store = new PipelineStateStore(specDir);
+      const store = new PipelineStateStore(specDir, { fs });
       try { return store.snapshot(); }
       catch (err) {
         // 单个 spec 损坏不应中断全局扫描

@@ -11,22 +11,19 @@
  *   .loom/memory/sessions/       — 会话归档目录
  */
 
-import {
-  existsSync, readFileSync, writeFileSync,
-  mkdirSync, readdirSync, renameSync, rmSync
-} from 'node:fs';
+import { NodeFileSystem } from './fs-interface.js';
 import { join } from 'node:path';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { execSync } from 'node:child_process';
 
 /** 原子写：temp + rename，避免半写损坏 store.json */
-function writeFileAtomic(path, content) {
+function writeFileAtomic(path, content, fs) {
   const tmp = `${path}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    writeFileSync(tmp, content, 'utf-8');
-    renameSync(tmp, path);
+    fs.writeFileSync(tmp, content, 'utf-8');
+    fs.renameSync(tmp, path);
   } catch (err) {
-    try { rmSync(tmp, { force: true }); } catch {}
+    try { fs.rmSync(tmp, { force: true }); } catch {}
     throw err;
   }
 }
@@ -35,25 +32,26 @@ function now() { return new Date().toISOString(); }
 function today() { return now().slice(0, 10); }
 
 export class MemoryStore {
-  constructor(loomDir) {
+  constructor(loomDir, { fs } = {}) {
     this.loomDir = loomDir;
     this.memDir = join(loomDir, 'memory');
     this.storePath = join(this.memDir, 'store.json');
     this.mdPath = join(this.memDir, 'MEMORY.md');
     this.sessionsDir = join(this.memDir, 'sessions');
+    this.fs = fs || new NodeFileSystem();
   }
 
   // ── 读写底层 ──────────────────────────────────────────────────────────────
 
   _load() {
-    if (!existsSync(this.storePath)) return { entries: [], sessions: [] };
-    try { return JSON.parse(readFileSync(this.storePath, 'utf-8')); }
+    if (!this.fs.existsSync(this.storePath)) return { entries: [], sessions: [] };
+    try { return JSON.parse(this.fs.readFileSync(this.storePath, 'utf-8')); }
     catch { return { entries: [], sessions: [] }; }
   }
 
   _save(data) {
-    mkdirSync(this.memDir, { recursive: true });
-    writeFileAtomic(this.storePath, JSON.stringify(data, null, 2) + '\n');
+    this.fs.mkdirSync(this.memDir, { recursive: true });
+    writeFileAtomic(this.storePath, JSON.stringify(data, null, 2) + '\n', this.fs);
   }
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
@@ -120,10 +118,10 @@ export class MemoryStore {
    */
   archiveSession(featureSlug, content) {
     const data = this._load();
-    mkdirSync(this.sessionsDir, { recursive: true });
+    this.fs.mkdirSync(this.sessionsDir, { recursive: true });
     const filename = `${today()}-${featureSlug}.md`;
     const path = join(this.sessionsDir, filename);
-    writeFileSync(path, content, 'utf-8');
+    this.fs.writeFileSync(path, content, 'utf-8');
 
     data.sessions.unshift({
       file: `sessions/${filename}`,
@@ -215,8 +213,8 @@ export class MemoryStore {
     }
 
     const md = lines.join('\n');
-    mkdirSync(this.memDir, { recursive: true });
-    writeFileSync(this.mdPath, md, 'utf-8');
+    this.fs.mkdirSync(this.memDir, { recursive: true });
+    this.fs.writeFileSync(this.mdPath, md, 'utf-8');
     return md;
   }
 
@@ -228,7 +226,7 @@ export class MemoryStore {
   merge(otherStorePath) {
     const myData = this._load();
     let other;
-    try { other = JSON.parse(readFileSync(otherStorePath, 'utf-8')); }
+    try { other = JSON.parse(this.fs.readFileSync(otherStorePath, 'utf-8')); }
     catch { return { merged: 0, error: 'Cannot read other store' }; }
 
     const existingIds = new Set(myData.entries.map(e => e.id));

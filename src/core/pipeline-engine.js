@@ -11,8 +11,9 @@
  *   4. 提供给 MCP Server 调用的 API
  */
 
-import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import yaml from 'js-yaml';
+import { NodeFileSystem } from './fs-interface.js';
 import { PipelineStateStore } from './state-store.js';
 import { SpecLock } from './lock.js';
 import {
@@ -24,126 +25,61 @@ import {
 // ── Workflow 解析 ──────────────────────────────────────────────────────────
 
 /**
- * 简易 YAML 解析：逐行缩进解析，覆盖 loom workflow.yaml 的完整结构。
- * 只处理 loom 约定的固定两级结构（defaults + pipelines.*.steps[]），
- * 不引入第三方依赖。
+ * 解析 workflow.yaml：使用 js-yaml（YAML 1.2 标准）解析，
+ * 规范化 pipelines 结构使每个 pipeline 为步骤数组。
  */
-/** 去行内注释，但不剥离引号内的 #（避免破坏 "url#anchor" 这类值）*/
-function stripComment(line) {
-  let inSingle = false, inDouble = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (c === "'" && !inDouble) inSingle = !inSingle;
-    else if (c === '"' && !inSingle) inDouble = !inDouble;
-    else if (c === '#' && !inSingle && !inDouble) return line.slice(0, i);
+function normalizePipelines(parsed) {
+  if (!parsed.pipelines || typeof parsed.pipelines !== 'object') return;
+  for (const [name, value] of Object.entries(parsed.pipelines)) {
+    if (Array.isArray(value)) continue; // 已是步骤数组
+    if (value && typeof value === 'object' && Array.isArray(value.steps)) {
+      parsed.pipelines[name] = value.steps;
+    } else {
+      parsed.pipelines[name] = [];
+    }
   }
-  return line;
 }
 
-function parseWorkflowYaml(content) {
-  const result = { defaults: {}, pipelines: {} };
-  const lines = content.split('\n');
-
-  // Pass 1: 提取 defaults 块的 key: value
-  let inDefaults = false;
-  for (const line of lines) {
-    const stripped = stripComment(line);  // 去注释
-    if (/^defaults:\s*$/.test(stripped)) { inDefaults = true; continue; }
-    if (inDefaults) {
-      if (/^\S/.test(stripped) && stripped.trim()) { inDefaults = false; continue; }
-      const m = stripped.match(/^\s+([\w_]+):\s*(.+)/);
-      if (m) {
-        const val = m[2].trim();
-        result.defaults[m[1]] = /^\d+$/.test(val) ? parseInt(val) : val;
-      }
-    }
-  }
-
-  // Pass 2: 提取 pipeline 块
-  let currentPipeline = null;
-  let inSteps = false;
-  let currentStep = null;
-
-  for (const raw of lines) {
-    const line = stripComment(raw); // 去注释
-    if (!line.trim()) continue;
-
-    // 检测 pipeline 名称（2 空格缩进直接在 pipelines 下）
-    const plMatch = line.match(/^  (\w[\w-]*):\s*$/);
-    if (plMatch) {
-      const name = plMatch[1];
-      if (name !== 'description' && name !== 'steps') {
-        // 新 pipeline 开始 → 关闭上一个的 steps 状态
-        currentPipeline = name;
-        result.pipelines[currentPipeline] = result.pipelines[currentPipeline] || [];
-        inSteps = false;
-        currentStep = null;
-        continue;
-      }
-    }
-
-    // 检测 steps: 开始
-    if (/^\s+steps:\s*$/.test(line) && currentPipeline) {
-      inSteps = true;
-      currentStep = null;
-      continue;
-    }
-
-    // 在 steps 块内
-    if (inSteps && currentPipeline) {
-      // 新 step 开始：- id: xxx
-      const idMatch = line.match(/^\s+- id:\s*(\S+)/);
-      if (idMatch) {
-        currentStep = { id: idMatch[1], skill: null, gate: null, next: null, description: '' };
-        result.pipelines[currentPipeline].push(currentStep);
-        continue;
-      }
-
-      // step 属性
-      if (currentStep) {
-        // list 属性：requires / outputs，格式 [a, b/]
-        const listMatch = line.match(/^\s+(requires|outputs):\s*\[([^\]]*)\]\s*$/);
-        if (listMatch) {
-          const items = listMatch[2].split(',').map(s => s.trim()).filter(Boolean);
-          currentStep[listMatch[1]] = items;
-          continue;
-        }
-        // 标量属性：包含 gate_verdict
-        const attrMatch = line.match(/^\s+(skill|gate|next|description|gate_verdict):\s*"?([^"]*)"?\s*$/);
-        if (attrMatch) {
-          currentStep[attrMatch[1]] = attrMatch[2].trim() || null;
-          continue;
-        }
-        // config 子块中的属性（如 max_retries）
-        const cfgMatch = line.match(/^\s+(max_retries|timeout_minutes):\s*(\d+)/);
-        if (cfgMatch) {
-          currentStep.config = currentStep.config || {};
-          currentStep.config[cfgMatch[1]] = parseInt(cfgMatch[2]);
-        }
-      }
-
-      // 非 step 行但缩进回退到 pipeline 级别 → steps 块结束
-      if (/^  \S/.test(line)) {
-        inSteps = false;
-        currentStep = null;
-      }
-    }
-  }
-
-  return result;
-}
-
-export function loadWorkflow(projectRoot) {
+export function loadWorkflow(projectRoot, fs = new NodeFileSystem()) {
   const wfPath = join(projectRoot, '.loom', 'workflow.yaml');
-  if (!existsSync(wfPath)) return null;
-  const parsed = parseWorkflowYaml(readFileSync(wfPath, 'utf-8'));
-  // 解析出 0 条 pipeline 几乎一定是格式/缩进问题 → 大声报错，不要静默返回空导致全盘失效
+  if (!fs.existsSync(wfPath)) return null;
+
+  let parsed;
+  try {
+    parsed = yaml.load(fs.readFileSync(wfPath, 'utf-8'), { schema: yaml.DEFAULT_SAFE_SCHEMA });
+  } catch (err) {
+    const detail = err.mark ? ` (line ${err.mark.line + 1})` : '';
+    throw new Error(`YAML syntax error in ${wfPath}${detail}: ${err.reason || err.message}`);
+  }
+
+  if (!parsed || typeof parsed !== 'object' || !parsed.pipelines) {
+    throw new Error(
+      `Failed to parse any pipelines from ${wfPath}. ` +
+      `Check indentation (2-space) and structure (pipelines: <name>: steps: - id: ...).`
+    );
+  }
+
+  normalizePipelines(parsed);
+
   if (Object.keys(parsed.pipelines).length === 0) {
     throw new Error(
       `Failed to parse any pipelines from ${wfPath}. ` +
       `Check indentation (2-space) and structure (pipelines: <name>: steps: - id: ...).`
     );
   }
+
+  // 结构校验：每个 pipeline 是数组，每个 step 有 id
+  for (const [name, steps] of Object.entries(parsed.pipelines)) {
+    if (!Array.isArray(steps)) {
+      throw new Error(`Pipeline "${name}" must be a list of steps in ${wfPath}`);
+    }
+    for (const step of steps) {
+      if (!step || !step.id) {
+        throw new Error(`Pipeline "${name}" has a step missing "id" in ${wfPath}`);
+      }
+    }
+  }
+
   return parsed;
 }
 
@@ -154,12 +90,13 @@ export class PipelineEngine {
    * @param {string} projectRoot  项目根目录
    * @param {string} specDir      specs/<date+feature> 的绝对路径
    */
-  constructor(projectRoot, specDir) {
+  constructor(projectRoot, specDir, { fs } = {}) {
     this.projectRoot = resolve(projectRoot);
     this.specDir = resolve(specDir);
-    this.store = new PipelineStateStore(this.specDir);
-    this.lock = new SpecLock(this.specDir);
-    this.workflow = loadWorkflow(this.projectRoot);
+    this.fs = fs || new NodeFileSystem();
+    this.store = new PipelineStateStore(this.specDir, { fs: this.fs });
+    this.lock = new SpecLock(this.specDir, { fs: this.fs });
+    this.workflow = loadWorkflow(this.projectRoot, this.fs);
   }
 
   // ── 状态查询（无副作用）───────────────────────────────────────────────────
@@ -173,7 +110,7 @@ export class PipelineEngine {
   currentStage() {
     const state = this.store.read();
     if (state) return state.current_stage;
-    return inferStageFromArtifacts(this.specDir);
+    return inferStageFromArtifacts(this.specDir, this.fs);
   }
 
   /** 获取流水线步骤定义 */
@@ -221,48 +158,48 @@ export class PipelineEngine {
    */
   advance() {
     const state = this.store.read();
-    if (!state) return { ok: false, error: 'Pipeline not initialized. Run: loom run --init' };
+    if (!state) return { ok: false, error: 'Pipeline not initialized. Run: loom run --init', hint: '执行 loom run --spec-dir <spec目录> 初始化流水线' };
 
     const current = state.current_stage;
 
     // 失败状态不能自动推进
     if (current === 'failed') {
-      return { ok: false, error: 'Pipeline is in failed state. Use: loom run --recover <stage>' };
+      return { ok: false, error: 'Pipeline is in failed state. Use: loom run --recover <stage>', hint: '执行 loom run --spec-dir <spec目录> --recover <阶段名> 从失败恢复' };
     }
 
     // 找下一步
     const next = this.nextStep(current);
     if (!next) {
-      return { ok: false, error: `No next step after "${current}". Pipeline may be complete.` };
+      return { ok: false, error: `No next step after "${current}". Pipeline may be complete.`, hint: '流水线可能已完成，检查当前阶段状态' };
     }
 
     // 如果当前是 gate，必须由用户确认（不能自动跳过）
     if (this.isGate(current)) {
-      return { ok: false, error: `Stage "${current}" is a human-approval gate. Use: loom run --approve` };
+      return { ok: false, error: `Stage "${current}" is a human-approval gate. Use: loom run --approve`, hint: '执行 loom run --spec-dir <spec目录> --approve 通过审批门禁' };
     }
 
     // 从 step 定义读当前阶段产物
     const steps = this.getSteps();
     const currentStep = steps.find(s => s.id === current);
-    const outputCheck = checkStageOutputs(this.specDir, currentStep?.outputs ?? []);
+    const outputCheck = checkStageOutputs(this.specDir, currentStep?.outputs ?? [], this.fs);
     if (!outputCheck.ok) {
       const reasons = [];
       if (outputCheck.missing.length > 0) reasons.push(`missing: ${outputCheck.missing.join(', ')}`);
       if (outputCheck.withPlaceholders.length > 0) reasons.push(`placeholders in: ${outputCheck.withPlaceholders.join(', ')}`);
-      return { ok: false, error: `Stage "${current}" outputs incomplete: ${reasons.join('; ')}` };
+      return { ok: false, error: `Stage "${current}" outputs incomplete: ${reasons.join('; ')}`, hint: `确保当前阶段的产物文件已创建且无 TBD/TODO/FIXME/XXX 占位符。缺失: ${outputCheck.missing.join(', ')}，有占位符: ${outputCheck.withPlaceholders.join(', ')}` };
     }
 
     // 声明式 verdict 门禁（gate_verdict 在当前 step 声明）
     if (currentStep?.gate_verdict) {
-      if (!isReportPassing(this.specDir, currentStep.gate_verdict)) {
-        return { ok: false, error: `${currentStep.gate_verdict} does not contain PASS verdict. Fix before advancing.` };
+      if (!isReportPassing(this.specDir, currentStep.gate_verdict, this.fs)) {
+        return { ok: false, error: `${currentStep.gate_verdict} does not contain PASS verdict. Fix before advancing.`, hint: `在 ${currentStep.gate_verdict} 中添加 PASS 判定后再推进` };
       }
     }
 
     // 检查下一阶段的前置条件（requires 在 next step 声明）
-    const preCheck = checkPreconditions(this.specDir, next.requires ?? []);
+    const preCheck = checkPreconditions(this.specDir, next.requires ?? [], this.fs);
     if (!preCheck.ok) {
-      return { ok: false, error: `Preconditions for "${next.id}" not met: ${preCheck.missing.join(', ')}` };
+      return { ok: false, error: `Preconditions for "${next.id}" not met: ${preCheck.missing.join(', ')}`, hint: `先完成前置条件中缺少的产物: ${preCheck.missing.join(', ')}` };
     }
 
     // 推进
@@ -275,14 +212,14 @@ export class PipelineEngine {
    */
   approve() {
     const state = this.store.read();
-    if (!state) return { ok: false, error: 'Pipeline not initialized' };
+    if (!state) return { ok: false, error: 'Pipeline not initialized', hint: '执行 loom run --spec-dir <spec目录> 初始化流水线' };
 
     if (!this.isGate(state.current_stage)) {
-      return { ok: false, error: `Stage "${state.current_stage}" is not a gate. No approval needed.` };
+      return { ok: false, error: `Stage "${state.current_stage}" is not a gate. No approval needed.`, hint: '当前阶段不是审批门禁，可以直接推进' };
     }
 
     const next = this.nextStep();
-    if (!next) return { ok: false, error: 'No next step after gate' };
+    if (!next) return { ok: false, error: 'No next step after gate', hint: '检查 workflow.yaml 中 gate 后的步骤配置' };
 
     this.store.transition(next.id, { history: { approval: 'user_confirmed' } });
     return { ok: true, from: state.current_stage, to: next.id };
@@ -293,14 +230,14 @@ export class PipelineEngine {
    */
   recover(targetStage) {
     const state = this.store.read();
-    if (!state) return { ok: false, error: 'Pipeline not initialized' };
+    if (!state) return { ok: false, error: 'Pipeline not initialized', hint: '执行 loom run --spec-dir <spec目录> 初始化流水线' };
     if (state.current_stage !== 'failed') {
-      return { ok: false, error: `Pipeline is in "${state.current_stage}", not "failed"` };
+      return { ok: false, error: `Pipeline is in "${state.current_stage}", not "failed"`, hint: '只有处于 failed 状态的流水线才能 recover' };
     }
 
     const steps = this.getSteps();
     const valid = steps.find(s => s.id === targetStage);
-    if (!valid) return { ok: false, error: `"${targetStage}" is not a valid stage` };
+    if (!valid) return { ok: false, error: `"${targetStage}" is not a valid stage`, hint: `可用阶段: ${steps.map(s => s.id).join(', ')}` };
 
     this.store.transition(targetStage, { history: { recovery_from: 'failed' } });
     return { ok: true, from: 'failed', to: targetStage };
@@ -311,7 +248,7 @@ export class PipelineEngine {
    */
   markFailed(reason) {
     const state = this.store.read();
-    if (!state) return { ok: false, error: 'Pipeline not initialized' };
+    if (!state) return { ok: false, error: 'Pipeline not initialized', hint: '执行 loom run --spec-dir <spec目录> 初始化流水线' };
     this.store.fail(reason, state.current_stage);
     return { ok: true, stage: state.current_stage, reason };
   }
@@ -353,7 +290,7 @@ export class PipelineEngine {
 
   _readVersion() {
     try {
-      const pkg = JSON.parse(readFileSync(join(this.projectRoot, 'package.json'), 'utf-8'));
+      const pkg = JSON.parse(this.fs.readFileSync(join(this.projectRoot, 'package.json'), 'utf-8'));
       return pkg.version || '2.0.0';
     } catch { return '2.0.0'; }
   }

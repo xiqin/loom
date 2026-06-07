@@ -6,13 +6,19 @@
  * 每个工具是一个纯函数，接收参数返回结果，不持有状态。
  */
 
-import { resolve, join, sep } from 'node:path';
+import { resolve, join, sep, dirname } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { NodeFileSystem } from '../core/fs-interface.js';
 import { PipelineEngine } from '../core/pipeline-engine.js';
 import { PipelineStateStore, scanAllSpecs } from '../core/state-store.js';
 import { MemoryStore } from '../core/memory-store.js';
 import { SpecLock } from '../core/lock.js';
 import { loadContextIndex, DOC_KEYS } from '../core/context-index.js';
+import { SkillLoader } from '../core/skill-loader.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const SKILLS_DIR = join(__dirname, '..', '..', 'skills');
 
 /**
  * 把 specDir 解析为绝对路径，并强制限制在 projectRoot 内。
@@ -27,10 +33,10 @@ function safeResolveSpecDir(projectRoot, specDir) {
   return abs;
 }
 
-/** 在 spec 锁保护下执行写操作；拿不到锁则返回 busy 错误，不破坏单一写入者约束 */
-function withSpecLock(absSpecDir, fn) {
-  const lock = new SpecLock(absSpecDir);
-  const res = lock.acquire();
+/** 在 spec 锁保护下执行写操作；拿不到锁则带重试等待 */
+async function withSpecLock(absSpecDir, fn, fsImpl) {
+  const lock = new SpecLock(absSpecDir, { fs: fsImpl });
+  const res = await lock.acquireWithRetry();
   if (!res.acquired) {
     return { error: `spec is locked by PID ${res.pid} (started: ${res.startedAt || 'unknown'})` };
   }
@@ -164,6 +170,30 @@ export const TOOL_DEFINITIONS = [
       },
       required: ['spec_dir']
     }
+  },
+  {
+    name: 'loom_load_tool_group',
+    group: 'meta',
+    description: 'Load a group of tools into the session. Use after loom_list_capabilities to activate the tool group you need (e.g. pipeline, context, memory, session).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        group: { type: 'string', description: 'Group name: context, pipeline, memory, session' }
+      },
+      required: ['group']
+    }
+  },
+  {
+    name: 'loom_get_skill_context',
+    group: 'context',
+    description: 'Progressive disclosure of skill files. Without a skill name, returns L0 summaries of ALL skills (name, summary, triggers, section titles — ~1.2K tokens total). With a skill name, returns the L1 full content of that skill. With skill name + section, returns just that section. Use this instead of loading all skill files into context.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        skill: { type: 'string', description: 'Skill name (e.g. brainstorming, writing-plans). Omit for L0 summaries of all skills.' },
+        section: { type: 'string', description: 'Section title within a skill (e.g. 执行流程). Only valid when skill is specified.' }
+      }
+    }
   }
 ];
 
@@ -202,7 +232,8 @@ export const CAPABILITY_GROUPS = {
 
 // ── 工具执行 ───────────────────────────────────────────────────────────────
 
-export function executeToolCall(toolName, args, sessionStore, sessionId) {
+export async function executeToolCall(toolName, args, sessionStore, sessionId, { fs } = {}) {
+  const fsImpl = fs || new NodeFileSystem();
   const specDir = sessionStore.resolveSpecDir(sessionId, args.spec_dir);
   const projectRoot = sessionStore.resolveProjectRoot(sessionId, args.project_root);
 
@@ -230,7 +261,7 @@ export function executeToolCall(toolName, args, sessionStore, sessionId) {
     case 'loom_get_context': {
       if (!args.doc) return { error: `Missing doc. One of: ${DOC_KEYS.join(', ')}` };
       const root = args.project_root || projectRoot;
-      const idx = loadContextIndex(join(root, '.loom'), args.doc);
+      const idx = loadContextIndex(join(root, '.loom'), args.doc, fsImpl);
       if (!idx) return { error: `Context doc not found: ${args.doc}` };
       // 回退闸：显式 full 或全局开关 → 整篇原文（绕过分节，防前言丢失）
       if (args.full || process.env.LOOM_CONTEXT_FULL) return idx.full();
@@ -260,7 +291,7 @@ export function executeToolCall(toolName, args, sessionStore, sessionId) {
 
     case 'loom_get_project_status': {
       const root = args.project_root || projectRoot;
-      const allSpecs = scanAllSpecs(root);
+      const allSpecs = scanAllSpecs(root, { fs: fsImpl });
       // health checks
       const issues = [];
       const constPath = join(root, '.loom', 'rules', 'constitution.md');
@@ -289,28 +320,38 @@ export function executeToolCall(toolName, args, sessionStore, sessionId) {
 
     case 'loom_get_pipeline_context': {
       if (!specDir) return { error: 'No spec_dir. Call loom_attach_spec first or pass spec_dir.' };
-      const engine = new PipelineEngine(projectRoot, safeResolveSpecDir(projectRoot, specDir));
+      const engine = new PipelineEngine(projectRoot, safeResolveSpecDir(projectRoot, specDir), { fs: fsImpl });
       const ctx = engine.getStageContext();
       if (!ctx) return { error: 'Pipeline not initialized' };
+      const currentStep = engine.getSteps().find(s => s.id === ctx.current_stage);
+      ctx.constraints = {
+        must_produce: currentStep?.outputs || [],
+        must_not_skip: currentStep?.skill ? [currentStep.skill] : [],
+        requires_files: currentStep?.requires || [],
+      };
+      ctx.forbidden_actions = [
+        'Do not skip the current stage skill',
+        'Do not advance without producing required outputs',
+      ];
       return ctx;
     }
 
     case 'loom_advance_pipeline': {
       if (!specDir) return { error: 'No spec_dir' };
       const abs = safeResolveSpecDir(projectRoot, specDir);
-      return withSpecLock(abs, () => new PipelineEngine(projectRoot, abs).advance());
+      return await withSpecLock(abs, () => new PipelineEngine(projectRoot, abs, { fs: fsImpl }).advance(), fsImpl);
     }
 
     case 'loom_approve_gate': {
       if (!specDir) return { error: 'No spec_dir' };
       const abs = safeResolveSpecDir(projectRoot, specDir);
-      return withSpecLock(abs, () => new PipelineEngine(projectRoot, abs).approve());
+      return await withSpecLock(abs, () => new PipelineEngine(projectRoot, abs, { fs: fsImpl }).approve(), fsImpl);
     }
 
     case 'loom_update_task_state': {
       if (!specDir) return { error: 'No spec_dir' };
       const abs = safeResolveSpecDir(projectRoot, specDir);
-      const store = new PipelineStateStore(abs);
+      const store = new PipelineStateStore(abs, { fs: fsImpl });
       const patch = { status: args.status };
       if (args.blocker) patch.blocker = args.blocker;
       if (args.status === 'failed') {
@@ -322,12 +363,12 @@ export function executeToolCall(toolName, args, sessionStore, sessionId) {
     }
 
     case 'loom_get_memory': {
-      const memStore = new MemoryStore(join(projectRoot, '.loom'));
+      const memStore = new MemoryStore(join(projectRoot, '.loom'), { fs: fsImpl });
       return memStore.list({ type: args.type, limit: args.limit || 10 });
     }
 
     case 'loom_add_memory': {
-      const memStore = new MemoryStore(join(projectRoot, '.loom'));
+      const memStore = new MemoryStore(join(projectRoot, '.loom'), { fs: fsImpl });
       const entry = memStore.add(args.type, args.content, { context: args.context });
       return { ok: true, entry };
     }
@@ -335,6 +376,48 @@ export function executeToolCall(toolName, args, sessionStore, sessionId) {
     case 'loom_attach_spec': {
       sessionStore.attach(sessionId, args.spec_dir, args.project_root || projectRoot);
       return { ok: true, attached: args.spec_dir };
+    }
+
+    case 'loom_load_tool_group': {
+      const group = args.group;
+      if (!CAPABILITY_GROUPS[group]) return { error: `Unknown group: ${group}. Available: ${Object.keys(CAPABILITY_GROUPS).join(', ')}` };
+      sessionStore.loadGroup(sessionId, group);
+      const toolNames = CAPABILITY_GROUPS[group].tools.filter(t => TOOL_DEFINITIONS.some(td => td.name === t));
+      return { ok: true, group, loaded_tools: toolNames };
+    }
+
+    case 'loom_get_skill_context': {
+      const loader = new SkillLoader(SKILLS_DIR, { fs: fsImpl });
+
+      // 无 skill 参数 → L0 全量摘要
+      if (!args.skill) {
+        const summaries = loader.listSummaries();
+        return {
+          level: 'L0',
+          total_skills: summaries.length,
+          total_tokens: summaries.reduce((sum, s) => sum + s.tokens, 0),
+          hint: 'Call with skill name to get L1 full content, or skill + section for a single section.',
+          skills: summaries,
+        };
+      }
+
+      // 有 skill + section → L1 单节
+      if (args.section) {
+        const section = loader.getSkillSection(args.skill, args.section);
+        if (!section) {
+          const summary = loader.getSummary(args.skill);
+          return {
+            error: `Section "${args.section}" not found in skill "${args.skill}"`,
+            available_sections: summary ? summary.sections : [],
+          };
+        }
+        return { level: 'L1', ...section };
+      }
+
+      // 有 skill 无 section → L1 完整 skill
+      const full = loader.getFullSkill(args.skill);
+      if (!full) return { error: `Skill not found: ${args.skill}. Call without args to list all skills.` };
+      return { level: 'L1', ...full };
     }
 
     default:

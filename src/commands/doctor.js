@@ -124,6 +124,16 @@ export default async function doctor(options) {
     if (adapter.supportsPlugin()) {
       console.log(`    plugin:    registered`);
     }
+    const caps = adapter.capabilities;
+    if (caps) {
+      const capStr = Object.entries(caps)
+        .filter(([, v]) => v)
+        .map(([k]) => k)
+        .join(', ');
+      if (capStr) {
+        console.log(`    capabilities: ${capStr}`);
+      }
+    }
     console.log('');
   }
 

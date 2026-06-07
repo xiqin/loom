@@ -21,14 +21,14 @@ description: >
 
 QA 流水线（`pipeline_type: qa`）有 6 个阶段，每个阶段对应本 skill 的不同职责：
 
-| 阶段 | 职责 | 使用子 prompt |
-|------|------|-------------|
-| `qa-analysis` | 分析变更范围，确定测试矩阵 | `qa-analyst-prompt.md` |
-| `qa-design` | 生成/更新用例，旧用例转 deprecated | `qa-designer-prompt.md` |
-| `qa-approved` | human-approval gate（自动） | — |
-| `qa-execution` | 跑自动化测试，生成手动 checklist | `qa-executor-prompt.md` |
-| `qa-signoff` | human-approval gate，测试人员签字 | — |
-| `qa-report` | 汇总 → qa-report.md | `qa-reporter-prompt.md` |
+| 阶段           | 职责                               | 使用子 prompt           |
+| -------------- | ---------------------------------- | ----------------------- |
+| `qa-analysis`  | 分析变更范围，确定测试矩阵         | `qa-analyst-prompt.md`  |
+| `qa-design`    | 生成/更新用例，旧用例转 deprecated | `qa-designer-prompt.md` |
+| `qa-approved`  | human-approval gate（自动）        | —                       |
+| `qa-execution` | 跑自动化测试，生成手动 checklist   | `qa-executor-prompt.md` |
+| `qa-signoff`   | human-approval gate，测试人员签字  | —                       |
+| `qa-report`    | 汇总 → qa-report.md                | `qa-reporter-prompt.md` |
 
 ## 执行规则
 

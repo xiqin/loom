@@ -17,6 +17,7 @@ loom uninstall --tool claude-code
 | 位置                                 | 说明                               |
 | ------------------------------------ | ---------------------------------- |
 | `~/.config/opencode/commands/`       | OpenCode commands                  |
+| `~/.config/opencode/opencode.json`   | OpenCode plugin 注册 + MCP 配置    |
 | `~/.cursor/rules/`                   | Cursor `.mdc` 规则文件             |
 | `~/.copilot/skills/`                 | Copilot skills                     |
 | `~/.copilot/copilot-instructions.md` | Copilot 全局指令                   |

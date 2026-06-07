@@ -6,7 +6,7 @@
  * 不执行代码，只做文件系统和文本扫描。
  */
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { NodeFileSystem } from './fs-interface.js';
 import { join } from 'node:path';
 
 // 占位符标记：大写形式，区分大小写，避免误伤正文 "todo list" 这类普通词
@@ -29,12 +29,12 @@ function hasPlaceholder(content) {
  * @param {string[]} requires - 元素尾 '/' 表示目录检查
  * @returns {{ ok: boolean, missing: string[] }}
  */
-export function checkPreconditions(specDir, requires) {
+export function checkPreconditions(specDir, requires, fs = new NodeFileSystem()) {
   const missing = [];
   for (const req of (requires || [])) {
     const isDir = req.endsWith('/');
     const rel  = isDir ? req.slice(0, -1) : req;
-    if (!existsSync(join(specDir, rel))) missing.push(req);
+    if (!fs.existsSync(join(specDir, rel))) missing.push(req);
   }
   return { ok: missing.length === 0, missing };
 }
@@ -44,17 +44,17 @@ export function checkPreconditions(specDir, requires) {
  * @param {string[]} outputs
  * @returns {{ ok: boolean, missing: string[], withPlaceholders: string[] }}
  */
-export function checkStageOutputs(specDir, outputs) {
+export function checkStageOutputs(specDir, outputs, fs = new NodeFileSystem()) {
   const missing = [];
   const withPlaceholders = [];
 
   for (const file of (outputs || [])) {
     const path = join(specDir, file);
-    if (!existsSync(path)) {
+    if (!fs.existsSync(path)) {
       missing.push(file);
       continue;
     }
-    const content = readFileSync(path, 'utf-8');
+    const content = fs.readFileSync(path, 'utf-8');
     if (hasPlaceholder(content)) withPlaceholders.push(file);
   }
 
@@ -69,10 +69,10 @@ export function checkStageOutputs(specDir, outputs) {
  * 通用 verdict 检查：读指定报告文件，verdict===PASS 则通过
  * @param {string} filename - 相对 specDir 的文件名
  */
-export function isReportPassing(specDir, filename) {
+export function isReportPassing(specDir, filename, fs = new NodeFileSystem()) {
   const path = join(specDir, filename);
-  if (!existsSync(path)) return false;
-  const content = readFileSync(path, 'utf-8');
+  if (!fs.existsSync(path)) return false;
+  const content = fs.readFileSync(path, 'utf-8');
   const verdict = parseVerdict(content);
   if (verdict) return verdict === 'PASS';
   // fallback 启发式（无显式裁定时保守判断）
@@ -89,17 +89,17 @@ export function isReportPassing(specDir, filename) {
  * 任何 task 曾 executing 就含该词，导致阶段判断永久卡死）。
  * 改用 task-states/ 目录是否非空来判断是否已进入执行阶段。
  */
-export function inferStageFromArtifacts(specDir) {
-  const has = (f) => existsSync(join(specDir, f));
+export function inferStageFromArtifacts(specDir, fs = new NodeFileSystem()) {
+  const has = (f) => fs.existsSync(join(specDir, f));
 
   if (has('verify-report.md')) return 'synced';
   if (has('test-report.md'))   return 'verification';
 
   // task-states 目录存在且非空 → subagent 已开工 → executing
   const taskStatesDir = join(specDir, 'task-states');
-  if (existsSync(taskStatesDir)) {
+  if (fs.existsSync(taskStatesDir)) {
     try {
-      if (readdirSync(taskStatesDir).some(f => f.endsWith('.state.json'))) {
+      if (fs.readdirSync(taskStatesDir).some(f => f.endsWith('.state.json'))) {
         return 'executing';
       }
     } catch {}
@@ -132,11 +132,29 @@ export function parseVerdict(content) {
 }
 
 /** @deprecated 使用 isReportPassing(specDir, 'test-report.md') */
-export function isTestReportPassing(specDir) {
-  return isReportPassing(specDir, 'test-report.md');
+export function isTestReportPassing(specDir, fs = new NodeFileSystem()) {
+  return isReportPassing(specDir, 'test-report.md', fs);
 }
 
 /** @deprecated 使用 isReportPassing(specDir, 'verify-report.md') */
-export function isVerifyReportPassing(specDir) {
-  return isReportPassing(specDir, 'verify-report.md');
+export function isVerifyReportPassing(specDir, fs = new NodeFileSystem()) {
+  return isReportPassing(specDir, 'verify-report.md', fs);
+}
+
+/**
+ * 检查 .md 产物文件是否包含必需的 section 标题
+ * @param {string} specDir
+ * @param {string} filename - 相对 specDir 的文件名
+ * @param {string[]} requiredSections - 必需的 section 标题（如 ['## Approach', '## Tasks']）
+ * @returns {{ ok: boolean, missing: string[] }}
+ */
+export function checkRequiredSections(specDir, filename, requiredSections, fs = new NodeFileSystem()) {
+  const path = join(specDir, filename);
+  if (!fs.existsSync(path)) return { ok: false, missing: [filename] };
+  const content = fs.readFileSync(path, 'utf-8');
+  const missing = [];
+  for (const section of (requiredSections || [])) {
+    if (!content.includes(section)) missing.push(section);
+  }
+  return { ok: missing.length === 0, missing };
 }

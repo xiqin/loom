@@ -65,7 +65,8 @@ This is a test skill body.
     const mdcContent = readFileSync(join(rulesDir, 'loom-test-skill.mdc'), 'utf-8');
     expect(mdcContent).toContain('description:');
     expect(mdcContent).toContain('alwaysApply: false');
-    expect(mdcContent).toContain('Test Skill');
+    // 紧凑模式：body 包含 MCP 引用而非全文
+    expect(mdcContent).toContain('loom_get_skill_context');
   });
 
   it('install converts commands to .mdc files', () => {
@@ -137,6 +138,8 @@ description: >
     adapter.install(loomRoot, '1.0.0');
 
     const mdcContent = readFileSync(join(TEST_DIR, '.cursor', 'rules', 'loom-test-skill.mdc'), 'utf-8');
-    expect(mdcContent).toMatch(/^---\ndescription: "First line\. Second line\."\nalwaysApply: false\n---\n\n#/);
+    expect(mdcContent).toMatch(/^---\ndescription: "First line\. Second line\."\nalwaysApply: false\n---/);
+    // 紧凑模式包含 MCP 引用
+    expect(mdcContent).toContain('loom_get_skill_context');
   });
 });

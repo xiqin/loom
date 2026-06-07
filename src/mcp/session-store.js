@@ -7,7 +7,7 @@
 
 export class SessionStore {
   constructor() {
-    /** @type {Map<string, { specDir: string, projectRoot: string, attachedAt: string }>} */
+    /** @type {Map<string, { specDir: string, projectRoot: string, attachedAt: string, loadedGroups: Set<string> }>} */
     this._sessions = new Map();
   }
 
@@ -15,7 +15,8 @@ export class SessionStore {
     this._sessions.set(sessionId, {
       specDir,
       projectRoot,
-      attachedAt: new Date().toISOString()
+      attachedAt: new Date().toISOString(),
+      loadedGroups: new Set(['meta'])
     });
   }
 
@@ -42,5 +43,15 @@ export class SessionStore {
     const session = this.get(sessionId);
     if (session?.projectRoot) return session.projectRoot;
     return process.cwd();
+  }
+
+  loadGroup(sessionId, group) {
+    const session = this.get(sessionId);
+    if (session) session.loadedGroups.add(group);
+  }
+
+  getLoadedGroups(sessionId) {
+    const session = this.get(sessionId);
+    return session?.loadedGroups || new Set(['meta']);
   }
 }

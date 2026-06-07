@@ -33,6 +33,16 @@ export class BaseAdapter {
 
   supportsPlugin() { return false; }
 
+  get capabilities() {
+    return {
+      hooks: false,
+      skills: Boolean(this.getSkillsDir()),
+      commands: Boolean(this.getCommandsDir()),
+      plugin: this.supportsPlugin(),
+      mcpConfig: false,
+    };
+  }
+
   install(loomRoot, version) {
     const log = [];
     log.push(`Installing loom@${version} → ${this.toolName} (user-level)`);

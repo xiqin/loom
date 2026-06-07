@@ -18,6 +18,10 @@ export class CodexAdapter extends BaseAdapter {
 
   getSkillsDir() { return join(this.getUserDir(), 'skills'); }
 
+  get capabilities() {
+    return { hooks: false, skills: true, commands: false, plugin: false, mcpConfig: false, templates: true };
+  }
+
   _postInstall(loomRoot, version, log) {
     this._copyTemplates(loomRoot, log);
   }

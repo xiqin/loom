@@ -25,6 +25,10 @@ export class ClaudeCodeAdapter extends BaseAdapter {
 
   supportsPlugin() { return true; }
 
+  get capabilities() {
+    return { hooks: true, skills: false, commands: false, plugin: true, mcpConfig: true };
+  }
+
   install(loomRoot, version) {
     const log = [];
     log.push(`Installing loom@${version} → ${this.toolName} (user-level)`);

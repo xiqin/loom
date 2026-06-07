@@ -32,8 +32,8 @@ program
 
 program
   .command('install')
-  .description('Install loom at user-level (global) for CLI tool')
-  .requiredOption('--tool <target>', 'Target tool: claude-code | opencode | cursor | copilot | codex')
+  .description('Install loom at user-level (global) for CLI tool(s)')
+  .requiredOption('--tool <targets...>', 'Target tool(s): space/comma-separated, e.g. --tool claude-code cursor or --tool all')
   .option('--version <ver>', 'Version to install (default: package.json version)')
   .option('--dry-run', 'Show what would be installed without writing')
   .action(async (options) => {
@@ -43,8 +43,8 @@ program
 
 program
   .command('update')
-  .description('Reinstall loom at user-level for CLI tool (update)')
-  .option('--tool <target>', 'Target tool (auto-detect if omitted)')
+  .description('Reinstall loom at user-level for CLI tool(s) (update)')
+  .option('--tool <targets...>', 'Target tool(s): space/comma-separated or "all" (default: all)')
   .option('--version <ver>', 'Version to install (default: package.json version)')
   .option('--dry-run', 'Show diff without applying')
   .action(async (options) => {
@@ -54,8 +54,8 @@ program
 
 program
   .command('uninstall')
-  .description('Remove user-level installation for CLI tool')
-  .requiredOption('--tool <target>', 'Target tool: claude-code | opencode | cursor | copilot | codex')
+  .description('Remove user-level installation for CLI tool(s)')
+  .requiredOption('--tool <targets...>', 'Target tool(s): space/comma-separated or --tool all')
   .option('--dry-run', 'Show what would be removed without deleting')
   .action(async (options) => {
     const { default: uninstallCommand } = await import('./commands/uninstall.js');

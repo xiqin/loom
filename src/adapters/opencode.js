@@ -12,6 +12,10 @@ export class OpenCodeAdapter extends BaseAdapter {
 
   supportsPlugin() { return true; }
 
+  get capabilities() {
+    return { hooks: false, skills: true, commands: true, plugin: true, mcpConfig: true, templates: true };
+  }
+
   install(loomRoot, version) {
     const log = [];
     log.push(`Installing loom@${version} → ${this.toolName} (user-level)`);
@@ -19,6 +23,7 @@ export class OpenCodeAdapter extends BaseAdapter {
     this._copyCommands(loomRoot, log);
     this._copyTemplates(loomRoot, log);
     this._addNpmPlugin(loomRoot, log);
+    this._ensureMcpConfig(log);
     return log;
   }
 
@@ -26,6 +31,7 @@ export class OpenCodeAdapter extends BaseAdapter {
     const log = [];
     log.push(`Uninstalling loom → ${this.toolName} (user-level)`);
     this._removeNpmPlugin(log);
+    this._removeMcpConfig(log);
     this._removeSkills(log);
     this._removeTemplates(log);
     this._removeCommands(log);
@@ -107,5 +113,42 @@ export class OpenCodeAdapter extends BaseAdapter {
       rmSync(initProjectDir, { recursive: true, force: true });
       log.push('  templates: removed from loom-init-project skill dir');
     }
+  }
+
+  _ensureMcpConfig(log) {
+    const configPath = join(this.getUserDir(), 'opencode.json');
+    let config = {};
+    if (existsSync(configPath)) {
+      try { config = JSON.parse(readFileSync(configPath, 'utf-8')); } catch { config = {}; }
+    }
+
+    if (!config.mcp) config.mcp = {};
+
+    if (config.mcp.loom) {
+      log.push('  mcp: loom server already configured');
+      return;
+    }
+
+    config.mcp.loom = {
+      type: 'local',
+      command: ['loom', 'mcp-serve'],
+      enabled: true,
+    };
+
+    mkdirSync(dirname(configPath), { recursive: true });
+    writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+    log.push('  mcp: loom server added to opencode.json');
+  }
+
+  _removeMcpConfig(log) {
+    const configPath = join(this.getUserDir(), 'opencode.json');
+    if (!existsSync(configPath)) return;
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+    if (!config.mcp?.loom) return;
+
+    delete config.mcp.loom;
+    if (Object.keys(config.mcp).length === 0) delete config.mcp;
+    writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+    log.push('  mcp: loom server removed from opencode.json');
   }
 }

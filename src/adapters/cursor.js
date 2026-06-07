@@ -17,6 +17,10 @@ export class CursorAdapter {
 
   supportsPlugin() { return false; }
 
+  get capabilities() {
+    return { hooks: false, skills: true, commands: true, plugin: false, mcpConfig: true, sessionInit: true };
+  }
+
   install(loomRoot, version) {
     const log = [];
     log.push(`Installing loom@${version} → ${this.toolName} (user-level)`);

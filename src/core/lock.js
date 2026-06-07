@@ -7,7 +7,7 @@
  * 避免 PID 被系统复用后误删他人锁文件。
  */
 
-import { existsSync, readFileSync, writeFileSync, openSync, closeSync, rmSync } from 'node:fs';
+import { NodeFileSystem } from './fs-interface.js';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 
@@ -27,9 +27,10 @@ function installExitHandlers() {
 }
 
 export class SpecLock {
-  constructor(specDir) {
+  constructor(specDir, { fs } = {}) {
     this.lockPath = join(specDir, '.loom-run.lock');
     this.token = null; // 持锁时的本进程 token
+    this.fs = fs || new NodeFileSystem();
   }
 
   /** 尝试加锁。返回 { acquired: bool, pid?: number, startedAt?: string } */
@@ -41,7 +42,7 @@ export class SpecLock {
     let fd;
     try {
       // O_EXCL：文件已存在则抛 EEXIST，原子建锁
-      fd = openSync(this.lockPath, 'wx');
+      fd = this.fs.openSync(this.lockPath, 'wx');
     } catch (err) {
       if (err.code !== 'EEXIST') throw err;
       // 锁文件已存在 → 检查持有者是否存活
@@ -52,7 +53,7 @@ export class SpecLock {
       // 持有者已死 → 残留锁，清理后重试一次
       this._removeLock();
       try {
-        fd = openSync(this.lockPath, 'wx');
+        fd = this.fs.openSync(this.lockPath, 'wx');
       } catch (err2) {
         if (err2.code !== 'EEXIST') throw err2;
         // 竞争中被别的进程抢先
@@ -61,8 +62,8 @@ export class SpecLock {
       }
     }
 
-    writeFileSync(fd, payload, 'utf-8');
-    closeSync(fd);
+    this.fs.writeFileSync(fd, payload, 'utf-8');
+    this.fs.closeSync(fd);
     this.token = token;
     activeLocks.add(this);
     installExitHandlers();
@@ -74,9 +75,27 @@ export class SpecLock {
     this._removeLock();
   }
 
+  /**
+   * 带重试的加锁（异步，指数退避）。
+   * 适用于 MCP server 多 session 并发场景。
+   * @param {number} maxRetries  最大重试次数（默认 5）
+   * @param {number} retryDelayMs  首次重试延迟毫秒（默认 200，后续指数退避）
+   */
+  async acquireWithRetry(maxRetries = 5, retryDelayMs = 200) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const result = this.acquire();
+      if (result.acquired) return result;
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, retryDelayMs * (2 ** attempt)));
+      }
+    }
+    const holder = this._readLock();
+    return { acquired: false, pid: holder.pid, startedAt: holder.startedAt };
+  }
+
   /** 是否被某个存活进程持有 */
   isLocked() {
-    if (!existsSync(this.lockPath)) return false;
+    if (!this.fs.existsSync(this.lockPath)) return false;
     const holder = this._readLock();
     if (!holder.pid) return false;
     if (this._isAlive(holder.pid)) return true;
@@ -89,7 +108,7 @@ export class SpecLock {
 
   _readLock() {
     try {
-      const content = readFileSync(this.lockPath, 'utf-8').trim();
+      const content = this.fs.readFileSync(this.lockPath, 'utf-8').trim();
       const [pidStr, startedAt, token] = content.split('\n');
       const pid = parseInt(pidStr);
       return {
@@ -118,7 +137,7 @@ export class SpecLock {
       const holder = this._readLock();
       if (holder.token && holder.token !== this.token) return; // 不是我的锁
     }
-    try { rmSync(this.lockPath, { force: true }); } catch {}
+    try { this.fs.rmSync(this.lockPath, { force: true }); } catch {}
     this.token = null;
     activeLocks.delete(this);
   }

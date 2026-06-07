@@ -68,7 +68,7 @@ describe('update command', () => {
     const { default: update } = await import('../../src/commands/update.js');
     await update({ tool: 'unknown' });
     const output = sp.mock.calls.map(c => c[0]).join('\n');
-    expect(output).toContain('Unknown tool');
+    expect(output).toContain('unknown');
     sp.mockRestore();
   });
 });

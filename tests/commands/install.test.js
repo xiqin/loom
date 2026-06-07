@@ -47,7 +47,7 @@ describe('install command', () => {
     const { default: install } = await import('../../src/commands/install.js');
     await install({ tool: 'unknown' });
     const output = sp.mock.calls.map(c => c[0]).join('\n');
-    expect(output).toContain('Unknown tool');
+    expect(output).toContain('unknown');
     sp.mockRestore();
   });
 
