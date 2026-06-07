@@ -131,16 +131,6 @@ export function parseVerdict(content) {
   return null;
 }
 
-/** @deprecated 使用 isReportPassing(specDir, 'test-report.md') */
-export function isTestReportPassing(specDir, fs = new NodeFileSystem()) {
-  return isReportPassing(specDir, 'test-report.md', fs);
-}
-
-/** @deprecated 使用 isReportPassing(specDir, 'verify-report.md') */
-export function isVerifyReportPassing(specDir, fs = new NodeFileSystem()) {
-  return isReportPassing(specDir, 'verify-report.md', fs);
-}
-
 /**
  * 检查 .md 产物文件是否包含必需的 section 标题
  * @param {string} specDir

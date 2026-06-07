@@ -1,12 +1,14 @@
-[
-  {
-    "id": "session-start",
-    "entry": "handlers/session-start.cjs",
-    "description": "Session 开始时检测项目初始化状态",
-    "platforms": ["linux", "macos", "windows"],
-    "timeoutMs": 10000,
-    "blocking": false,
-    "idempotent": true,
-    "fallback": "warn"
-  }
-]
+{
+  "SessionStart": [
+    {
+      "id": "session-start",
+      "entry": "handlers/session-start.cjs",
+      "description": "Session 开始时检测项目初始化状态",
+      "platforms": ["linux", "macos", "windows"],
+      "timeoutMs": 10000,
+      "blocking": false,
+      "idempotent": true,
+      "fallback": "warn"
+    }
+  ]
+}

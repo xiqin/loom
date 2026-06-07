@@ -197,6 +197,8 @@ export default async function doctor(options) {
     console.log(`    subagent-context: ✓`);
   }
 
+  await doctorCompliance(cwd);
+
   console.log('');
 }
 

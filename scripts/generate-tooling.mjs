@@ -42,8 +42,10 @@ const header = `/**
 
 const toolEntries = schema.tools.map(t => {
   const pluginMeta = t.pluginMeta === null ? 'null' : JSON.stringify(t.pluginMeta);
+  const adapter = t.adapter ? `adapter: ${JSON.stringify(t.adapter)}` : 'adapter: null';
   return `  {
     id: ${JSON.stringify(t.id)},
+    ${adapter},
     displayName: ${JSON.stringify(t.displayName)},
     supportLevel: ${JSON.stringify(t.supportLevel)},
     platforms: ${JSON.stringify(t.platforms)},
@@ -54,6 +56,10 @@ const toolEntries = schema.tools.map(t => {
   }`;
 });
 
+const adapterEntries = schema.tools
+  .filter(t => t.adapter)
+  .map(t => `  ${JSON.stringify(t.id)}: { file: ${JSON.stringify(t.adapter.file)}, cls: ${JSON.stringify(t.adapter.cls)} }`);
+
 const code = `${header}
 
 export const SCHEMA_VERSION = ${schema.version};
@@ -62,13 +68,16 @@ export const TOOLS = [
 ${toolEntries.join(',\n')}
 ];
 
-/** @type {string[]} All tool ids (including planned) */
+/** Adapter registry: tools with implemented adapters */
+export const ADAPTER_MAP = {
+${adapterEntries.join(',\n')}
+};
+
+/** @type {string[]} All tool ids */
 export const TOOL_IDS = TOOLS.map(t => t.id);
 
 /** @type {string[]} Only tools with implemented adapters */
-export const IMPLEMENTED_TOOL_IDS = TOOLS
-  .filter(t => t.supportLevel !== 'planned')
-  .map(t => t.id);
+export const IMPLEMENTED_TOOL_IDS = Object.keys(ADAPTER_MAP);
 
 /** Lookup tool config by id */
 export function getToolConfig(id) {

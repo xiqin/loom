@@ -7,6 +7,7 @@
   "tools": [
     {
       "id": "claude-code",
+      "adapter": { "file": "claude-code", "cls": "ClaudeCodeAdapter" },
       "displayName": "Claude Code",
       "supportLevel": "full",
       "platforms": ["linux", "macos", "windows"],
@@ -17,6 +18,7 @@
     },
     {
       "id": "cursor",
+      "adapter": { "file": "cursor", "cls": "CursorAdapter" },
       "displayName": "Cursor",
       "supportLevel": "full",
       "platforms": ["linux", "macos", "windows"],
@@ -27,6 +29,7 @@
     },
     {
       "id": "copilot",
+      "adapter": { "file": "copilot", "cls": "CopilotAdapter" },
       "displayName": "GitHub Copilot",
       "supportLevel": "full",
       "platforms": ["linux", "macos", "windows"],
@@ -37,6 +40,7 @@
     },
     {
       "id": "opencode",
+      "adapter": { "file": "opencode", "cls": "OpenCodeAdapter" },
       "displayName": "OpenCode",
       "supportLevel": "full",
       "platforms": ["linux", "macos", "windows"],
@@ -47,6 +51,7 @@
     },
     {
       "id": "codex",
+      "adapter": { "file": "codex", "cls": "CodexAdapter" },
       "displayName": "Codex",
       "supportLevel": "full",
       "platforms": ["linux", "macos", "windows"],

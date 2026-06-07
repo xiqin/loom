@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
-  parseVerdict, isTestReportPassing, isVerifyReportPassing,
+  parseVerdict, isReportPassing,
   checkStageOutputs, inferStageFromArtifacts
 } from '../../src/core/artifact-checker.js';
 
@@ -25,32 +25,32 @@ describe('parseVerdict', () => {
   });
 });
 
-describe('isTestReportPassing', () => {
+describe('isReportPassing (test-report)', () => {
   it('structured PASS wins over scary prose', () => {
     const dir = tmp();
     write(dir, 'test-report.md', '确保不会 FAIL 的情况下\n\nverdict: PASS\n');
-    expect(isTestReportPassing(dir)).toBe(true);
+    expect(isReportPassing(dir, 'test-report.md')).toBe(true);
   });
   it('structured FAIL blocks', () => {
     const dir = tmp();
     write(dir, 'test-report.md', 'verdict: FAIL\n');
-    expect(isTestReportPassing(dir)).toBe(false);
+    expect(isReportPassing(dir, 'test-report.md')).toBe(false);
   });
   it('falls back to heuristic without a verdict field', () => {
     const dir = tmp();
     write(dir, 'test-report.md', 'All tests PASS, 12 passed.');
-    expect(isTestReportPassing(dir)).toBe(true);
+    expect(isReportPassing(dir, 'test-report.md')).toBe(true);
   });
   it('false when report missing', () => {
-    expect(isTestReportPassing(tmp())).toBe(false);
+    expect(isReportPassing(tmp(), 'test-report.md')).toBe(false);
   });
 });
 
-describe('isVerifyReportPassing', () => {
+describe('isReportPassing (verify-report)', () => {
   it('respects structured verdict', () => {
     const dir = tmp();
     write(dir, 'verify-report.md', 'verdict: PASS\nall checks passed');
-    expect(isVerifyReportPassing(dir)).toBe(true);
+    expect(isReportPassing(dir, 'verify-report.md')).toBe(true);
   });
 });
 

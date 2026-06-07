@@ -16,6 +16,7 @@ import yaml from 'js-yaml';
 import { NodeFileSystem } from './fs-interface.js';
 import { PipelineStateStore } from './state-store.js';
 import { SpecLock } from './lock.js';
+import { ComplianceTracker } from './compliance-tracker.js';
 import {
   checkPreconditions, checkStageOutputs,
   isReportPassing,
@@ -204,6 +205,7 @@ export class PipelineEngine {
 
     // 推进
     this.store.transition(next.id);
+    this._recordCompliance(current);
     return { ok: true, from: current, to: next.id };
   }
 
@@ -250,6 +252,7 @@ export class PipelineEngine {
     const state = this.store.read();
     if (!state) return { ok: false, error: 'Pipeline not initialized', hint: '执行 loom run --spec-dir <spec目录> 初始化流水线' };
     this.store.fail(reason, state.current_stage);
+    this._recordCompliance(state.current_stage, false, reason);
     return { ok: true, stage: state.current_stage, reason };
   }
 
@@ -293,5 +296,28 @@ export class PipelineEngine {
       const pkg = JSON.parse(this.fs.readFileSync(join(this.projectRoot, 'package.json'), 'utf-8'));
       return pkg.version || '2.0.0';
     } catch { return '2.0.0'; }
+  }
+
+  _stageToSkill(stage) {
+    const map = {
+      brainstorming: 'loom-brainstorming',
+      planning: 'loom-writing-plans',
+      'git-worktree': 'loom-using-git-worktrees',
+      executing: 'loom-subagent-driven-development',
+      verification: 'loom-verification-before-completion',
+      synced: 'loom-index-update'
+    };
+    return map[stage] || stage;
+  }
+
+  _recordCompliance(stage, passed = true, reason = '') {
+    try {
+      const tracker = new ComplianceTracker(this.projectRoot, { fs: this.fs });
+      if (passed) {
+        tracker.recordFromVerifyReport(this.specDir);
+      } else {
+        tracker.record(this.specDir, stage, this._stageToSkill(stage), false, [reason]);
+      }
+    } catch {}
   }
 }

@@ -9,6 +9,7 @@ export const SCHEMA_VERSION = 1;
 export const TOOLS = [
   {
     id: "claude-code",
+    adapter: {"file":"claude-code","cls":"ClaudeCodeAdapter"},
     displayName: "Claude Code",
     supportLevel: "full",
     platforms: ["linux","macos","windows"],
@@ -19,6 +20,7 @@ export const TOOLS = [
   },
   {
     id: "cursor",
+    adapter: {"file":"cursor","cls":"CursorAdapter"},
     displayName: "Cursor",
     supportLevel: "full",
     platforms: ["linux","macos","windows"],
@@ -29,6 +31,7 @@ export const TOOLS = [
   },
   {
     id: "copilot",
+    adapter: {"file":"copilot","cls":"CopilotAdapter"},
     displayName: "GitHub Copilot",
     supportLevel: "full",
     platforms: ["linux","macos","windows"],
@@ -39,6 +42,7 @@ export const TOOLS = [
   },
   {
     id: "opencode",
+    adapter: {"file":"opencode","cls":"OpenCodeAdapter"},
     displayName: "OpenCode",
     supportLevel: "full",
     platforms: ["linux","macos","windows"],
@@ -49,6 +53,7 @@ export const TOOLS = [
   },
   {
     id: "codex",
+    adapter: {"file":"codex","cls":"CodexAdapter"},
     displayName: "Codex",
     supportLevel: "full",
     platforms: ["linux","macos","windows"],
@@ -59,13 +64,20 @@ export const TOOLS = [
   }
 ];
 
-/** @type {string[]} All tool ids (including planned) */
+/** Adapter registry: tools with implemented adapters */
+export const ADAPTER_MAP = {
+  "claude-code": { file: "claude-code", cls: "ClaudeCodeAdapter" },
+  "cursor": { file: "cursor", cls: "CursorAdapter" },
+  "copilot": { file: "copilot", cls: "CopilotAdapter" },
+  "opencode": { file: "opencode", cls: "OpenCodeAdapter" },
+  "codex": { file: "codex", cls: "CodexAdapter" }
+};
+
+/** @type {string[]} All tool ids */
 export const TOOL_IDS = TOOLS.map(t => t.id);
 
 /** @type {string[]} Only tools with implemented adapters */
-export const IMPLEMENTED_TOOL_IDS = TOOLS
-  .filter(t => t.supportLevel !== 'planned')
-  .map(t => t.id);
+export const IMPLEMENTED_TOOL_IDS = Object.keys(ADAPTER_MAP);
 
 /** Lookup tool config by id */
 export function getToolConfig(id) {
