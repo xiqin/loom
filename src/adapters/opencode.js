@@ -42,7 +42,17 @@ export class OpenCodeAdapter extends BaseAdapter {
     const configPath = join(this.getUserDir(), 'opencode.json');
     let config = {};
     if (existsSync(configPath)) {
-      config = JSON.parse(readFileSync(configPath, 'utf-8'));
+      try {
+        config = JSON.parse(readFileSync(configPath, 'utf-8'));
+      } catch (e) {
+        log.push(`  plugin: opencode.json 解析失败 (${e.message})，将备份并重建`);
+        try {
+          const backup = configPath + '.bak';
+          cpSync(configPath, backup, { force: true });
+          log.push(`  plugin: 已备份至 ${backup}`);
+        } catch {}
+        config = {};
+      }
     }
 
     let changed = false;
@@ -79,7 +89,13 @@ export class OpenCodeAdapter extends BaseAdapter {
   _removeNpmPlugin(log) {
     const configPath = join(this.getUserDir(), 'opencode.json');
     if (!existsSync(configPath)) return;
-    const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+    let config;
+    try {
+      config = JSON.parse(readFileSync(configPath, 'utf-8'));
+    } catch (e) {
+      log.push(`  plugin: opencode.json 解析失败 (${e.message})，跳过移除`);
+      return;
+    }
     if (!config.plugin) return;
     const idx = config.plugin.indexOf('loom-engineering');
     if (idx !== -1) {
@@ -143,7 +159,13 @@ export class OpenCodeAdapter extends BaseAdapter {
   _removeMcpConfig(log) {
     const configPath = join(this.getUserDir(), 'opencode.json');
     if (!existsSync(configPath)) return;
-    const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+    let config;
+    try {
+      config = JSON.parse(readFileSync(configPath, 'utf-8'));
+    } catch (e) {
+      log.push(`  mcp: opencode.json 解析失败 (${e.message})，跳过移除`);
+      return;
+    }
     if (!config.mcp?.loom) return;
 
     delete config.mcp.loom;

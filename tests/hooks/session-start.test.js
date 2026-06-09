@@ -11,23 +11,22 @@ function makeTempDir() {
 }
 
 describe('session-start handler', () => {
-  let origCwd;
   let handler;
+  let cwdSpy;
 
   beforeEach(() => {
-    origCwd = process.cwd();
     const mod = _require('../../hooks/handlers/session-start.cjs');
     handler = mod.run;
   });
 
   afterEach(() => {
-    process.chdir(origCwd);
     vi.restoreAllMocks();
+    if (cwdSpy) cwdSpy.mockRestore();
   });
 
   it('skips when not in project root', () => {
     const dir = makeTempDir();
-    process.chdir(dir);
+    cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(dir);
     const spy = vi.spyOn(console, 'debug').mockImplementation(() => {});
     handler();
     expect(spy).toHaveBeenCalledWith(
@@ -38,7 +37,7 @@ describe('session-start handler', () => {
   it('prints warning when constitution.md missing', () => {
     const dir = makeTempDir();
     writeFileSync(join(dir, 'package.json'), '{}');
-    process.chdir(dir);
+    cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(dir);
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     handler();
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('项目未初始化'));
@@ -50,7 +49,7 @@ describe('session-start handler', () => {
     mkdirSync(join(dir, '.loom', 'memory'), { recursive: true });
     writeFileSync(join(dir, '.loom', 'memory', 'constitution.md'), '# Constitution');
     writeFileSync(join(dir, '.loom', 'workflow.yaml'), 'version: 1');
-    process.chdir(dir);
+    cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(dir);
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     handler();
     expect(spy).not.toHaveBeenCalled();

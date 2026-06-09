@@ -26,7 +26,7 @@ const SERVER_VERSION = (() => {
     return JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8')).version || '0.0.0';
   } catch { return '0.0.0'; }
 })();
-const PROTOCOL_VERSION = '2025-03-26';
+const PROTOCOL_VERSION = '2025-06-18';
 
 const sessionStore = new SessionStore();
 // 每个 server 进程对应一个 stdio 连接，握手时生成唯一 sessionId
