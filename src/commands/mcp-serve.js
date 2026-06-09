@@ -16,6 +16,11 @@ export default async function mcpServe(options) {
       "loom": { "command": "loom", "args": ["mcp-serve"] }
     }
 
+  Codex (~/.codex/config.toml):
+    [mcp_servers.loom]
+    command = "loom"
+    args = ["mcp-serve"]
+
   Cursor (.cursor/mcp.json):
     { "mcpServers": { "loom": { "command": "loom", "args": ["mcp-serve"] } } }
 `);

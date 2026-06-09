@@ -287,6 +287,14 @@ src/mcp/
 { "mcpServers": { "loom": { "command": "loom", "args": ["mcp-serve"] } } }
 ```
 
+Codex 使用 TOML 配置：
+
+```toml
+[mcp_servers.loom]
+command = "loom"
+args = ["mcp-serve"]
+```
+
 工具按 `group` 分组（pipeline / context / memory / session / meta）：
 
 | group    | 工具                                                                                                                               | 用途                                      |

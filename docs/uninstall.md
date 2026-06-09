@@ -22,6 +22,7 @@ loom uninstall --tool claude-code
 | `~/.copilot/skills/`                 | Copilot skills                     |
 | `~/.copilot/copilot-instructions.md` | Copilot 全局指令                   |
 | `~/.codex/skills/`                   | Codex skills                       |
+| `~/.codex/config.toml`               | Codex MCP 配置中的 loom section     |
 | Plugin 注册                          | Claude Code / OpenCode plugin 注册 |
 
 ### 不涉及的范围

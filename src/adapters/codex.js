@@ -1,7 +1,55 @@
-import { cpSync, existsSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
-import { BaseAdapter } from './base.js';
+import { BaseAdapter, codegraphMcpDescriptor } from './base.js';
+
+function tomlString(value) {
+  return JSON.stringify(value);
+}
+
+function tomlArray(values = []) {
+  return `[${values.map(v => tomlString(v)).join(', ')}]`;
+}
+
+function sectionBounds(lines, sectionName) {
+  const header = `[mcp_servers.${sectionName}]`;
+  const start = lines.findIndex(line => line.trim() === header);
+  if (start === -1) return null;
+
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      end = i;
+      break;
+    }
+  }
+  return { start, end };
+}
+
+function hasMcpServer(configText, name) {
+  return Boolean(sectionBounds(configText.split(/\r?\n/), name));
+}
+
+function appendMcpServer(configText, name, descriptor) {
+  const lines = configText.trimEnd().split(/\r?\n/);
+  const body = [
+    `[mcp_servers.${name}]`,
+    `command = ${tomlString(descriptor.command)}`,
+    `args = ${tomlArray(descriptor.args || [])}`,
+  ];
+  const prefix = configText.trim() ? `${lines.join('\n')}\n\n` : '';
+  return `${prefix}${body.join('\n')}\n`;
+}
+
+function removeMcpServer(configText, name) {
+  const lines = configText.split(/\r?\n/);
+  const bounds = sectionBounds(lines, name);
+  if (!bounds) return { changed: false, text: configText };
+
+  lines.splice(bounds.start, bounds.end - bounds.start);
+  return { changed: true, text: lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n' };
+}
 
 export class CodexAdapter extends BaseAdapter {
   get toolName() { return 'codex'; }
@@ -19,11 +67,68 @@ export class CodexAdapter extends BaseAdapter {
   getSkillsDir() { return join(this.getUserDir(), 'skills'); }
 
   get capabilities() {
-    return { hooks: false, skills: true, commands: false, plugin: false, mcpConfig: false, templates: true };
+    return { hooks: false, skills: true, commands: false, plugin: false, mcpConfig: true, templates: true };
   }
 
   _postInstall(loomRoot, version, log) {
     this._copyTemplates(loomRoot, log);
+    this._ensureMcpConfig(log);
+  }
+
+  uninstall(loomRoot) {
+    const log = super.uninstall(loomRoot);
+    this._removeMcpConfig(log);
+    return log;
+  }
+
+  _getConfigPath() {
+    return join(this.getUserDir(), 'config.toml');
+  }
+
+  _ensureMcpConfig(log) {
+    const configPath = this._getConfigPath();
+    let config = '';
+    if (existsSync(configPath)) {
+      try { config = readFileSync(configPath, 'utf-8'); } catch { config = ''; }
+    }
+
+    let changed = false;
+    if (hasMcpServer(config, 'loom')) {
+      log.push('  mcp: loom server already configured');
+    } else {
+      config = appendMcpServer(config, 'loom', { command: 'loom', args: ['mcp-serve'] });
+      log.push('  mcp: loom server added to config.toml');
+      changed = true;
+    }
+
+    if (hasMcpServer(config, 'codegraph')) {
+      log.push('  mcp: codegraph server already configured');
+    } else {
+      const codegraph = codegraphMcpDescriptor();
+      if (codegraph) {
+        config = appendMcpServer(config, 'codegraph', codegraph);
+        log.push('  mcp: codegraph server added to config.toml');
+        changed = true;
+      } else {
+        log.push('  mcp: codegraph CLI not found, skipped (loom index uses static scanner)');
+      }
+    }
+
+    if (!changed) return;
+    mkdirSync(dirname(configPath), { recursive: true });
+    writeFileSync(configPath, config, 'utf-8');
+  }
+
+  _removeMcpConfig(log) {
+    const configPath = this._getConfigPath();
+    if (!existsSync(configPath)) return;
+
+    const original = readFileSync(configPath, 'utf-8');
+    const result = removeMcpServer(original, 'loom');
+    if (!result.changed) return;
+
+    writeFileSync(configPath, result.text, 'utf-8');
+    log.push('  mcp: loom server removed from config.toml');
   }
 
   _copyTemplates(loomRoot, log) {

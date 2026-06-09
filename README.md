@@ -16,7 +16,7 @@ AI 工程化框架。把需求、规范、上下文、执行过程"织"成一套
 | 工具           | 支持等级 | 入口文件                          | Skills | Hooks | Plugin | MCP 配置 |
 | -------------- | -------- | --------------------------------- | ------ | ----- | ------ | -------- |
 | Claude Code    | full     | `CLAUDE.md`                       | ✅     | ✅    | ✅     | ✅       |
-| Codex          | full     | `AGENTS.md`                       | ✅     | ✗     | ✗      | ✗        |
+| Codex          | full     | `AGENTS.md`                       | ✅     | ✗     | ✗      | ✅       |
 | Cursor         | full     | `.cursor/rules/*.mdc`             | ✅     | ✗     | ✗      | ✅       |
 | GitHub Copilot | full     | `.github/copilot-instructions.md` | ✅     | ✗     | ✗      | ✗        |
 | OpenCode       | full     | `AGENTS.md`                       | ✅     | ✅    | ✅     | ✅       |

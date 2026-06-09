@@ -17,5 +17,6 @@
   ],
   "commands": [
     "./commands"
-  ]
+  ],
+  "hooks": {}
 }

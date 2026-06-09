@@ -83,4 +83,4 @@ loom uninstall --tool claude-code
 | opencode    | OpenCode       | ✓      | ✓        | ✓      | ✗     | ✓        |
 | cursor      | Cursor         | ✓      | ✓        | ✗      | ✗     | ✓        |
 | copilot     | GitHub Copilot | ✓      | ✓        | ✗      | ✗     | ✗        |
-| codex       | Codex CLI      | ✓      | ✗        | ✗      | ✗     | ✗        |
+| codex       | Codex CLI      | ✓      | ✗        | ✗      | ✗     | ✓        |

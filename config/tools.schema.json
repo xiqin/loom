@@ -58,7 +58,7 @@
       "hooksSupport": false,
       "pluginMeta": null,
       "entryFilename": "AGENTS.md",
-      "description": "OpenAI Codex CLI — 支持 skills"
+      "description": "OpenAI Codex CLI — 支持 skills 和 MCP 配置"
     }
   ]
 }

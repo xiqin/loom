@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CodexAdapter } from '../../src/adapters/codex.js';
 
@@ -37,6 +37,10 @@ describe('CodexAdapter', () => {
     expect(adapter.getUserDir()).toBe(process.env.CODEX_HOME);
   });
 
+  it('advertises MCP config support', () => {
+    expect(adapter.capabilities.mcpConfig).toBe(true);
+  });
+
   it('installs skills and templates without removing non-loom skills', () => {
     vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.codex'));
 
@@ -58,7 +62,49 @@ describe('CodexAdapter', () => {
     expect(existsSync(join(skillsDir, 'loom-old-skill'))).toBe(false);
     expect(existsSync(join(skillsDir, 'loom-init-project', 'SKILL.md'))).toBe(true);
     expect(existsSync(join(skillsDir, 'loom-init-project', 'templates', 'constitution.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.codex', 'config.toml'))).toBe(true);
     expect(log.some(l => l.includes('templates'))).toBe(true);
+    expect(log.some(l => l.includes('mcp: loom server added'))).toBe(true);
+  });
+
+  it('writes Codex MCP server config without overwriting existing config', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.codex'));
+
+    const codexDir = join(TEST_DIR, '.codex');
+    mkdirSync(codexDir, { recursive: true });
+    writeFileSync(join(codexDir, 'config.toml'), 'model = "gpt-5"\n\n[mcp_servers.existing]\ncommand = "existing"\n');
+
+    const loomRoot = join(TEST_DIR, 'loom-root');
+    mkdirSync(join(loomRoot, 'skills', 'loom-init-project'), { recursive: true });
+    writeFileSync(join(loomRoot, 'skills', 'loom-init-project', 'SKILL.md'), '# Init');
+
+    adapter.install(loomRoot, '1.0.0');
+
+    const config = readFileSync(join(codexDir, 'config.toml'), 'utf-8');
+    expect(config).toContain('model = "gpt-5"');
+    expect(config).toContain('[mcp_servers.existing]');
+    expect(config).toContain('[mcp_servers.loom]');
+    expect(config).toContain('command = "loom"');
+    expect(config).toContain('args = ["mcp-serve"]');
+  });
+
+  it('does not duplicate an existing loom MCP server config', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.codex'));
+
+    const codexDir = join(TEST_DIR, '.codex');
+    mkdirSync(codexDir, { recursive: true });
+    writeFileSync(join(codexDir, 'config.toml'), '[mcp_servers.loom]\ncommand = "custom-loom"\nargs = []\n');
+
+    const loomRoot = join(TEST_DIR, 'loom-root');
+    mkdirSync(join(loomRoot, 'skills', 'loom-init-project'), { recursive: true });
+    writeFileSync(join(loomRoot, 'skills', 'loom-init-project', 'SKILL.md'), '# Init');
+
+    const log = adapter.install(loomRoot, '1.0.0');
+    const config = readFileSync(join(codexDir, 'config.toml'), 'utf-8');
+
+    expect(config.match(/\[mcp_servers\.loom\]/g)).toHaveLength(1);
+    expect(config).toContain('command = "custom-loom"');
+    expect(log.some(l => l.includes('loom server already configured'))).toBe(true);
   });
 
   it('uninstall removes only loom skills', () => {
@@ -74,5 +120,31 @@ describe('CodexAdapter', () => {
 
     expect(existsSync(join(skillsDir, 'loom-test'))).toBe(false);
     expect(existsSync(join(skillsDir, 'custom-skill', 'SKILL.md'))).toBe(true);
+  });
+
+  it('uninstall removes only the loom MCP section', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.codex'));
+
+    const codexDir = join(TEST_DIR, '.codex');
+    mkdirSync(codexDir, { recursive: true });
+    writeFileSync(join(codexDir, 'config.toml'), [
+      'model = "gpt-5"',
+      '',
+      '[mcp_servers.loom]',
+      'command = "loom"',
+      'args = ["mcp-serve"]',
+      '',
+      '[mcp_servers.other]',
+      'command = "other"',
+      '',
+    ].join('\n'));
+
+    const log = adapter.uninstall(TEST_DIR);
+    const config = readFileSync(join(codexDir, 'config.toml'), 'utf-8');
+
+    expect(config).not.toContain('[mcp_servers.loom]');
+    expect(config).toContain('model = "gpt-5"');
+    expect(config).toContain('[mcp_servers.other]');
+    expect(log.some(l => l.includes('mcp: loom server removed'))).toBe(true);
   });
 });

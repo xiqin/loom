@@ -38,6 +38,7 @@
 | 路径                      | 类型      | 说明                  |
 | ------------------------- | --------- | --------------------- |
 | `~/.codex/skills/<name>/` | directory | 每个 skill 一个子目录 |
+| `~/.codex/config.toml`    | 追加配置  | `mcp_servers.loom` MCP server 注册 |
 
 ## 文件生命周期
 

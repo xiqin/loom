@@ -39,6 +39,7 @@ writeIfChanged(join(ROOT, '.claude-plugin', 'plugin.json'), JSON.stringify({
   keywords: pkg.keywords || [],
   skills: ['./skills'],
   commands: ['./commands'],
+  hooks: {},
 }, null, 2) + '\n');
 
 const PLUGIN_NAME = NAME.includes('/') ? NAME.split('/').pop() : NAME.replace(/-engineering$/, '');
