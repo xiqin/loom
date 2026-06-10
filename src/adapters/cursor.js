@@ -59,7 +59,7 @@ export class CursorAdapter {
     if (config.mcpServers.loom) {
       log.push('  mcp: loom server already configured');
     } else {
-      config.mcpServers.loom = { command: 'loom', args: ['mcp-serve'] };
+      config.mcpServers.loom = { command: 'loom', args: ['mcp-serve'], env: { LOOM_LAZY_TOOLS: '1' } };
       log.push('  mcp: loom server added to .cursor/mcp/mcp.json');
       changed = true;
     }

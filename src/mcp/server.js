@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { TOOL_DEFINITIONS, executeToolCall } from './tools.js';
 import { SessionStore } from './session-store.js';
+import { recordCall, printSummary } from './telemetry.js';
 
 const SERVER_NAME = 'loom-mcp-server';
 // 版本从 package.json 单源读取，避免与发布版本不同步
@@ -31,6 +32,29 @@ const PROTOCOL_VERSION = '2025-06-18';
 const sessionStore = new SessionStore();
 // 每个 server 进程对应一个 stdio 连接，握手时生成唯一 sessionId
 let sessionId = randomUUID();
+
+function lazyToolsEnabled() {
+  return process.env.LOOM_LAZY_TOOLS !== '0';
+}
+
+function toMcpTool({ name, description, inputSchema }) {
+  return { name, description, inputSchema };
+}
+
+export function listVisibleTools(store, id, { lazyEnabled = lazyToolsEnabled() } = {}) {
+  if (!lazyEnabled) return TOOL_DEFINITIONS.map(toMcpTool);
+  const loadedGroups = store.getLoadedGroups(id);
+  return TOOL_DEFINITIONS
+    .filter(t => loadedGroups.has(t.group))
+    .map(toMcpTool);
+}
+
+function notifyToolsListChanged() {
+  process.stdout.write(JSON.stringify({
+    jsonrpc: '2.0',
+    method: 'notifications/tools/list_changed'
+  }) + '\n');
+}
 
 // ── JSON-RPC 处理 ──────────────────────────────────────────────────────────
 
@@ -51,7 +75,7 @@ async function handleRequest(msg) {
       sessionId = randomUUID(); // 新握手 → 新会话，清掉上一连接的 spec 绑定残留
       return makeResponse(id, {
         protocolVersion: PROTOCOL_VERSION,
-        capabilities: { tools: {} },
+        capabilities: { tools: { listChanged: lazyToolsEnabled() } },
         serverInfo: { name: SERVER_NAME, version: SERVER_VERSION }
       });
 
@@ -59,12 +83,9 @@ async function handleRequest(msg) {
       return null; // 无需响应
 
     case 'tools/list': {
-      // LOOM_LAZY_TOOLS=1 时按 session loadedGroups 过滤；默认全量注册（向后兼容）
-      const tools = process.env.LOOM_LAZY_TOOLS === '1'
-        ? TOOL_DEFINITIONS
-            .filter(t => sessionStore.getLoadedGroups(sessionId).has(t.group))
-            .map(({ name, description, inputSchema }) => ({ name, description, inputSchema }))
-        : TOOL_DEFINITIONS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));
+      // 默认按 session loadedGroups 过滤工具列表（懒加载），减少上下文占用。
+      // 设置 LOOM_LAZY_TOOLS=0 可恢复全量注册（向后兼容）。
+      const tools = listVisibleTools(sessionStore, sessionId);
       return makeResponse(id, { tools });
     }
 
@@ -77,12 +98,18 @@ async function handleRequest(msg) {
       const tool = TOOL_DEFINITIONS.find(t => t.name === toolName);
       if (!tool) return makeError(id, -32602, `Unknown tool: ${toolName}`);
 
+      const startTime = Date.now();
       try {
         const result = await executeToolCall(toolName, args, sessionStore, sessionId);
+        recordCall(toolName, Date.now() - startTime);
+        if (toolName === 'loom_load_tool_group' && result?.ok && lazyToolsEnabled()) {
+          notifyToolsListChanged();
+        }
         return makeResponse(id, {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
         });
       } catch (error) {
+        recordCall(toolName, Date.now() - startTime);
         return makeResponse(id, {
           content: [{ type: 'text', text: JSON.stringify({ error: error.message }) }],
           isError: true
@@ -130,7 +157,10 @@ export function startServer() {
     }
   });
 
-  rl.on('close', () => process.exit(0));
+  rl.on('close', () => {
+    printSummary();
+    process.exit(0);
+  });
 
   // stderr 用于 debug 日志（不污染 stdout JSON 协议）
   process.stderr.write(`[${SERVER_NAME}] Started on stdio\n`);

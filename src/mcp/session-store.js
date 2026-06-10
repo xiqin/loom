@@ -7,17 +7,29 @@
 
 export class SessionStore {
   constructor() {
-    /** @type {Map<string, { specDir: string, projectRoot: string, attachedAt: string, loadedGroups: Set<string> }>} */
+    /** @type {Map<string, { specDir: string | null, projectRoot: string, attachedAt: string | null, loadedGroups: Set<string> }>} */
     this._sessions = new Map();
   }
 
+  _ensureSession(sessionId) {
+    let session = this._sessions.get(sessionId);
+    if (!session) {
+      session = {
+        specDir: null,
+        projectRoot: process.cwd(),
+        attachedAt: null,
+        loadedGroups: new Set(['meta']),
+      };
+      this._sessions.set(sessionId, session);
+    }
+    return session;
+  }
+
   attach(sessionId, specDir, projectRoot) {
-    this._sessions.set(sessionId, {
-      specDir,
-      projectRoot,
-      attachedAt: new Date().toISOString(),
-      loadedGroups: new Set(['meta'])
-    });
+    const session = this._ensureSession(sessionId);
+    session.specDir = specDir;
+    session.projectRoot = projectRoot;
+    session.attachedAt = new Date().toISOString();
   }
 
   detach(sessionId) {
@@ -46,12 +58,11 @@ export class SessionStore {
   }
 
   loadGroup(sessionId, group) {
-    const session = this.get(sessionId);
-    if (session) session.loadedGroups.add(group);
+    this._ensureSession(sessionId).loadedGroups.add(group);
   }
 
   getLoadedGroups(sessionId) {
     const session = this.get(sessionId);
-    return session?.loadedGroups || new Set(['meta']);
+    return new Set(session?.loadedGroups || ['meta']);
   }
 }

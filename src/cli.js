@@ -99,7 +99,7 @@ program
   .option('--context', 'Output stage context as JSON (for MCP / AI)')
   .option('--verdict', 'Read qa-report.md verdict: exit 0=PASS, 1=FAIL, 2=PARTIAL')
   .option('--verdict-file <file>', 'Report filename to read verdict from (default: qa-report.md)')
-  .option('--type <pipeline>', 'Pipeline type for init: feature|bugfix|hotfix|refactor|chore|qa')
+  .option('--type <pipeline>', 'Pipeline type for init: feature|bugfix|hotfix|refactor|quickfix|chore|qa')
   .option('--force', 'Override spec lock')
   .action(async (options) => {
     const { default: runCommand } = await import('./commands/run.js');

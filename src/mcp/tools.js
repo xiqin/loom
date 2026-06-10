@@ -16,6 +16,7 @@ import { MemoryStore } from '../core/memory-store.js';
 import { SpecLock } from '../core/lock.js';
 import { loadContextIndex, DOC_KEYS } from '../core/context-index.js';
 import { SkillLoader } from '../core/skill-loader.js';
+import { getSnapshot } from './telemetry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SKILLS_DIR = join(__dirname, '..', '..', 'skills');
@@ -194,6 +195,15 @@ export const TOOL_DEFINITIONS = [
         section: { type: 'string', description: 'Section title within a skill (e.g. 执行流程). Only valid when skill is specified.' }
       }
     }
+  },
+  {
+    name: 'loom_telemetry',
+    group: 'meta',
+    description: 'Get telemetry snapshot for the current MCP session: tool call counts, cumulative time per tool. Only available when LOOM_TELEMETRY=1 is set.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
   }
 ];
 
@@ -205,7 +215,7 @@ export const CAPABILITY_GROUPS = {
   context: {
     title: '上下文（渐进式披露）',
     when: '需要项目宪章 / 工程索引 / 记忆里的某块信息时。先取目录（不带 section）看有什么，再按节召回，避免整文件进上下文。',
-    tools: ['loom_get_context'],
+    tools: ['loom_get_context', 'loom_get_skill_context'],
   },
   pipeline: {
     title: '流水线（状态机）',
@@ -227,6 +237,11 @@ export const CAPABILITY_GROUPS = {
     title: '会话绑定',
     when: '开始处理某个 spec 时先 attach，后续调用可省略 spec_dir。',
     tools: ['loom_attach_spec'],
+  },
+  meta: {
+    title: '元工具（能力目录 / 遥测）',
+    when: '查看 loom 能力目录、加载工具组、查询会话遥测数据时。',
+    tools: ['loom_list_capabilities', 'loom_load_tool_group', 'loom_telemetry'],
   },
 };
 
@@ -418,6 +433,10 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
       const full = loader.getFullSkill(args.skill);
       if (!full) return { error: `Skill not found: ${args.skill}. Call without args to list all skills.` };
       return { level: 'L1', ...full };
+    }
+
+    case 'loom_telemetry': {
+      return getSnapshot();
     }
 
     default:

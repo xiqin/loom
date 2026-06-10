@@ -6,9 +6,12 @@
 
 ## 输入上下文
 
-- `specs/<date+feature>/spec.md`（完整需求，含所有接口定义）
-- `specs/<date+feature>/plan.md`（Task 概览和依赖关系）
-- `specs/<date+feature>/tasks/` 目录下的各 task 文件（详细实现步骤）
+**按需获取上下文，避免全量读取：**
+
+- `specs/<date+feature>/spec.md`（仅读取与本次变更相关的接口章节，不要全文读取）
+- `specs/<date+feature>/plan.md`（仅读取 task 概览和依赖关系）
+- `specs/<date+feature>/tasks/` 目录下与本次变更相关的 task 文件（不要读取所有 task）
+- git diff（本次变更部分）— 确定哪些接口和模块受影响
 - 项目测试命令的完整输出
 - 编译和静态分析的输出
 

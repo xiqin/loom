@@ -5,7 +5,7 @@ AI 工程化框架。把需求、规范、上下文、执行过程"织"成一套
 ## loom 是什么
 
 - 一套 **skills + commands + hooks** 的集合，注入到 AI 编程工具中
-- 一条 **按任务类型自适应的开发流水线**：根据 `feature / bugfix / hotfix / refactor / chore` 自动选择对应步骤
+- 一条 **按任务类型自适应的开发流水线**：根据 `feature / bugfix / hotfix / refactor / quickfix / chore` 自动选择对应步骤
 - 一个 **CLI 工具**（`loom`），负责安装、更新、诊断、卸载，以及流水线执行（`run`/`status`/`tasks`/`index`）、结构化记忆（`memory`）和 MCP server（`mcp-serve`）
 - 一个 **项目初始化器**（`/loom-init-project` 或 `loom init-project`），自动扫描项目生成宪章和工程结构
 
@@ -29,7 +29,7 @@ AI 工程化框架。把需求、规范、上下文、执行过程"织"成一套
 
 ### 前置条件
 
-- Node.js >= 18
+- Node.js >= 22
 - （可选）[codegraph](https://github.com/colbymchenry/codegraph) — 装了则 `loom index` 自动委派给它做 AST 级图索引，并注册其 MCP server；未装则回落自带静态扫描器
 
 ### 方式一：一键安装脚本
@@ -59,12 +59,12 @@ loom install --tool claude-code
 
 ### 安装选项
 
-| Flag              | 作用                                     |
-| ----------------- | ---------------------------------------- |
-| `--tool <targets>` | 目标工具（必填，逗号分隔或 "all"）     |
-| `--dry-run`       | 预览，不实际写入                         |
-| `--from-release`  | 从 GitHub release tag 下载（可重现安装） |
-| `--version <ver>` | 指定下载版本（配合 `--from-release`）    |
+| Flag               | 作用                                     |
+| ------------------ | ---------------------------------------- |
+| `--tool <targets>` | 目标工具（必填，逗号分隔或 "all"）       |
+| `--dry-run`        | 预览，不实际写入                         |
+| `--from-release`   | 从 GitHub release tag 下载（可重现安装） |
+| `--version <ver>`  | 指定下载版本（配合 `--from-release`）    |
 
 ### 安装后验证
 
@@ -130,84 +130,89 @@ loom doctor
 
 ### 流水线类型
 
-| 类型       | 适用场景                         | 包含步骤                                                    |
-| ---------- | -------------------------------- | ----------------------------------------------------------- |
-| `feature`  | 新功能开发                       | brainstorming → planning → approved → git-worktree → executing → verification → synced |
-| `bugfix`   | 已定位的 bug 修复                | planning → approved → executing → verification → synced     |
-| `hotfix`   | 生产紧急问题                     | approved → executing → verification                         |
-| `refactor` | 代码重构                         | brainstorming → planning → approved → executing → verification → synced |
-| `chore`    | 依赖升级、配置调整、文档更新等   | executing → verification                                    |
+| 类型       | 适用场景                       | 包含步骤                                                                               |
+| ---------- | ------------------------------ | -------------------------------------------------------------------------------------- |
+| `feature`  | 新功能开发                     | brainstorming → planning → approved → git-worktree → executing → verification → synced |
+| `bugfix`   | 已定位的 bug 修复              | planning → approved → executing → verification → synced                                |
+| `hotfix`   | 生产紧急问题                   | approved → executing → verification                                                    |
+| `refactor` | 代码重构                       | brainstorming → planning → approved → executing → verification → synced                |
+| `quickfix` | 单文件小改动、已知 bug 小修复  | executing → verification                                                               |
+| `chore`    | 依赖升级、配置调整、文档更新等 | executing → verification                                                               |
 
 AI 收到任务后会先判断类型并告知用户，确认后再读取对应流水线执行。未指定类型时默认使用 `feature`。
 
 ### feature 流水线步骤
 
-| Step | 阶段                        | 说明                                     | 输出                             |
-| ---- | --------------------------- | ---------------------------------------- | -------------------------------- |
-| 1    | brainstorming               | 需求头脑风暴，探索 2-3 种实现方案        | `specs/<date+feature>/spec.md`   |
-| 2    | writing-plans               | 按分层拆解 task                          | `specs/<date+feature>/plan.md`   |
-| 3    | git-worktree                | 创建隔离分支                             | feature 分支                     |
-| 4    | subagent-driven-development | Subagent 隔离派发 + 双审查               | 源码 + 测试报告                  |
-| 5    | verification                | 完成前验证，Spec覆盖/类型一致性/编译测试 | 验证报告                         |
+| Step | 阶段                        | 说明                                                     | 输出                                     |
+| ---- | --------------------------- | -------------------------------------------------------- | ---------------------------------------- |
+| 1    | brainstorming               | 需求头脑风暴，探索 2-3 种实现方案                        | `specs/<date+feature>/spec.md`           |
+| 2    | writing-plans               | 按分层拆解 task                                          | `specs/<date+feature>/plan.md`           |
+| 3    | git-worktree                | 创建隔离分支                                             | feature 分支                             |
+| 4    | subagent-driven-development | Subagent 隔离派发 + 双审查                               | 源码 + 测试报告                          |
+| 5    | verification                | 完成前验证，Spec覆盖/类型一致性/编译测试                 | 验证报告                                 |
 | 6    | index-update                | 工程索引同步（`loom index` 自动选 codegraph 或静态扫描） | codegraph 图索引 或 engineering-index.md |
 
 ### 代码审查
 
 <!-- loom:generate:review-summary -->
+
 ### 6 维审查
 
-| 维度 | 关键检查项 |
-|------|----------|
-| 架构合规 | 是否遵循项目架构分层（从 project-structure.md 读取）、是否存在跨层调用 |
-| 代码质量 | 是否使用了项目禁止的调试函数、SQL 是否参数化（防注入） |
-| 安全风险 | SQL 注入检查、认证/授权是否正确 |
-| 性能隐患 | N+1 查询检查、分页查询是否使用框架分页组件 |
-| 规范一致性 | 命名是否符合项目规范、响应格式是否统一 |
+| 维度         | 关键检查项                                                                                                                                                                                         |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 架构合规     | 是否遵循项目架构分层（从 project-structure.md 读取）、是否存在跨层调用                                                                                                                             |
+| 代码质量     | 是否使用了项目禁止的调试函数、SQL 是否参数化（防注入）                                                                                                                                             |
+| 安全风险     | SQL 注入检查、认证/授权是否正确                                                                                                                                                                    |
+| 性能隐患     | N+1 查询检查、分页查询是否使用框架分页组件                                                                                                                                                         |
+| 规范一致性   | 命名是否符合项目规范、响应格式是否统一                                                                                                                                                             |
 | 变更影响范围 | 本次变更的函数、接口、类型是否被其他模块引用（codegraph 可用时查 codegraph_impact/codegraph_callers，否则读 engineering-index.md）、公开接口的参数签名是否变化（新增必填参数、删除字段、类型变更） |
+
 <!-- /loom:generate:review-summary -->
 
 ## Skills（16 个）
 
 <!-- loom:generate:skills-catalog -->
+
 6 流水线 + 2 辅助 + 7 通用 + 1 测试 Skill，共 16 个
 
 **核心流水线 Skills：**
 
-| Skill                               | 输出                           | 说明                                               |
-| ----------------------------------- | ------------------------------ | -------------------------------------------------- |
-| loom-brainstorming | `specs/<date+feature>/spec.md` | 需求头脑风暴, +可视化伴侣、设计自检、用户审查 Gate |
-| loom-writing-plans | `specs/<date+feature>/plan.md` | 分层拆解 task, +模型选择、类型一致性检查 |
-| loom-using-git-worktrees | feature 分支 | 创建隔离分支, +测试基线验证 |
-| loom-subagent-driven-development | 源码 + 测试报告 | Subagent 派发 + 双重审查,独立模板文件、4种状态处理 |
-| loom-verification-before-completion | 验证报告 | 完成前验证, +Spec覆盖、类型一致性、编译测试 |
-| loom-index-update | 知识图谱 或 ENGINEERING-INDEX.md | 工程索引同步 |
+| Skill                               | 输出                             | 说明                                               |
+| ----------------------------------- | -------------------------------- | -------------------------------------------------- |
+| loom-brainstorming                  | `specs/<date+feature>/spec.md`   | 需求头脑风暴, +可视化伴侣、设计自检、用户审查 Gate |
+| loom-writing-plans                  | `specs/<date+feature>/plan.md`   | 分层拆解 task, +模型选择、类型一致性检查           |
+| loom-using-git-worktrees            | feature 分支                     | 创建隔离分支, +测试基线验证                        |
+| loom-subagent-driven-development    | 源码 + 测试报告                  | Subagent 派发 + 双重审查,独立模板文件、4种状态处理 |
+| loom-verification-before-completion | 验证报告                         | 完成前验证, +Spec覆盖、类型一致性、编译测试        |
+| loom-index-update                   | 知识图谱 或 ENGINEERING-INDEX.md | 工程索引同步                                       |
 
 **辅助 Skills：**
 
 | Skill             | 说明                               |
 | ----------------- | ---------------------------------- |
 | loom-init-project | 项目初始化（扫描 + 生成宪章/结构） |
-| loom-using-loom | loom 框架使用指南（本 skill） |
+| loom-using-loom   | loom 框架使用指南（本 skill）      |
 
 **通用 Skills：**
 
 | Skill                               | 说明                                              |
 | ----------------------------------- | ------------------------------------------------- |
-| loom-test-driven-development | TDD 测试驱动开发，+流程图、好/坏示例、常见借口表 |
-| loom-systematic-debugging | 系统化调试, +4阶段流程图、条件等待、纵深防御 |
-| loom-requesting-code-review | 请求代码审查, +预审查清单、审查模板 |
-| loom-receiving-code-review | 接受代码审查, +响应模板、流程图 |
-| loom-dispatching-parallel-agents | 并行 agent 派发, +模型选择、并发工作流图 |
-| loom-writing-skills | 编写自定义 skills, +方法论深度、流程图 |
+| loom-test-driven-development        | TDD 测试驱动开发，+流程图、好/坏示例、常见借口表  |
+| loom-systematic-debugging           | 系统化调试, +4阶段流程图、条件等待、纵深防御      |
+| loom-requesting-code-review         | 请求代码审查, +预审查清单、审查模板               |
+| loom-receiving-code-review          | 接受代码审查, +响应模板、流程图                   |
+| loom-dispatching-parallel-agents    | 并行 agent 派发, +模型选择、并发工作流图          |
+| loom-writing-skills                 | 编写自定义 skills, +方法论深度、流程图            |
 | loom-finishing-a-development-branch | 分支完成流程 , +选项展示（Merge/PR/Keep/Discard） |
 
 **测试 Skills：**
 
-| Skill      | 输出                           | 说明                                                        |
-| ---------- | ------------------------------ | ----------------------------------------------------------- |
+| Skill   | 输出                            | 说明                                                                     |
+| ------- | ------------------------------- | ------------------------------------------------------------------------ |
 | loom-qa | `qa/<date+target>/qa-report.md` | QA 验收流水线，测试人员使用：新功能验证 + 回归 + 集成测试 + 持久化用例库 |
 
 > 完整定义详见 `skills/loom-using-loom/SKILL.md` 或 `.loom/skills/` 目录
+
 <!-- /loom:generate:skills-catalog -->
 
 ## License

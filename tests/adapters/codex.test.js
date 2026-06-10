@@ -86,6 +86,7 @@ describe('CodexAdapter', () => {
     expect(config).toContain('[mcp_servers.loom]');
     expect(config).toContain('command = "loom"');
     expect(config).toContain('args = ["mcp-serve"]');
+    expect(config).toContain('env = { LOOM_LAZY_TOOLS = "1" }');
   });
 
   it('does not duplicate an existing loom MCP server config', () => {

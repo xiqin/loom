@@ -4,12 +4,13 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { executeToolCall, TOOL_DEFINITIONS } from '../../src/mcp/tools.js';
 import { SessionStore } from '../../src/mcp/session-store.js';
+import { listVisibleTools } from '../../src/mcp/server.js';
 
 function tmp() { return mkdtempSync(join(tmpdir(), 'loom-mcp-')); }
 
 describe('MCP tool definitions', () => {
   it('exposes the documented tools incl. context + capabilities', () => {
-    expect(TOOL_DEFINITIONS).toHaveLength(12);
+    expect(TOOL_DEFINITIONS).toHaveLength(13);
     const names = TOOL_DEFINITIONS.map(t => t.name);
     expect(names).toContain('loom_attach_spec');
     expect(names).toContain('loom_get_context');
@@ -23,6 +24,34 @@ describe('MCP tool definitions', () => {
       expect(typeof t.group).toBe('string');
       expect(t.group.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('lazy MCP tool listing', () => {
+  it('loads tool groups before attach and preserves them after attach', async () => {
+    const root = tmp();
+    const store = new SessionStore();
+    const sessionId = 's-lazy';
+
+    const initial = listVisibleTools(store, sessionId, { lazyEnabled: true }).map(t => t.name);
+    expect(initial).toEqual(['loom_list_capabilities', 'loom_load_tool_group', 'loom_telemetry']);
+
+    const loaded = await executeToolCall('loom_load_tool_group', { group: 'pipeline' }, store, sessionId);
+    expect(loaded.ok).toBe(true);
+
+    const afterLoad = listVisibleTools(store, sessionId, { lazyEnabled: true }).map(t => t.name);
+    expect(afterLoad).toContain('loom_get_project_status');
+    expect(afterLoad).not.toContain('loom_get_context');
+
+    await executeToolCall('loom_attach_spec', { spec_dir: join(root, 'specs', 'x'), project_root: root }, store, sessionId);
+    const afterAttach = listVisibleTools(store, sessionId, { lazyEnabled: true }).map(t => t.name);
+    expect(afterAttach).toContain('loom_get_project_status');
+  });
+
+  it('exposes every tool when lazy loading is disabled', () => {
+    const store = new SessionStore();
+    const names = listVisibleTools(store, 's-full', { lazyEnabled: false }).map(t => t.name);
+    expect(names).toEqual(TOOL_DEFINITIONS.map(t => t.name));
   });
 });
 

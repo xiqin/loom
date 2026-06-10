@@ -11,6 +11,14 @@ function tomlArray(values = []) {
   return `[${values.map(v => tomlString(v)).join(', ')}]`;
 }
 
+function tomlKey(key) {
+  return /^[A-Za-z0-9_-]+$/.test(key) ? key : tomlString(key);
+}
+
+function tomlInlineTable(entries = {}) {
+  return `{ ${Object.entries(entries).map(([k, v]) => `${tomlKey(k)} = ${tomlString(v)}`).join(', ')} }`;
+}
+
 function sectionBounds(lines, sectionName) {
   const header = `[mcp_servers.${sectionName}]`;
   const start = lines.findIndex(line => line.trim() === header);
@@ -38,6 +46,9 @@ function appendMcpServer(configText, name, descriptor) {
     `command = ${tomlString(descriptor.command)}`,
     `args = ${tomlArray(descriptor.args || [])}`,
   ];
+  if (descriptor.env && Object.keys(descriptor.env).length > 0) {
+    body.push(`env = ${tomlInlineTable(descriptor.env)}`);
+  }
   const prefix = configText.trim() ? `${lines.join('\n')}\n\n` : '';
   return `${prefix}${body.join('\n')}\n`;
 }
@@ -96,7 +107,7 @@ export class CodexAdapter extends BaseAdapter {
     if (hasMcpServer(config, 'loom')) {
       log.push('  mcp: loom server already configured');
     } else {
-      config = appendMcpServer(config, 'loom', { command: 'loom', args: ['mcp-serve'] });
+      config = appendMcpServer(config, 'loom', { command: 'loom', args: ['mcp-serve'], env: { LOOM_LAZY_TOOLS: '1' } });
       log.push('  mcp: loom server added to config.toml');
       changed = true;
     }

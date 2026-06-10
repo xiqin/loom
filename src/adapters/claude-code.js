@@ -50,7 +50,7 @@ export class ClaudeCodeAdapter extends BaseAdapter {
     if (settings.mcpServers.loom) {
       log.push('  mcp: loom server already configured');
     } else {
-      settings.mcpServers.loom = { command: 'loom', args: ['mcp-serve'] };
+      settings.mcpServers.loom = { command: 'loom', args: ['mcp-serve'], env: { LOOM_LAZY_TOOLS: '1' } };
       log.push('  mcp: loom server added to settings.json');
       changed = true;
     }

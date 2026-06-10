@@ -159,13 +159,13 @@ trap cleanup EXIT
 check_node() {
   if ! command -v node >/dev/null 2>&1; then
     err "error: Node.js is required (https://nodejs.org)"
-    err "  Install Node.js >= 18 and re-run"
+    err "  Install Node.js >= 22 and re-run"
     exit 1
   fi
   local node_ver
   node_ver="$(node -v | sed 's/v//' | cut -d. -f1)"
-  if [ "$node_ver" -lt 18 ]; then
-    err "error: Node.js >= 18 required (found: $(node -v))"
+  if [ "$node_ver" -lt 22 ]; then
+    err "error: Node.js >= 22 required (found: $(node -v))"
     exit 1
   fi
 }

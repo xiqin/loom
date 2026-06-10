@@ -149,6 +149,7 @@ export class OpenCodeAdapter extends BaseAdapter {
       type: 'local',
       command: ['loom', 'mcp-serve'],
       enabled: true,
+      env: { LOOM_LAZY_TOOLS: '1' },
     };
 
     mkdirSync(dirname(configPath), { recursive: true });

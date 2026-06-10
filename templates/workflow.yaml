@@ -17,15 +17,14 @@
 # 全局配置
 # ─────────────────────────────────────────
 defaults:
-  pipeline_type: feature        # 未指定时的默认流水线
-  max_retries: 3                # subagent 全局最大重试次数（可被 step 覆盖）
-  timeout_minutes: 30           # 单个 step 超时时间（分钟）
+  pipeline_type: feature # 未指定时的默认流水线
+  max_retries: 3 # subagent 全局最大重试次数（可被 step 覆盖）
+  timeout_minutes: 30 # 单个 step 超时时间（分钟）
 
 # ─────────────────────────────────────────
 # 流水线定义
 # ─────────────────────────────────────────
 pipelines:
-
   # 新功能开发 — 完整六步
   feature:
     description: "新功能开发，从需求到上线的完整流程"
@@ -130,7 +129,7 @@ pipelines:
         gate_verdict: test-report.md
         description: "执行热修复"
         config:
-          max_retries: 1        # 热修复不允许无限重试，失败立即上报
+          max_retries: 1 # 热修复不允许无限重试，失败立即上报
 
       - id: verification
         skill: loom-verification-before-completion
@@ -208,17 +207,29 @@ pipelines:
     description: "依赖升级、配置调整、文档更新等低风险改动"
     steps:
       - id: executing
-        skill: loom-subagent-driven-development
+        skill: null
         next: verification
-        outputs: [test-report.md]
-        gate_verdict: test-report.md
-        description: "执行改动"
+        outputs: []
+        description: "直接执行改动（不使用 subagent）"
 
       - id: verification
         skill: loom-verification-before-completion
-        requires: [test-report.md]
         outputs: []
         description: "基础验证：lint / 编译"
+
+  # 快速修复 — 最轻量流水线，适合单文件 bugfix、配置微调
+  quickfix:
+    description: "单文件小改动、已知 bug 的小修复、配置微调等，无需规划或 subagent。执行中发现改动涉及 2+ 文件或跨模块依赖，立即暂停并告知用户，建议升级为 `bugfix`"
+    steps:
+      - id: executing
+        skill: null
+        outputs: []
+        description: "直接执行改动"
+
+      - id: verification
+        skill: loom-verification-before-completion
+        outputs: []
+        description: "最小验证：lint / 编译 / 相关测试"
 
   # QA 验收流水线 — 测试人员使用
   qa:

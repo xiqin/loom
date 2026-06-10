@@ -136,13 +136,13 @@ function Check-Node {
   $node = Get-Command "node" -ErrorAction SilentlyContinue
   if (-not $node) {
     Err "error: Node.js is required (https://nodejs.org)"
-    Err "  Install Node.js >= 18 and re-run"
+    Err "  Install Node.js >= 22 and re-run"
     exit 1
   }
   $ver = & node -v
   $major = [int]($ver -replace 'v', '' -replace '\..*', '')
-  if ($major -lt 18) {
-    Err "error: Node.js >= 18 required (found: $ver)"
+  if ($major -lt 22) {
+    Err "error: Node.js >= 22 required (found: $ver)"
     exit 1
   }
 }
