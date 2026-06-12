@@ -156,4 +156,20 @@ describe('OpenCodeAdapter', () => {
     const config = JSON.parse(readFileSync(join(TEST_DIR, '.config', 'opencode', 'opencode.json'), 'utf-8'));
     expect(config.plugin.filter(p => p === 'loom-engineering').length).toBe(1);
   });
+
+  it('_ensureMcpConfig backs up invalid opencode.json before rebuilding', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.config', 'opencode'));
+    mkdirSync(join(TEST_DIR, '.config', 'opencode'), { recursive: true });
+    const configPath = join(TEST_DIR, '.config', 'opencode', 'opencode.json');
+    writeFileSync(configPath, '{ bad json');
+
+    const log = [];
+    adapter._ensureMcpConfig(log);
+
+    expect(existsSync(configPath + '.bak')).toBe(true);
+    expect(readFileSync(configPath + '.bak', 'utf-8')).toBe('{ bad json');
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+    expect(config.mcp.loom.command).toEqual(['loom', 'mcp-serve']);
+    expect(log.some(l => l.includes('解析失败'))).toBe(true);
+  });
 });

@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
@@ -87,7 +87,7 @@ export class ClaudeCodeAdapter extends BaseAdapter {
 
     // 1. Uninstall the plugin
     try {
-      execSync(`${CLAUDE_CMD} plugin uninstall ${plugLabel}`, EXEC_OPTS);
+      execFileSync(CLAUDE_CMD, ['plugin', 'uninstall', plugLabel], EXEC_OPTS);
       log.push(`  plugin: ${plugLabel} uninstalled`);
     } catch {
       log.push(`  plugin: ${plugLabel} not installed`);
@@ -95,7 +95,7 @@ export class ClaudeCodeAdapter extends BaseAdapter {
 
     // 2. Remove the marketplace
     try {
-      execSync(`${CLAUDE_CMD} plugin marketplace remove ${marketplaceName}`, EXEC_OPTS);
+      execFileSync(CLAUDE_CMD, ['plugin', 'marketplace', 'remove', marketplaceName], EXEC_OPTS);
       log.push(`  marketplace: ${marketplaceName} removed`);
     } catch {
       log.push(`  marketplace: ${marketplaceName} not found`);
@@ -118,9 +118,9 @@ export class ClaudeCodeAdapter extends BaseAdapter {
     const { marketplaceName, pluginName } = _readMarketplaceNames(loomRoot);
     const plugLabel = `${pluginName}@${marketplaceName}`;
 
-    const run = (cmd, label, silent = []) => {
+    const run = (args, label, silent = []) => {
       try {
-        execSync(cmd, EXEC_OPTS);
+        execFileSync(CLAUDE_CMD, args, EXEC_OPTS);
         log.push(`  plugin: ${label} — ok`);
         return true;
       } catch (e) {
@@ -133,13 +133,13 @@ export class ClaudeCodeAdapter extends BaseAdapter {
     };
 
     // Always remove then reinstall to pick up updates
-    try { execSync(`${CLAUDE_CMD} plugin uninstall ${plugLabel}`, EXEC_OPTS); } catch {}
-    try { execSync(`${CLAUDE_CMD} plugin marketplace remove ${marketplaceName}`, EXEC_OPTS); } catch {}
+    try { execFileSync(CLAUDE_CMD, ['plugin', 'uninstall', plugLabel], EXEC_OPTS); } catch {}
+    try { execFileSync(CLAUDE_CMD, ['plugin', 'marketplace', 'remove', marketplaceName], EXEC_OPTS); } catch {}
 
-    run(`${CLAUDE_CMD} plugin marketplace add "${loomRoot}"`, 'marketplace add', ['already', 'exist']);
-    const installed = run(`${CLAUDE_CMD} plugin install ${plugLabel} --scope user`, 'install --scope user');
+    run(['plugin', 'marketplace', 'add', loomRoot], 'marketplace add', ['already', 'exist']);
+    const installed = run(['plugin', 'install', plugLabel, '--scope', 'user'], 'install --scope user');
     if (installed) {
-      run(`${CLAUDE_CMD} plugin enable ${plugLabel} --scope user`, 'enable --scope user', ['already enabled']);
+      run(['plugin', 'enable', plugLabel, '--scope', 'user'], 'enable --scope user', ['already enabled']);
     }
 
     return true;

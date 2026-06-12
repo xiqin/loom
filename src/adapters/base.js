@@ -1,6 +1,5 @@
-import { mkdirSync, cpSync, writeFileSync, readdirSync, readFileSync, existsSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdirSync, cpSync, readdirSync, existsSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { homedir, platform } from 'node:os';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -164,10 +163,6 @@ export class BaseAdapter {
   _registerPlugin(loomRoot, version, log) {}
 
   _isManagedSkillName(name) {
-    return name.startsWith(MANAGED_SKILL_PREFIX);
-  }
-
-  _isManagedCommandName(name) {
     return name.startsWith(MANAGED_SKILL_PREFIX);
   }
 

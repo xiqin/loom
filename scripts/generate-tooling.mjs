@@ -8,7 +8,7 @@
  * Edit config/tools.schema.json, then re-run this script.
  */
 
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,6 +17,20 @@ const ROOT = join(__dirname, '..');
 const SCHEMA_PATH = join(ROOT, 'config', 'tools.schema.json');
 const OUT_DIR = join(ROOT, 'src', 'generated');
 const OUT_PATH = join(OUT_DIR, 'tooling.js');
+const CHECK = process.env.LOOM_GENERATE_CHECK === '1' || process.argv.includes('--check');
+let outOfSync = 0;
+
+function writeIfChanged(filePath, content) {
+  const existing = existsSync(filePath) ? readFileSync(filePath, 'utf-8') : '';
+  if (existing === content) return false;
+  if (CHECK) {
+    console.error(`  ✘ ${filePath} — out of sync`);
+    outOfSync++;
+    return true;
+  }
+  writeFileSync(filePath, content, 'utf-8');
+  return true;
+}
 
 // ── Load & validate schema ─────────────────────────────────────────────
 const schema = JSON.parse(readFileSync(SCHEMA_PATH, 'utf-8'));
@@ -85,10 +99,14 @@ export function getToolConfig(id) {
 }
 `;
 
-mkdirSync(OUT_DIR, { recursive: true });
-writeFileSync(OUT_PATH, code, 'utf-8');
+if (!CHECK) mkdirSync(OUT_DIR, { recursive: true });
+const generatedChanged = writeIfChanged(OUT_PATH, code);
 
-console.log(`✔ Generated ${OUT_PATH} (${schema.tools.length} tools, schema v${schema.version})`);
+if (CHECK && !generatedChanged) {
+  console.log(`  · ${OUT_PATH} — already up to date`);
+} else if (!CHECK) {
+  console.log(`✔ Generated ${OUT_PATH} (${schema.tools.length} tools, schema v${schema.version})`);
+}
 
 // ── Sync SUPPORTED_TOOLS to install/uninstall scripts ───────────────────
 const shellList = ids.map(id => `"${id}"`).join(' ');
@@ -109,6 +127,11 @@ for (const target of SHELL_TOOL_TARGETS) {
   }
   const updated = content.replace(target.pattern, target.replacement);
   if (content !== updated) {
+    if (CHECK) {
+      console.error(`  ✘ ${target.path} — out of sync`);
+      outOfSync++;
+      continue;
+    }
     writeFileSync(fullPath, updated, 'utf-8');
     console.log(`  ✔ ${target.path} → ${ids.length} tools synced`);
     toolSyncCount++;
@@ -120,3 +143,4 @@ for (const target of SHELL_TOOL_TARGETS) {
 if (toolSyncCount > 0) {
   console.log(`\n  Tool IDs synced to ${toolSyncCount} script(s).`);
 }
+if (outOfSync > 0) process.exit(1);

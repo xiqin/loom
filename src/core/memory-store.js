@@ -30,6 +30,11 @@ function writeFileAtomic(path, content, fs) {
 
 function now() { return new Date().toISOString(); }
 function today() { return now().slice(0, 10); }
+function escapeMarkdown(value) {
+  return String(value ?? '-')
+    .replace(/\|/g, '\\|')
+    .replace(/\r?\n/g, '<br>');
+}
 
 export class MemoryStore {
   constructor(loomDir, { fs } = {}) {
@@ -46,7 +51,9 @@ export class MemoryStore {
   _load() {
     if (!this.fs.existsSync(this.storePath)) return { entries: [], sessions: [] };
     try { return JSON.parse(this.fs.readFileSync(this.storePath, 'utf-8')); }
-    catch { return { entries: [], sessions: [] }; }
+    catch (err) {
+      throw new Error(`Corrupt memory store: ${this.storePath} (${err.message}). Fix or delete it manually.`);
+    }
   }
 
   _save(data) {
@@ -154,7 +161,7 @@ export class MemoryStore {
       lines.push('_No entries yet._');
     } else {
       for (const e of summaryEntries) {
-        lines.push(`${e.created_at.slice(0, 10)} | ${e.type} | ${e.content}`);
+        lines.push(`${e.created_at.slice(0, 10)} | ${escapeMarkdown(e.type)} | ${escapeMarkdown(e.content)}`);
       }
     }
     lines.push('');
@@ -169,7 +176,7 @@ export class MemoryStore {
       lines.push('| Date | Decision | Context |');
       lines.push('|------|----------|---------|');
       for (const e of adrs.slice(0, 20)) {
-        lines.push(`| ${e.created_at.slice(0, 10)} | ${e.content} | ${e.context || '-'} |`);
+        lines.push(`| ${e.created_at.slice(0, 10)} | ${escapeMarkdown(e.content)} | ${escapeMarkdown(e.context)} |`);
       }
     }
     lines.push('');
@@ -182,7 +189,7 @@ export class MemoryStore {
       lines.push('_No gotchas yet._');
     } else {
       for (const e of gotchas.slice(0, 15)) {
-        lines.push(`- **${e.created_at.slice(0, 10)}**: ${e.content}`);
+        lines.push(`- **${e.created_at.slice(0, 10)}**: ${escapeMarkdown(e.content)}`);
       }
     }
     lines.push('');
@@ -195,7 +202,7 @@ export class MemoryStore {
       lines.push('_No preferences recorded._');
     } else {
       for (const e of prefs) {
-        lines.push(`- ${e.content}`);
+        lines.push(`- ${escapeMarkdown(e.content)}`);
       }
     }
     lines.push('');
@@ -207,7 +214,7 @@ export class MemoryStore {
       lines.push('| File | Date | Slug |');
       lines.push('|------|------|------|');
       for (const s of data.sessions.slice(0, 30)) {
-        lines.push(`| ${s.file} | ${s.date} | ${s.slug} |`);
+        lines.push(`| ${escapeMarkdown(s.file)} | ${escapeMarkdown(s.date)} | ${escapeMarkdown(s.slug)} |`);
       }
       lines.push('');
     }

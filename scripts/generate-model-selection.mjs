@@ -10,11 +10,18 @@ const SCHEMA_PATH = join(ROOT, 'config', 'model-selection.schema.json');
 
 const MARKER_OPEN = '<!-- loom:generate:model-selection -->';
 const MARKER_CLOSE = '<!-- /loom:generate:model-selection -->';
+const CHECK = process.env.LOOM_GENERATE_CHECK === '1' || process.argv.includes('--check');
+let outOfSync = 0;
 
 function writeIfChanged(filePath, content) {
   const existing = existsSync(filePath) ? readFileSync(filePath, 'utf-8') : '';
   if (existing === content) {
     console.log(`  · ${filePath} — already up to date`);
+    return false;
+  }
+  if (CHECK) {
+    console.error(`  ✘ ${filePath} — out of sync`);
+    outOfSync++;
     return false;
   }
   writeFileSync(filePath, content, 'utf-8');
@@ -75,3 +82,4 @@ injectIntoFile(join(ROOT, 'skills', 'loom-subagent-driven-development', 'SKILL.m
 injectIntoFile(join(ROOT, 'skills', 'loom-writing-plans', 'SKILL.md'), md);
 
 console.log('\n✔ Model selection generation complete');
+if (outOfSync > 0) process.exit(1);

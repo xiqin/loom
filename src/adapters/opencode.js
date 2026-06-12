@@ -135,7 +135,17 @@ export class OpenCodeAdapter extends BaseAdapter {
     const configPath = join(this.getUserDir(), 'opencode.json');
     let config = {};
     if (existsSync(configPath)) {
-      try { config = JSON.parse(readFileSync(configPath, 'utf-8')); } catch { config = {}; }
+      try {
+        config = JSON.parse(readFileSync(configPath, 'utf-8'));
+      } catch (e) {
+        log.push(`  mcp: opencode.json 解析失败 (${e.message})，将备份并重建`);
+        try {
+          const backup = configPath + '.bak';
+          cpSync(configPath, backup, { force: true });
+          log.push(`  mcp: 已备份至 ${backup}`);
+        } catch {}
+        config = {};
+      }
     }
 
     if (!config.mcp) config.mcp = {};

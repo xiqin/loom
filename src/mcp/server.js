@@ -10,7 +10,6 @@
  *   在 MCP 配置中: "command": "loom", "args": ["mcp-serve"]
  */
 
-import { createInterface } from 'node:readline';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,6 +31,7 @@ const PROTOCOL_VERSION = '2025-06-18';
 const sessionStore = new SessionStore();
 // 每个 server 进程对应一个 stdio 连接，握手时生成唯一 sessionId
 let sessionId = randomUUID();
+let currentResponseFramed = false;
 
 function lazyToolsEnabled() {
   return process.env.LOOM_LAZY_TOOLS !== '0';
@@ -50,10 +50,10 @@ export function listVisibleTools(store, id, { lazyEnabled = lazyToolsEnabled() }
 }
 
 function notifyToolsListChanged() {
-  process.stdout.write(JSON.stringify({
+  writeMessage({
     jsonrpc: '2.0',
     method: 'notifications/tools/list_changed'
-  }) + '\n');
+  }, { framed: currentResponseFramed });
 }
 
 // ── JSON-RPC 处理 ──────────────────────────────────────────────────────────
@@ -128,38 +128,97 @@ async function handleRequest(msg) {
 
 // ── stdio transport ─────────────────────────────────────────────────────────
 
+function writeMessage(msg, { framed = false } = {}) {
+  const json = JSON.stringify(msg);
+  if (framed) {
+    process.stdout.write(`Content-Length: ${Buffer.byteLength(json, 'utf-8')}\r\n\r\n${json}`);
+  } else {
+    process.stdout.write(json + '\n');
+  }
+}
+
+async function processRawMessage(raw, { framed = false } = {}) {
+  try {
+    const msg = JSON.parse(Buffer.isBuffer(raw) ? raw.toString('utf-8') : raw);
+    currentResponseFramed = framed;
+    const response = await handleRequest(msg);
+    if (response) writeMessage(response, { framed });
+  } catch (err) {
+    writeMessage(makeError(null, -32700, `Parse error: ${err.message}`), { framed });
+  } finally {
+    currentResponseFramed = false;
+  }
+}
+
 export function startServer() {
-  const rl = createInterface({ input: process.stdin, terminal: false });
-  let buffer = '';
+  let buffer = Buffer.alloc(0);
+  let processing = Promise.resolve();
 
-  process.stdin.setEncoding('utf-8');
+  async function drainBuffer() {
+    while (buffer.length > 0) {
+      const asText = buffer.toString('utf-8', 0, Math.min(buffer.length, 64));
+      if (/^Content-Length:/i.test(asText)) {
+        const crlfEnd = buffer.indexOf(Buffer.from('\r\n\r\n'));
+        const lfEnd = buffer.indexOf(Buffer.from('\n\n'));
+        const headerEnd = crlfEnd !== -1 ? crlfEnd : lfEnd;
+        if (headerEnd === -1) return;
 
-  rl.on('line', async (line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
+        const separatorLength = crlfEnd !== -1 ? 4 : 2;
+        const header = buffer.toString('utf-8', 0, headerEnd);
+        const match = header.match(/Content-Length:\s*(\d+)/i);
+        if (!match) {
+          writeMessage(makeError(null, -32700, 'Parse error: Missing Content-Length'), { framed: true });
+          buffer = buffer.subarray(headerEnd + separatorLength);
+          continue;
+        }
 
-    try {
-      const msg = JSON.parse(trimmed);
-      const response = await handleRequest(msg);
-      if (response) {
-        const json = JSON.stringify(response);
-        process.stdout.write(json + '\n');
+        const length = Number(match[1]);
+        const bodyStart = headerEnd + separatorLength;
+        const bodyEnd = bodyStart + length;
+        if (buffer.length < bodyEnd) return;
+
+        const body = buffer.subarray(bodyStart, bodyEnd);
+        buffer = buffer.subarray(bodyEnd);
+        await processRawMessage(body, { framed: true });
+        continue;
       }
-    } catch (err) {
-      // 尝试解析为 Content-Length 分帧（某些客户端使用 LSP 风格分帧）
-      if (trimmed.startsWith('Content-Length:')) {
-        // 跳过 header
-        return;
-      }
-      // 其他解析失败
-      const errResp = makeError(null, -32700, `Parse error: ${err.message}`);
-      process.stdout.write(JSON.stringify(errResp) + '\n');
+
+      const newlineIdx = buffer.indexOf(0x0a);
+      if (newlineIdx === -1) return;
+      const line = buffer.toString('utf-8', 0, newlineIdx).trim();
+      buffer = buffer.subarray(newlineIdx + 1);
+      if (!line) continue;
+      await processRawMessage(line, { framed: false });
     }
+  }
+
+  process.stdin.on('data', (chunk) => {
+    buffer = Buffer.concat([buffer, chunk]);
+    processing = processing.then(drainBuffer);
   });
 
-  rl.on('close', () => {
-    printSummary();
-    process.exit(0);
+  process.stdin.on('end', () => {
+    processing = processing.then(async () => {
+      const rest = buffer.toString('utf-8').trim();
+      buffer = Buffer.alloc(0);
+      if (rest && !/^Content-Length:/i.test(rest)) {
+        await processRawMessage(rest, { framed: false });
+      }
+    });
+  });
+
+  process.stdin.on('close', () => {
+    processing.finally(() => {
+      printSummary();
+      process.exit(0);
+    });
+  });
+
+  process.on('SIGTERM', () => {
+    processing.finally(() => {
+      printSummary();
+      process.exit(0);
+    });
   });
 
   // stderr 用于 debug 日志（不污染 stdout JSON 协议）

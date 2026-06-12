@@ -25,6 +25,14 @@ describe('MCP tool definitions', () => {
       expect(t.group.length).toBeGreaterThan(0);
     }
   });
+
+  it('memory tools expose project_root in their schemas', () => {
+    const getMemory = TOOL_DEFINITIONS.find(t => t.name === 'loom_get_memory');
+    const addMemory = TOOL_DEFINITIONS.find(t => t.name === 'loom_add_memory');
+
+    expect(getMemory.inputSchema.properties.project_root).toBeDefined();
+    expect(addMemory.inputSchema.properties.project_root).toBeDefined();
+  });
 });
 
 describe('lazy MCP tool listing', () => {

@@ -141,7 +141,8 @@ export const TOOL_DEFINITIONS = [
       type: 'object',
       properties: {
         type: { type: 'string', description: 'Filter: 决策, 踩坑, 偏好, 状态, adr' },
-        limit: { type: 'number', description: 'Max entries (default 10)' }
+        limit: { type: 'number', description: 'Max entries (default 10)' },
+        project_root: { type: 'string', description: 'Project root directory (optional if attached)' }
       }
     }
   },
@@ -154,7 +155,8 @@ export const TOOL_DEFINITIONS = [
       properties: {
         type: { type: 'string', enum: ['决策', '踩坑', '偏好', '状态', 'adr'], description: 'Memory type' },
         content: { type: 'string', description: 'One-line description' },
-        context: { type: 'string', description: 'Background/reason (optional, for ADRs)' }
+        context: { type: 'string', description: 'Background/reason (optional, for ADRs)' },
+        project_root: { type: 'string', description: 'Project root directory (optional if attached)' }
       },
       required: ['type', 'content']
     }

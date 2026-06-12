@@ -139,6 +139,22 @@ for (const script of SCRIPTS) {
   const cachedHash = cache[script.name];
   const isStale = FORCE || currentHash !== cachedHash;
 
+  if (CHECK) {
+    console.log(`  ▶ ${script.name} — checking outputs...`);
+    try {
+      execSync(`${script.cmd} --check`, {
+        cwd: ROOT,
+        stdio: 'inherit',
+        env: { ...process.env, LOOM_GENERATE_CHECK: '1' },
+      });
+      skippedCount++;
+    } catch {
+      staleCount++;
+      staleNames.push(script.name);
+    }
+    continue;
+  }
+
   if (!isStale) {
     console.log(`  · ${script.name} — inputs unchanged, skipped`);
     skippedCount++;
@@ -147,11 +163,6 @@ for (const script of SCRIPTS) {
 
   staleCount++;
   staleNames.push(script.name);
-
-  if (CHECK) {
-    console.log(`  ✘ ${script.name} — stale (inputs changed since last generate)`);
-    continue;
-  }
 
   console.log(`  ▶ ${script.name} — running...`);
   try {

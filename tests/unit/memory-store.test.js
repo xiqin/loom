@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { MemoryStore } from '../../src/core/memory-store.js';
@@ -34,5 +34,24 @@ describe('MemoryStore', () => {
     store.exportMarkdown();
     expect(existsSync(store.mdPath)).toBe(true);
     expect(readFileSync(store.mdPath, 'utf-8')).toMatch(/Project Memory/);
+  });
+
+  it('escapes markdown table and list-breaking content', () => {
+    store.add('adr', 'a | b', { author: 'tester', context: 'ctx | break' });
+    store.add('踩坑', 'line1\n- injected', { author: 'tester' });
+
+    const md = store.exportMarkdown();
+
+    expect(md).toContain('a \\| b');
+    expect(md).toContain('ctx \\| break');
+    expect(md).toContain('line1<br>- injected');
+    expect(md).not.toContain('\n- injected\n');
+  });
+
+  it('throws on corrupt store.json instead of silently dropping entries', () => {
+    store.add('决策', 'x', { author: 'tester' });
+    writeFileSync(store.storePath, '{ bad json', 'utf-8');
+
+    expect(() => store.list()).toThrow(/Corrupt memory store/);
   });
 });
