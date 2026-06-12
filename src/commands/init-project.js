@@ -47,8 +47,7 @@ export default async function initProjectCommand(options = {}) {
 
 /**
  * codegraph 引导：CLI 在 PATH 且尚未建图时，跑 `codegraph init` 建立图索引。
- * codegraph 是索引首选后端（loom index 会委派给它）；缺失则静默跳过，由
- * loom index 的静态扫描器降级兜底。--no-codegraph 可禁用本步骤。
+ * codegraph 缺失则跳过图查询能力。--no-codegraph 可禁用本步骤。
  */
 function maybeInitCodegraph(cwd) {
   if (existsSync(join(cwd, '.codegraph'))) {
@@ -58,7 +57,7 @@ function maybeInitCodegraph(cwd) {
   const win = process.platform === 'win32';
   const probe = spawnSync('codegraph', ['--version'], { stdio: 'ignore', shell: win });
   if (probe.status !== 0) {
-    console.log('\n  codegraph: CLI not found — loom index will use the static scanner');
+    console.log('\n  codegraph: CLI not found — codegraph indexing disabled');
     console.log('  Install for richer indexing: https://github.com/colbymchenry/codegraph');
     return;
   }
@@ -67,7 +66,7 @@ function maybeInitCodegraph(cwd) {
   if (r.status === 0) {
     console.log('  codegraph: graph index ready — loom index will delegate to codegraph');
   } else {
-    console.log('  codegraph: init failed; loom index will fall back to the static scanner');
+    console.log('  codegraph: init failed; codegraph indexing disabled until codegraph is ready');
   }
 }
 

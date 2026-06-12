@@ -73,32 +73,21 @@ T1 -> T2
     expect(result.errors).toContain('progress.md still contains literal HH:mm placeholder');
   });
 
-  it('validates engineering index and memory structure', () => {
-    mkdirSync(join(TMP_ROOT, '.loom', 'index'), { recursive: true });
+  it('validates codegraph and structured memory state', () => {
+    mkdirSync(join(TMP_ROOT, '.codegraph'), { recursive: true });
     mkdirSync(join(TMP_ROOT, '.loom', 'memory'), { recursive: true });
-    writeFileSync(join(TMP_ROOT, '.loom', 'index', 'engineering-index.md'), `# Engineering Index
-
-## Routes
-## Controllers
-## Services
-## Models
-## Call Chains
-`);
-    writeFileSync(join(TMP_ROOT, '.loom', 'memory', 'MEMORY.md'), '# Memory\n\n## Gotchas\n');
+    writeFileSync(join(TMP_ROOT, '.loom', 'memory', 'store.json'), '{"entries":[],"sessions":[]}\n');
 
     const result = validateIndex({ root: TMP_ROOT });
     expect(result.errors).toEqual([]);
   });
 
-  it('reports missing index sections', () => {
-    mkdirSync(join(TMP_ROOT, '.loom', 'index'), { recursive: true });
+  it('reports missing structured memory store', () => {
     mkdirSync(join(TMP_ROOT, '.loom', 'memory'), { recursive: true });
-    writeFileSync(join(TMP_ROOT, '.loom', 'index', 'engineering-index.md'), '# Engineering Index\n');
-    writeFileSync(join(TMP_ROOT, '.loom', 'memory', 'MEMORY.md'), '# Memory\n');
 
     const result = validateIndex({ root: TMP_ROOT });
     expect(result.ok).toBe(false);
-    expect(result.errors.some(error => error.includes('routes'))).toBe(true);
+    expect(result.errors).toContain('Missing required file: .loom/memory/store.json');
   });
 });
 

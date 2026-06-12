@@ -64,7 +64,7 @@ export class ClaudeCodeAdapter extends BaseAdapter {
         log.push('  mcp: codegraph server added to settings.json');
         changed = true;
       } else {
-        log.push('  mcp: codegraph CLI not found, skipped (loom index uses static scanner)');
+        log.push('  mcp: codegraph CLI not found, codegraph indexing disabled');
       }
     }
 

@@ -21,7 +21,7 @@ description: >
 ## 执行流程
 
 1. 读取 `spec.md`，提取功能点、接口、数据模型和边界场景。
-2. 读取 `.loom/rules/constitution.md`、`.loom/rules/project-structure.md`；如存在，读取 `.loom/contexts/subagent-context.md`。
+2. 读取 `.loom/rules/constitution.md`；如存在，读取 `.loom/contexts/subagent-context.md`。
 3. 先规划文件结构：创建/修改哪些文件、每个文件职责、哪些文件一起变化。
 4. 按项目实际分层和依赖顺序拆 task：数据/模型 → 业务逻辑 → 接口/UI → 路由/配置 → 集成。
 5. 写 `plan.md` 概览，再为每个 task 写完整 `tasks/TN.md`。
@@ -65,7 +65,7 @@ loom tasks --spec-dir specs/<date+feature> --validate
 - [ ] plan.md 包含摘要和 Task 概览表。
 - [ ] 每个 task 文件包含完整字段和可执行步骤。
 - [ ] task 可独立编译或验证。
-- [ ] 分层顺序来自 project-structure.md。
+- [ ] 分层顺序来自 constitution.md。
 - [ ] 遵守 constitution.md 编码红线。
 
 <!-- loom:generate:model-selection -->

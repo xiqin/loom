@@ -26,7 +26,7 @@ description: >
 - [ ] 静态分析通过（VET_CMD）
 - [ ] 所有测试通过（TEST_CMD）
 - [ ] 代码符合项目编码红线
-- [ ] 工程结构索引已就绪（codegraph 可用时直接查询 `.codegraph/`，否则 `loom index` 生成 engineering-index.md）
+- [ ] codegraph 状态已确认（可用时直接查询 `.codegraph/`，否则注明图查询已跳过）
 
 ## 执行流程
 
@@ -71,7 +71,7 @@ git log --oneline -10
 - [x] 静态分析通过（VET_CMD）
 - [x] 测试通过（TEST_CMD）
 - [x] 代码符合编码红线
-- [x] ENGINEERING-INDEX.md 已更新
+- [x] codegraph 已同步，或已注明索引查询跳过
 
 ## 变更详情
 

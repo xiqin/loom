@@ -206,7 +206,7 @@ function printPaste({ projectRoot, issues, activeSpecs, memorySummary, constitut
   lines.push('');
   lines.push('渐进式披露：用 MCP 工具 loom_get_context 按节取上下文，');
   lines.push('  · loom_get_context(doc) → 看目录   · loom_get_context(doc, section) → 取该节');
-  lines.push('  doc 可选: constitution / project-structure / index / memory / workflow');
+  lines.push('  doc 可选: constitution / memory / workflow');
   lines.push('不支持 MCP 时再按需读 .loom/rules/constitution.md、.loom/workflow.yaml。');
   lines.push('');
 

@@ -56,6 +56,18 @@
 | {{LOGGING}}       | {{LOGGING_VERSION}}   | 日志     |
 | {{DI}}            | {{DI_VERSION}}        | 依赖注入 |
 
+## 架构模式
+
+```text
+{{ARCH_PATTERN}}
+```
+
+## 目录结构
+
+```text
+{{DIRECTORY_TREE}}
+```
+
 ## 编码红线
 
 > 以下红线为自动生成，请确认并补充。

@@ -132,10 +132,10 @@ program
 
 program
   .command('index')
-  .description('Update engineering index: delegate to codegraph if available, else static scan')
+  .description('Sync codegraph index when available')
   .option('--cwd <path>', 'Project root')
-  .option('--check', 'Check staleness only; exit 1 if outdated')
-  .option('--no-codegraph', 'Force static scanner, skip codegraph delegation')
+  .option('--check', 'Check codegraph status when available')
+  .option('--no-codegraph', 'Skip codegraph delegation')
   .action(async (options) => {
     const { default: indexCommand } = await import('./commands/index.js');
     await indexCommand(options);

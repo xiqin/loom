@@ -32,8 +32,7 @@
         }
       ],
       "reads": [
-        ".loom/rules/constitution.md",
-        ".loom/rules/project-structure.md"
+        ".loom/rules/constitution.md"
       ],
       "interactive": true,
       "autoTransition": false,
@@ -74,8 +73,7 @@
       ],
       "reads": [
         "specs/<date+feature>/spec.md",
-        ".loom/rules/constitution.md",
-        ".loom/rules/project-structure.md"
+        ".loom/rules/constitution.md"
       ],
       "interactive": true,
       "autoTransition": false,
@@ -200,8 +198,7 @@
         "specs/<date+feature>/tasks/",
         "specs/<date+feature>/spec.md",
         ".loom/contexts/subagent-context.md",
-        ".loom/rules/constitution.md",
-        ".loom/rules/project-structure.md"
+        ".loom/rules/constitution.md"
       ],
       "interactive": true,
       "autoTransition": false,
@@ -280,7 +277,6 @@
         "specs/<date+feature>/test-report.md",
         "combined-reviewer 报告",
         ".loom/rules/constitution.md",
-        ".loom/rules/project-structure.md",
         "源码文件"
       ],
       "interactive": true,
@@ -298,7 +294,7 @@
       "step": 6,
       "skill": "loom-index-update",
       "command": null,
-      "description": "工程索引同步，功能开发完成",
+      "description": "codegraph 同步与结构化记忆更新，功能开发完成",
       "allowedTransitions": [],
       "preconditions": [
         {
@@ -314,13 +310,18 @@
       ],
       "outputs": [
         {
-          "path": ".loom/index/engineering-index.md",
+          "path": ".codegraph/",
           "action": "modified",
-          "note": "仅 codegraph 不可用时生成（loom index 降级）；codegraph 可用时此文件不需要"
+          "note": "仅启用 codegraph 时通过 loom index 同步；未启用时跳过"
+        },
+        {
+          "path": ".loom/memory/store.json",
+          "action": "modified"
         },
         {
           "path": ".loom/memory/MEMORY.md",
-          "action": "modified"
+          "action": "generated",
+          "note": "需要提交导出视图时由 loom memory export 生成"
         },
         {
           "path": "specs/<date+feature>/progress.md",
@@ -328,8 +329,7 @@
         }
       ],
       "reads": [
-        ".loom/index/engineering-index.md",
-        ".loom/memory/MEMORY.md",
+        ".loom/memory/store.json",
         "源码文件"
       ],
       "interactive": false,

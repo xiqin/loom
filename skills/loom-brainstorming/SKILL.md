@@ -16,7 +16,7 @@ description: >
 ### Step 1：理解需求
 
 1. 若存在 `.loom/rules/product.md`，先读取，作为产品定位、目标用户和原型约束的视角依据（PM / pm-prototype 流水线）。
-2. 若存在 `.loom/rules/constitution.md` 和 `.loom/rules/project-structure.md`，读取它们。
+2. 若存在 `.loom/rules/constitution.md`，读取其中架构、目录和编码约束。
 3. 修改类需求先分析现有实现和影响范围。
 4. 明确边界：做什么、不做什么。
 

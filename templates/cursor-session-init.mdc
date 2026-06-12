@@ -13,7 +13,7 @@ alwaysApply: true
    - `.loom/rules/constitution.md`：先用 `loom_get_context(doc="constitution")` 取目录，按需取节。
    - `.loom/memory/MEMORY.md`：先用 `loom_get_context(doc="memory")` 取目录。
    - `.loom/rules/product.md`：若存在，仅读取关键章节。
-4. **渐进式加载技能文件**：用 `loom_get_skill_context()` 获取所有技能的 L0 摘要（~1.2K token），仅当需要执行某技能时用 `loom_get_skill_context(skill="技能名")` 获取完整内容。**禁止一次加载所有 SKILL.md 全文**。
+4. **渐进式加载技能文件**：用 `loom_get_skill_context()` 获取所有技能的 L0 摘要，仅当需要执行某技能时用 `loom_get_skill_context(skill="技能名")` 获取完整内容。**禁止一次加载所有 SKILL.md 全文**。
 5. 检查 `specs/` 目录下是否有进行中的开发任务（有 spec.md 但无 verify-report.md 的目录），若有，列出当前阶段。
 
 完成以上检查后，简要输出状态，然后响应用户请求。

@@ -11,33 +11,26 @@ export function validateIndex(options = {}) {
   const errors = [];
   const warnings = [];
 
-  const indexPath = join(root, '.loom', 'index', 'engineering-index.md');
+  const storePath = join(root, '.loom', 'memory', 'store.json');
   const memoryPath = join(root, '.loom', 'memory', 'MEMORY.md');
   const codegraphPath = join(root, '.codegraph');
 
-  if (existsSync(codegraphPath)) {
-    // codegraph is the live index — engineering-index.md not required
-  } else if (!existsSync(indexPath)) {
-    errors.push('Missing required file: .loom/index/engineering-index.md (run: loom index)');
-  } else {
-    const content = readFileSync(indexPath, 'utf8');
-    const requiredSections = ['routes', 'controllers', 'services', 'models', 'call chains'];
+  if (!existsSync(codegraphPath)) {
+    warnings.push('codegraph not configured; codegraph sync is skipped');
+  }
 
-    for (const section of requiredSections) {
-      const pattern = new RegExp(`##\\s*${section}`, 'i');
-      if (!pattern.test(content)) {
-        errors.push(`engineering-index.md missing required section: ${section}`);
-      }
+  if (!existsSync(storePath)) {
+    errors.push('Missing required file: .loom/memory/store.json');
+  } else {
+    try {
+      JSON.parse(readFileSync(storePath, 'utf8'));
+    } catch (error) {
+      errors.push(`Invalid .loom/memory/store.json: ${error.message}`);
     }
   }
 
   if (!existsSync(memoryPath)) {
-    errors.push('Missing required file: .loom/memory/MEMORY.md');
-  } else {
-    const content = readFileSync(memoryPath, 'utf8');
-    if (!/##\s*Gotchas/i.test(content)) {
-      warnings.push('MEMORY.md should include a Gotchas section');
-    }
+    warnings.push('MEMORY.md export view missing; run: loom memory export when needed');
   }
 
   return { ok: errors.length === 0, errors, warnings, root };

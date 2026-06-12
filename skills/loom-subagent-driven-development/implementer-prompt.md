@@ -58,7 +58,7 @@
 
 ## 代码风格
 
-遵循 `.loom/rules/project-structure.md` 中的编码要求，与项目现有代码风格保持一致。
+遵循 `.loom/rules/constitution.md` 中的架构分层和编码要求，与项目现有代码风格保持一致。
 
 重点遵守：
 - 使用项目统一错误处理模式（从 subagent-context.md 读取 ERROR_PATTERN）

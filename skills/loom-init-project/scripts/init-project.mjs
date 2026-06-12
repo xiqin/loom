@@ -79,15 +79,14 @@ export function initProject(options = {}) {
     detectedTools: [],
   };
 
-  // 所有角色共用：记忆 + 流水线定义（workflow 单文件含全部 pipeline）
+  // 所有角色共用：结构化记忆 + 流水线定义（workflow 单文件含全部 pipeline）
   writeRendered(templateDir, 'memory.md', join(cwd, '.loom', 'memory', 'MEMORY.md'), variables, result, force);
+  writeFile(join(cwd, '.loom', 'memory', 'store.json'), renderMemoryStore(variables), result, force);
   writeRendered(templateDir, 'workflow.yaml', join(cwd, '.loom', 'workflow.yaml'), variables, result, force);
 
-  // dev 角色：工程上下文（宪章 / 结构 / 索引 / subagent 上下文）
+  // dev 角色：工程上下文（宪章 / subagent 上下文）；图索引仅使用 codegraph。
   if (roles.has('dev')) {
     writeRendered(templateDir, 'constitution.md', join(cwd, '.loom', 'rules', 'constitution.md'), variables, result, force);
-    writeRendered(templateDir, 'project-structure.md', join(cwd, '.loom', 'rules', 'project-structure.md'), variables, result, force);
-    writeRendered(templateDir, 'engineering-index.md', join(cwd, '.loom', 'index', 'engineering-index.md'), variables, result, force);
     writeFile(
       join(cwd, '.loom', 'contexts', 'subagent-context.md'),
       renderSubagentContext(variables),
@@ -283,6 +282,7 @@ function buildVariables(facts) {
   return {
     PROJECT_NAME: facts.projectName,
     PROJECT_DESC: facts.projectDesc,
+    INIT_DATE: new Date().toISOString().slice(0, 10),
     TECH_STACK_SUMMARY: stack,
     LANGUAGE: tech.language,
     LANGUAGE_VERSION: tech.languageVersion,
@@ -407,11 +407,10 @@ function buildRequiredContext(roles) {
     items.push('`.loom/rules/product.md`：产品定位、目标用户、原型约束（PM 视角）。');
   }
   if (roles.has('dev')) {
-    items.push('`.loom/rules/constitution.md`：项目原则、技术栈、验证命令和红线。');
-    items.push('`.loom/rules/project-structure.md`：目录分层、架构模式和放置约定。');
-    items.push('工程索引（路由、模块、方法签名、依赖关系和调用链）：codegraph 可用时直接用 MCP 工具查询（`codegraph_search` / `codegraph_context` / `codegraph_impact`），否则读 `.loom/index/engineering-index.md`。');
+    items.push('`.loom/rules/constitution.md`：项目原则、技术栈、目录分层、架构模式、验证命令和红线。');
+    items.push('codegraph：仅使用 MCP 工具查询（`codegraph_search` / `codegraph_context` / `codegraph_impact`）；未启用 codegraph 时跳过图索引同步。');
   }
-  items.push('`.loom/memory/MEMORY.md`：长期记忆、踩坑记录和用户偏好。');
+  items.push('`.loom/memory/store.json`：结构化记忆源；`.loom/memory/MEMORY.md` 是只读导出视图。');
   return items.map((item, i) => `${i + 1}. ${item}`).join('\n');
 }
 
@@ -449,7 +448,20 @@ function renderCursorRule(wrapper) {
 }
 
 function renderSubagentContext(variables) {
-  return `# Subagent Context\n\n> 本文件由 loom init-project 自动生成。给子 agent 派发任务时，优先附上本文件的摘要。\n\n## Project\n\n- Name: ${variables.PROJECT_NAME}\n- Stack: ${variables.TECH_STACK_SUMMARY}\n- Build: ${variables.BUILD_CMD}\n- Check: ${variables.VET_CMD}\n- Test: ${variables.TEST_CMD}\n\n## Boundaries\n\n- Follow .loom/rules/constitution.md and .loom/rules/project-structure.md.\n- Keep changes scoped to the assigned task.\n- Report changed files, verification commands, and unresolved risks.\n`;
+  return `# Subagent Context\n\n> 本文件由 loom init-project 自动生成，是从 .loom/rules/constitution.md 派生的精简上下文。给子 agent 派发任务时，优先附上本文件摘要；不要手动维护长期规则。\n\n## Project\n\n- Name: ${variables.PROJECT_NAME}\n- Stack: ${variables.TECH_STACK_SUMMARY}\n- Architecture: ${variables.ARCH_PATTERN}\n- Build: ${variables.BUILD_CMD}\n- Check: ${variables.VET_CMD}\n- Test: ${variables.TEST_CMD}\n\n## Boundaries\n\n- Follow .loom/rules/constitution.md.\n- Keep changes scoped to the assigned task.\n- Report changed files, verification commands, and unresolved risks.\n`;
+}
+
+function renderMemoryStore(variables) {
+  const entry = {
+    id: 'init',
+    type: '状态',
+    content: '项目初始化完成',
+    author: 'loom-init-project',
+    tags: [],
+    context: variables.TECH_STACK_SUMMARY,
+    created_at: `${variables.INIT_DATE}T00:00:00.000Z`,
+  };
+  return `${JSON.stringify({ entries: [entry], sessions: [] }, null, 2)}\n`;
 }
 
 function buildDirectoryTree(root, maxDepth = 2) {

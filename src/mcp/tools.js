@@ -214,7 +214,7 @@ export const TOOL_DEFINITIONS = [
 export const CAPABILITY_GROUPS = {
   context: {
     title: '上下文（渐进式披露）',
-    when: '需要项目宪章 / 工程索引 / 记忆里的某块信息时。先取目录（不带 section）看有什么，再按节召回，避免整文件进上下文。',
+    when: '需要项目宪章 / 结构化记忆里的某块信息时。先取目录（不带 section）看有什么，再按节召回，避免整文件进上下文。',
     tools: ['loom_get_context', 'loom_get_skill_context'],
   },
   pipeline: {

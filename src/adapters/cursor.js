@@ -73,7 +73,7 @@ export class CursorAdapter {
         log.push('  mcp: codegraph server added to .cursor/mcp/mcp.json');
         changed = true;
       } else {
-        log.push('  mcp: codegraph CLI not found, skipped (loom index uses static scanner)');
+        log.push('  mcp: codegraph CLI not found, codegraph indexing disabled');
       }
     }
 

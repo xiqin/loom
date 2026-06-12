@@ -7,42 +7,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..', '..');
 const pkg = JSON.parse(readFileSync(join(PROJECT_ROOT, 'package.json'), 'utf-8'));
 
-// 检查 .loom/index/engineering-index.md 是否过期
-function checkIndexStaleness(cwd) {
-  const indexPath = join(cwd, '.loom', 'index', 'engineering-index.md');
-  if (!existsSync(indexPath)) return { exists: false };
-
-  const indexMtime = statSync(indexPath).mtimeMs;
-  const srcDirs = ['src', 'app', 'lib', 'pkg', 'cmd', 'internal']
-    .map(d => join(cwd, d))
-    .filter(existsSync);
-  if (srcDirs.length === 0) return { exists: true, stale: false };
-
-  const SKIP = new Set(['node_modules', '.git', 'dist', 'build', '__pycache__', 'vendor']);
-  const CODE_EXTS = new Set(['.go', '.py', '.js', '.ts', '.mjs', '.cjs', '.jsx', '.tsx', '.rb', '.rs']);
-
-  let latestSrc = 0;
-  function walk(dir, depth = 0) {
-    if (depth > 6) return;
-    try {
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        if (SKIP.has(entry.name)) continue;
-        const full = join(dir, entry.name);
-        if (entry.isDirectory()) { walk(full, depth + 1); continue; }
-        if (CODE_EXTS.has(entry.name.slice(entry.name.lastIndexOf('.')))) {
-          const m = statSync(full).mtimeMs;
-          if (m > latestSrc) latestSrc = m;
-        }
-      }
-    } catch {}
-  }
-  for (const d of srcDirs) walk(d);
-
-  const stale = latestSrc > indexMtime;
-  const ageMin = Math.round((Date.now() - indexMtime) / 60000);
-  return { exists: true, stale, ageMin };
-}
-
 /**
  * subagent-context.md 是 init-project 时冻结渲染的，constitution 之后变更不会自动同步。
  * 比较两者 mtime：宪章更新 → 提示重新生成，防止 subagent 拿到过期红线/约束。
@@ -173,18 +137,11 @@ export default async function doctor(options) {
   const memoryPath = join(loomDir, 'memory', 'MEMORY.md');
   console.log(`    MEMORY.md:     ${existsSync(memoryPath) ? '✓' : '✗ missing'}`);
 
-  // 索引检查：codegraph 为首选后端，存在时即索引；否则查静态 engineering-index.md
+  // codegraph 检查：未启用时跳过图索引同步。
   if (existsSync(join(cwd, '.codegraph'))) {
     console.log(`    index:         ✓ codegraph backend (.codegraph/) — sync: loom index`);
   } else {
-    const staleness = checkIndexStaleness(cwd);
-    if (!staleness.exists) {
-      console.log(`    index:         ✗ missing — run: loom index`);
-    } else if (staleness.stale) {
-      console.log(`    index:         ⚠  stale (${staleness.ageMin}min old, source files changed) — run: loom index`);
-    } else {
-      console.log(`    index:         ✓ up to date (static scanner)`);
-    }
+    console.log(`    index:         – codegraph not configured; index update skipped`);
   }
 
   // subagent-context 新鲜度：宪章变更后未重新生成会让 subagent 拿到过期约束

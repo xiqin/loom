@@ -28,6 +28,9 @@ describe('loom-init-project script', () => {
 
     expect(result.projectName).toBe('demo-app');
     expect(existsSync(join(TEST_DIR, '.loom', 'rules', 'constitution.md'))).toBe(true);
+    expect(existsSync(join(TEST_DIR, '.loom', 'rules', 'project-structure.md'))).toBe(false);
+    expect(existsSync(join(TEST_DIR, '.loom', 'index', 'engineering-index.md'))).toBe(false);
+    expect(existsSync(join(TEST_DIR, '.loom', 'memory', 'store.json'))).toBe(true);
     expect(existsSync(join(TEST_DIR, '.loom', 'contexts', 'subagent-context.md'))).toBe(true);
     expect(existsSync(join(TEST_DIR, 'AGENTS.md'))).toBe(true);
 
@@ -37,6 +40,8 @@ describe('loom-init-project script', () => {
 
     const constitution = readFileSync(join(TEST_DIR, '.loom', 'rules', 'constitution.md'), 'utf8');
     expect(constitution).toContain('npm run build');
+    expect(constitution).toContain('## 架构模式');
+    expect(constitution).toContain('## 目录结构');
     expect(constitution).not.toMatch(/\{\{[A-Z0-9_]+\}\}/);
   });
 

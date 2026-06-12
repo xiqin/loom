@@ -60,7 +60,7 @@ loom list      # 列出可用 skills 和 commands
 
 ```bash
 cd your-project
-loom init-project                       # 生成 .loom/ 上下文（宪章、工程结构、记忆等）
+loom init-project                       # 生成 .loom/ 上下文（宪章、结构化记忆、workflow 等）
 loom init-project --tools claude-code   # 指定写入哪些工具的项目级配置
 loom init-project --force               # 覆盖已存在的 loom 托管文件
 ```

@@ -76,7 +76,7 @@ Loom 是 AI 工程化框架，基于**技能（Skill）+ 流水线（Pipeline）
 | CLI | commands/start.js | 输出项目 loom 状态和上下文 |
 | CLI | commands/status.js | 显示流水线当前状态 |
 | CLI | commands/tasks.js | 分析任务文件归属 |
-| CLI | commands/index.js | 更新工程索引 |
+| CLI | commands/index.js | 同步 codegraph 图索引 |
 | MCP | mcp/server.js | JSON-RPC 2.0 服务器，stdio 传输 |
 | MCP | mcp/tools.js | 12 个工具定义 + executeToolCall 分发 |
 | MCP | mcp/session-store.js | 会话绑定（spec_dir + 工具分组延迟加载） |
@@ -145,11 +145,8 @@ Level 3（顶层）:  pipeline-engine（→ state-store, lock, artifact-checker,
 │   └── sessions/            # 会话归档
 ├── compliance/
 │   └── history.json         # 合规率历史（最多 500 条）
-├── index/
-│   └── engineering-index.md # 工程索引（codegraph 不可用时的降级方案）
 └── rules/
-    ├── constitution.md      # 项目宪章
-    └── project-structure.md # 项目结构
+    └── constitution.md      # 项目宪章，包含架构和目录结构
 
 specs/<date+feature>/
 ├── pipeline.state.json      # 流水线状态
@@ -325,7 +322,7 @@ specs/<date+feature>/
 | loom run | | --spec-dir, --advance, --approve, --fail, --recover, --task, --task-status, --context, --verdict | 流水线执行引擎 |
 | loom status | | | 显示流水线状态 |
 | loom tasks | | --spec-dir | 分析任务归属 |
-| loom index | | | 更新工程索引 |
+| loom index | | | 同步 codegraph 图索引 |
 | loom start | | | 输出项目 loom 状态 |
 | loom memory add | | --type, --content | 添加记忆条目 |
 | loom memory list | | --type, --limit | 列出记忆条目 |

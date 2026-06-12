@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 const TEST_DIR = join(import.meta.dirname, '__test_index_command__');
@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 describe('loom index — codegraph delegation', () => {
-  it('delegates to "codegraph sync" when .codegraph/ exists and skips engineering-index.md', async () => {
+  it('delegates to "codegraph sync" when .codegraph/ exists', async () => {
     mkdirSync(join(TEST_DIR, '.codegraph'), { recursive: true });
     mkdirSync(join(TEST_DIR, '.loom'), { recursive: true });
     spawnSync.mockReturnValue({ status: 0 });
@@ -30,7 +30,6 @@ describe('loom index — codegraph delegation', () => {
     const call = spawnSync.mock.calls.find(c => c[0] === 'codegraph');
     expect(call).toBeTruthy();
     expect(call[1]).toEqual(['sync', TEST_DIR]);
-    expect(existsSync(join(TEST_DIR, '.loom', 'index', 'engineering-index.md'))).toBe(false);
   });
 
   it('--check delegates to "codegraph status" and propagates exit code', async () => {
@@ -48,18 +47,14 @@ describe('loom index — codegraph delegation', () => {
     process.exitCode = 0;
   });
 
-  it('--no-codegraph forces the static scanner even when .codegraph/ exists', async () => {
+  it('--no-codegraph skips indexing even when .codegraph/ exists', async () => {
     mkdirSync(join(TEST_DIR, '.codegraph'), { recursive: true });
     mkdirSync(join(TEST_DIR, '.loom'), { recursive: true });
-    mkdirSync(join(TEST_DIR, 'src'), { recursive: true });
-    writeFileSync(join(TEST_DIR, 'src', 'app.js'), 'export function handler() {}\n');
     vi.spyOn(console, 'log').mockImplementation(() => {});
 
     const { default: indexCommand } = await import('../../src/commands/index.js');
-    // commander stores --no-codegraph as { codegraph: false }
     await indexCommand({ cwd: TEST_DIR, codegraph: false });
 
     expect(spawnSync).not.toHaveBeenCalled();
-    expect(existsSync(join(TEST_DIR, '.loom', 'index', 'engineering-index.md'))).toBe(true);
   });
 });

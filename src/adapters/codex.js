@@ -121,7 +121,7 @@ export class CodexAdapter extends BaseAdapter {
         log.push('  mcp: codegraph server added to config.toml');
         changed = true;
       } else {
-        log.push('  mcp: codegraph CLI not found, skipped (loom index uses static scanner)');
+        log.push('  mcp: codegraph CLI not found, codegraph indexing disabled');
       }
     }
 

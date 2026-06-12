@@ -1,7 +1,7 @@
 /**
  * context-index.js — 上下文文件的渐进式披露（L0/L1）
  *
- * 背景（Context 工程）：把 constitution / index / memory 整文件塞进上下文，
+ * 背景（Context 工程）：把 constitution / memory 整文件塞进上下文，
  * 会挤爆窗口（仓库地图 + 打开文件常占 99% token，用户输入只 1%）。
  * 解法是"先给目录，按需翻全文"——L0 摘要层告诉模型"有什么"，L1 详情层按节召回。
  *
@@ -27,8 +27,6 @@ export const SECTION_TOKEN_BUDGET = 1500;
 // （markdown 解析 yaml 会得到 0 节，召回无意义），故不列入。
 export const DOC_PATHS = {
   constitution: ['rules', 'constitution.md'],
-  'project-structure': ['rules', 'project-structure.md'],
-  index: ['index', 'engineering-index.md'],
   memory: ['memory', 'MEMORY.md'],
 };
 

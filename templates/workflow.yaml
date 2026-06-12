@@ -74,7 +74,7 @@ pipelines:
         skill: loom-index-update
         requires: [verify-report.md]
         outputs: []
-        description: "工程索引同步，流水线结束"
+        description: "codegraph 同步与结构化记忆更新，流水线结束"
 
   # Bug 修复 — 跳过头脑风暴和隔离分支
   bugfix:
@@ -111,7 +111,7 @@ pipelines:
         skill: loom-index-update
         requires: [verify-report.md]
         outputs: []
-        description: "索引同步，流水线结束"
+        description: "codegraph 同步与结构化记忆更新，流水线结束"
 
   # 紧急热修复 — 最小步骤，直接执行
   hotfix:
@@ -179,7 +179,7 @@ pipelines:
         skill: loom-index-update
         requires: [verify-report.md]
         outputs: []
-        description: "更新工程索引（重构后模块结构可能变化）"
+        description: "同步 codegraph（重构后模块结构可能变化）"
 
   # PM 需求到 HTML 原型 — 跳过所有工程步骤，直出可交互原型
   pm-prototype:

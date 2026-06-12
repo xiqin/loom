@@ -2,17 +2,14 @@
 
 **时间：** YYYY-MM-DD HH:mm
 **触发原因：** <feature_name> 功能开发完成
-**索引方式：** 手动 ENGINEERING-INDEX.md
+**索引方式：** 未启用 codegraph，索引同步跳过
 
-### ENGINEERING-INDEX.md 更新
+### 索引状态
 
-| 节 | 变更类型 | 内容 |
-| -- | -------- | ---- |
-| 路由表 | 新增 | POST /xxx/edit -> XxxController.Edit |
-| 控制器签名 | 新增 | XxxController 完整签名 |
-| 服务层签名 | 新增 | XxxService 完整签名 |
+- [ ] 未启用 codegraph，本次未同步图索引
+- [ ] 影响范围已通过源码搜索/人工判断补充说明
 
-### MEMORY.md 更新
+### 结构化 Memory 更新
 
 - [ ] 踩坑记录：无新增
 - [x] 用户偏好：新增偏好 XXX

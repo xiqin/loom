@@ -1,12 +1,12 @@
 ---
 name: loom-init-project
 description: >
-  Bootstrap .loom/ context files for a new repository: constitution, project structure, index, memory, workflow.
+  Bootstrap .loom/ context files for a new repository: constitution, structured memory, workflow, and agent entry files.
 ---
 
 # 项目初始化 Skill
 
-- `.loom/` 是唯一长期维护点，存放项目原则、结构、索引、记忆和 workflow。
+- `.loom/` 是唯一长期维护点，存放项目原则、结构化记忆和 workflow。
 - `AGENTS.md` 是 Codex/OpenCode 等通用 agent 的标准入口。
 - Claude、Cursor、Copilot 只接收薄 wrapper 或规则副本，避免多处规则漂移。
 - 初始化尽量自动化；不确定的信息用 `[TODO]` 标记，交给用户确认。
@@ -24,7 +24,7 @@ description: >
 如果用户没有明确指定角色，先询问这个项目给谁用（**可多选，取并集**）：
 
 - `pm`：PM 视角，生成产品上下文 `.loom/rules/product.md`，走 `需求 → spec → 原型` 流水线
-- `dev`：研发视角，生成工程上下文（宪章 / 结构 / 索引 / subagent-context），走完整工程流水线
+- `dev`：研发视角，生成工程上下文（宪章 / subagent-context），走完整工程流水线
 
 角色决定生成哪些 `.loom/` 文件；`workflow.yaml` 始终是含全部 pipeline 的单文件，不裁剪。未指定时默认 `dev`（与历史行为一致）。把选择通过 `--roles` 传给脚本，例如 `--roles pm,dev`。
 
@@ -75,13 +75,12 @@ loom init-project
 
 ```text
 .loom/
-  memory/MEMORY.md                        # 所有角色
+  memory/store.json                       # 所有角色，结构化记忆源
+  memory/MEMORY.md                        # 所有角色，只读导出视图
   workflow.yaml                           # 所有角色（单文件，含全部 pipeline）
   rules/product.md                        # 选择 pm 角色时
   rules/constitution.md                   # 选择 dev 角色时
-  rules/project-structure.md              # 选择 dev 角色时
   contexts/subagent-context.md            # 选择 dev 角色时
-  index/engineering-index.md              # 选择 dev 角色时
 AGENTS.md                       # 选择 Codex/OpenCode/Claude Code 时
 CLAUDE.md               # 选择 Claude Code 时
 .cursor/rules/loom.mdc                  # 检测到 Cursor 时
@@ -94,9 +93,8 @@ CLAUDE.md               # 选择 Claude Code 时
 
 脚本完成后必须快速审阅（按所选角色）：
 
-1. 【dev】`.loom/rules/constitution.md` 中技术栈、构建命令、测试命令是否准确。
-2. 【dev】`.loom/rules/project-structure.md` 中目录树和架构模式是否符合实际项目。
-3. 【dev】工程索引：codegraph 可用时 `loom init-project` 已自动 `codegraph init` 建图（`.codegraph/` 即索引，engineering-index.md 不再使用）；codegraph 不可用时检查 `.loom/index/engineering-index.md` 是否需要补充路由、模块、公开方法和调用链。
+1. 【dev】`.loom/rules/constitution.md` 中技术栈、构建命令、测试命令、目录树和架构模式是否准确。
+2. 【dev】codegraph：可用时 `loom init-project` 已自动 `codegraph init` 建图（`.codegraph/`）；codegraph 不可用时确认图查询能力已跳过。
 4. 【pm】`.loom/rules/product.md` 中 5 项产品上下文已填，无残留 `{{...}}` 占位符。
 5. `.loom/memory/MEMORY.md` 是否有需要保留的用户偏好、踩坑和长期决策。
 6. 入口文件是否轻量：它们应该指向 `.loom/`，不要复制大段规则。

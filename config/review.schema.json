@@ -12,13 +12,13 @@
       "defaultSeverity": "BLOCKER",
       "description": "分层是否正确，有无循环依赖",
       "checks": [
-        "是否遵循项目架构分层（从 project-structure.md 读取）",
+        "是否遵循项目架构分层（从 constitution.md 读取）",
         "是否存在跨层调用",
         "是否存在循环依赖",
         "新增模块是否遵循项目分层模式",
         "依赖是否单向流动"
       ],
-      "source": ".loom/rules/project-structure.md"
+      "source": ".loom/rules/constitution.md"
     },
     {
       "id": "code-quality",
@@ -84,7 +84,7 @@
         "错误码格式",
         "配置项命名"
       ],
-      "source": ".loom/rules/project-structure.md"
+      "source": ".loom/rules/constitution.md"
     },
     {
       "id": "impact-scope",
@@ -93,14 +93,14 @@
       "defaultSeverity": "BLOCKER",
       "description": "下游调用方识别、breaking change 检测、并行 task 冲突",
       "checks": [
-        "本次变更的函数、接口、类型是否被其他模块引用（codegraph 可用时查 codegraph_impact/codegraph_callers，否则读 engineering-index.md）",
+        "本次变更的函数、接口、类型是否被其他模块引用（codegraph 可用时查 codegraph_impact/codegraph_callers，否则用源码搜索补充判断）",
         "公开接口的参数签名是否变化（新增必填参数、删除字段、类型变更）",
         "数据库 schema、消息格式、配置项是否有不向后兼容的变更",
         "本次变更的文件或模块是否与其他正在进行的 task 有重叠",
         "影响范围风险评级：仅模块内部（低）/ 跨模块调用链（中）/ 公开接口或共享数据结构（高）"
       ],
-      "source": "codegraph（codegraph_impact/codegraph_callers/codegraph_callees，优先）或 .loom/index/engineering-index.md（codegraph 不可用时降级）",
-      "fallback": "codegraph 与 engineering-index.md 均不可用时跳过本维度，在报告中注明'索引不可用，跳过影响范围分析'",
+      "source": "codegraph（codegraph_impact/codegraph_callers/codegraph_callees，优先）",
+      "fallback": "codegraph 不可用时跳过图索引查询，用源码搜索补充判断，并在报告中注明'codegraph 不可用，索引查询已跳过'",
       "severityOverrides": {
         "breaking-change": "BLOCKER",
         "parallel-task-conflict": "WARNING",

@@ -20,6 +20,8 @@
         "ERROR_DESC",
         "CODEGEN_PRINCIPLE",
         "CODEGEN_DESC",
+        "ARCH_PATTERN",
+        "DIRECTORY_TREE",
         "LANGUAGE",
         "LANGUAGE_VERSION",
         "WEB_FRAMEWORK",
@@ -42,17 +44,6 @@
       "optionalVariables": []
     },
     {
-      "id": "project-structure",
-      "sourceFile": "templates/project-structure.md",
-      "outputPath": ".loom/rules/project-structure.md",
-      "description": "工程结构约束 — 目录结构、架构模式、编码红线",
-      "requiredVariables": [
-        "DIRECTORY_TREE",
-        "ARCH_PATTERN"
-      ],
-      "optionalVariables": []
-    },
-    {
       "id": "agents",
       "sourceFile": "templates/agents.md",
       "outputPath": "AGENTS.md",
@@ -68,16 +59,6 @@
       "requiredVariables": [
         "INIT_DATE",
         "TECH_STACK_SUMMARY"
-      ],
-      "optionalVariables": []
-    },
-    {
-      "id": "engineering-index",
-      "sourceFile": "templates/engineering-index.md",
-      "outputPath": ".loom/index/engineering-index.md",
-      "description": "工程索引 — 路由、模块、方法签名、依赖关系和调用链",
-      "requiredVariables": [
-        "PROJECT_NAME"
       ],
       "optionalVariables": []
     },

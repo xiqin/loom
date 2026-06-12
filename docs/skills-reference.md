@@ -32,9 +32,9 @@ description: loom 全部技能快速参考
 
 ### index-update
 
-- **用途**：工程索引同步
+- **用途**：codegraph 同步
 - **触发**：代码变更完成后
-- **输出**：知识图谱（codegraph 可用时）或 ENGINEERING-INDEX.md、MEMORY.md 更新
+- **输出**：codegraph 同步（可用时）、结构化 memory 更新、MEMORY.md 导出视图（按需）
 - **下一步**：工作完成，可以提交
 
 ## 辅助 Skills
@@ -43,7 +43,7 @@ description: loom 全部技能快速参考
 
 - **用途**：项目初始化
 - **触发**：`/loom-init-project` 命令
-- **输出**：宪章、工程结构、记忆文件、子 agent 上下文
+- **输出**：宪章、结构化记忆、子 agent 上下文、agent 入口文件
 
 ## 通用 Skills（继承 superpowers 框架）
 

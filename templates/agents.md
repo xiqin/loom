@@ -4,23 +4,21 @@
 
 开始编码、调试或代码审查前，**按需**读取上下文，避免一次注入过多内容：
 
-### 第一步：获取项目状态概览（轻量）
+### 第一步：获取项目状态概览
 
 优先使用 MCP 工具获取摘要，而非整文件读取：
 
 1. 若当前只看到 meta 工具，先调用 `loom_list_capabilities`，再用 `loom_load_tool_group(group="pipeline"|"context")` 加载所需工具。
 2. `loom_get_project_status` — 获取活跃流水线、阶段、任务概要
-3. `loom_get_context(doc="constitution")` / `"project-structure"` / `"index"` / `"memory"` — 先取 outline（L0），只在需要某 section 时才取 L1 全文
-4. 工程索引：codegraph 可用时优先用 `codegraph_search` / `codegraph_context` / `codegraph_impact`，否则再读 `.loom/index/engineering-index.md`
+3. `loom_get_context(doc="constitution")` / `"memory"` — 先取 outline（L0），只在需要某 section 时才取 L1 全文
+4. codegraph：仅在可用时使用 `codegraph_search` / `codegraph_context` / `codegraph_impact`；不可用时跳过图查询并用源码搜索补充判断
 
 ### 第二步：按需深入（仅在任务涉及时）
 
 按需深入读取以下文件（用 MCP 工具去取，不要整文件 cat）：
 
-- `.loom/rules/constitution.md`：仅当任务涉及架构决策时读取全文
-- `.loom/rules/project-structure.md`：仅当需要定位文件时读取全文
-- `.loom/index/engineering-index.md`：仅当需要理解依赖关系时读取全文
-- `.loom/memory/MEMORY.md`：仅当需要回忆历史决策时读取全文
+- `.loom/rules/constitution.md`：仅当任务涉及架构决策、目录结构或分层约束时读取全文
+- `.loom/memory/MEMORY.md`：仅当需要回忆历史决策时读取导出视图；新增记忆用 `loom_add_memory` 或 `loom memory add`
 
 **默认不要一口气读取所有上下文文件全文。仅在变更涉及架构决策或跨多模块时例外。**
 
@@ -102,5 +100,5 @@
 交付前确认：
 
 1. 相关验证命令已经运行，或明确说明无法运行的原因。
-2. 新增/删除的路由、模块、命令、关键约定已同步索引（`loom index`：codegraph 可用时委派 codegraph sync，否则更新 `.loom/index/engineering-index.md`）。
-3. 重要踩坑、用户偏好或跨会话决策已记录到 `.loom/memory/MEMORY.md`。
+2. 新增/删除的路由、模块、命令、关键约定已同步 codegraph（`loom index`：codegraph 可用时委派 `codegraph sync`；不可用时注明已跳过）。
+3. 重要踩坑、用户偏好或跨会话决策已通过 `loom_add_memory` 或 `loom memory add` 记录。

@@ -27,7 +27,7 @@ description: >
 
 1. 所有 task 已完成
 2. 所有测试通过
-3. 索引文件已更新
+3. codegraph 状态已确认（不可用时已注明跳过）
 4. 无 BLOCKER
 5. 测试报告已生成（来自 test-reporter）
 
@@ -45,9 +45,11 @@ git diff --stat
 ### Step 3：运行最终验证
 
 <!-- loom:generate:rule:build-vet-test-cmd -->
+
 **构建/检查/测试命令**
 
 读取 `.loom/rules/constitution.md` 中的 BUILD_CMD/VET_CMD/TEST_CMD 并执行验证。
+
 <!-- /loom:generate:rule:build-vet-test-cmd -->
 
 ### Step 4：展示选项
@@ -92,6 +94,7 @@ EOF
 ## 提交信息规范
 
 <!-- loom:generate:rule:conventional-commits -->
+
 **Conventional Commits 格式**
 
 提交信息必须遵循 Conventional Commits 格式：`<type>(<scope>): <subject>`
@@ -109,10 +112,11 @@ EOF
 - 提交前必须运行完整验证
 - 提交信息必须清晰描述变更内容
 - 禁止提交敏感信息（密钥、密码等）
-    <!-- loom:generate:rule:no-main-branch -->
+
+<!-- loom:generate:rule:no-main-branch -->
+
 **禁止在主分支实现**
 
 没有明确用户同意，永远不要在 main/master 分支上开始实现。
+
 <!-- /loom:generate:rule:no-main-branch -->
-
-
