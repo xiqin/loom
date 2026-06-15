@@ -44,7 +44,7 @@
     "docs/"
   ],
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22"
   },
   "scripts": {
     "generate": "node scripts/generate-incremental.mjs",
