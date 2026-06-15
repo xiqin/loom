@@ -8,12 +8,14 @@
  */
 
 import { NodeFileSystem } from './fs-interface.js';
+import { escapeMarkdown } from './markdown.js';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 
 // ── 常量 ───────────────────────────────────────────────────────────────────
 
 export const TASK_STATUSES = ['pending', 'executing', 'reviewing', 'done', 'failed', 'blocked'];
+const TASK_ID_RE = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
 
 // ── 工具函数 ───────────────────────────────────────────────────────────────
 
@@ -56,6 +58,18 @@ function writeJSON(path, data, fs) {
 }
 
 function now() { return new Date().toISOString(); }
+
+export function assertValidTaskId(taskId) {
+  if (typeof taskId !== 'string' || !TASK_ID_RE.test(taskId)) {
+    throw new Error(`Invalid task id: ${taskId}`);
+  }
+}
+
+export function assertValidTaskStatus(status) {
+  if (status !== undefined && !TASK_STATUSES.includes(status)) {
+    throw new Error(`Invalid task status: ${status}`);
+  }
+}
 
 // ── PipelineStateStore ─────────────────────────────────────────────────────
 
@@ -145,6 +159,7 @@ export class PipelineStateStore {
 
   /** 初始化单个 task 状态 */
   initTask(taskId, agentSessionId = null) {
+    assertValidTaskId(taskId);
     this.fs.mkdirSync(this.taskStatesDir, { recursive: true });
     const path = join(this.taskStatesDir, `${taskId}.state.json`);
     if (this.fs.existsSync(path)) return readJSON(path, null, this.fs);
@@ -166,6 +181,8 @@ export class PipelineStateStore {
 
   /** 更新 task 状态（只有该 task 的负责方调用）*/
   updateTask(taskId, patch) {
+    assertValidTaskId(taskId);
+    assertValidTaskStatus(patch?.status);
     this.fs.mkdirSync(this.taskStatesDir, { recursive: true });
     const path = join(this.taskStatesDir, `${taskId}.state.json`);
     const state = readJSON(path, null, this.fs) || this.initTask(taskId);
@@ -191,6 +208,7 @@ export class PipelineStateStore {
 
   /** 读取单个 task 状态 */
   readTask(taskId) {
+    assertValidTaskId(taskId);
     const path = join(this.taskStatesDir, `${taskId}.state.json`);
     return readJSON(path, null, this.fs);
   }
@@ -198,6 +216,7 @@ export class PipelineStateStore {
   // ── Handoff ────────────────────────────────────────────────────────────────
 
   writeHandoff(taskId, handoff) {
+    assertValidTaskId(taskId);
     this.fs.mkdirSync(this.handoffsDir, { recursive: true });
     writeJSON(join(this.handoffsDir, `${taskId}.json`), {
       ...handoff,
@@ -207,6 +226,7 @@ export class PipelineStateStore {
   }
 
   readHandoff(taskId) {
+    assertValidTaskId(taskId);
     return readJSON(join(this.handoffsDir, `${taskId}.json`), null, this.fs);
   }
 
@@ -263,7 +283,7 @@ export class PipelineStateStore {
       // 更新 Pipeline 表格中的 Stage 行
       updated = updated.replace(
         /\| Stage \| `[^`]+` \|/,
-        `| Stage | \`${pipeline.current_stage}\` |`
+        `| Stage | \`${escapeMarkdown(pipeline.current_stage)}\` |`
       );
       updated = updated.replace(
         /\| Updated \| [^|]+ \|/,
@@ -275,7 +295,7 @@ export class PipelineStateStore {
         if (!updated.includes('| Failure |')) {
           updated = updated.replace(
             /\| Updated \| [^|]+ \|/,
-            `| Updated | ${pipeline.updated_at?.slice(0, 16).replace('T', ' ')} |\n| Failure | ${pipeline.failure_reason} |`
+            `| Updated | ${pipeline.updated_at?.slice(0, 16).replace('T', ' ')} |\n| Failure | ${escapeMarkdown(pipeline.failure_reason)} |`
           );
         }
       }
@@ -316,7 +336,7 @@ export class PipelineStateStore {
       const icon = statusIcon[t.status] || '?';
       const retries = t.retry_count ?? 0;
       const updated = t.updated_at?.slice(0, 16).replace('T', ' ') || '-';
-      lines.push(`| \`${t.task_id}\` | ${icon} ${t.status} | ${retries} | ${updated} |`);
+      lines.push(`| \`${escapeMarkdown(t.task_id)}\` | ${icon} ${escapeMarkdown(t.status)} | ${escapeMarkdown(retries)} | ${escapeMarkdown(updated)} |`);
     }
     lines.push('');
 
@@ -325,7 +345,7 @@ export class PipelineStateStore {
       lines.push('### Blockers');
       lines.push('');
       for (const t of blocked) {
-        lines.push(`- **${t.task_id}**: ${t.blocker}`);
+        lines.push(`- **${escapeMarkdown(t.task_id)}**: ${escapeMarkdown(t.blocker)}`);
       }
       lines.push('');
     }
@@ -346,12 +366,12 @@ export class PipelineStateStore {
       lines.push('');
       lines.push(`| Field | Value |`);
       lines.push(`|-------|-------|`);
-      lines.push(`| Stage | \`${pipeline.current_stage}\` |`);
-      lines.push(`| Type  | \`${pipeline.pipeline_type}\` |`);
+      lines.push(`| Stage | \`${escapeMarkdown(pipeline.current_stage)}\` |`);
+      lines.push(`| Type  | \`${escapeMarkdown(pipeline.pipeline_type)}\` |`);
       lines.push(`| Started | ${pipeline.started_at?.slice(0, 16).replace('T', ' ')} |`);
       lines.push(`| Updated | ${pipeline.updated_at?.slice(0, 16).replace('T', ' ')} |`);
       if (pipeline.failure_reason) {
-        lines.push(`| Failure | ${pipeline.failure_reason} |`);
+        lines.push(`| Failure | ${escapeMarkdown(pipeline.failure_reason)} |`);
       }
       lines.push('');
 
@@ -362,7 +382,7 @@ export class PipelineStateStore {
         lines.push('|-------|--------|--------|');
         for (const h of pipeline.stage_history) {
           const icon = h.status === 'passed' ? '✅' : '❌';
-          lines.push(`| \`${h.stage}\` | ${icon} ${h.status} | ${h.exited_at?.slice(0, 16).replace('T', ' ')} |`);
+          lines.push(`| \`${escapeMarkdown(h.stage)}\` | ${icon} ${escapeMarkdown(h.status)} | ${escapeMarkdown(h.exited_at?.slice(0, 16).replace('T', ' '))} |`);
         }
         lines.push('');
       }

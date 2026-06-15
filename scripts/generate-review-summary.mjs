@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { exitIfOutOfSync, writeIfChanged } from './lib/generate-check.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -10,24 +11,6 @@ const SCHEMA_PATH = join(ROOT, 'config', 'review.schema.json');
 
 const MARKER_OPEN = '<!-- loom:generate:review-summary -->';
 const MARKER_CLOSE = '<!-- /loom:generate:review-summary -->';
-const CHECK = process.env.LOOM_GENERATE_CHECK === '1' || process.argv.includes('--check');
-let outOfSync = 0;
-
-function writeIfChanged(filePath, content) {
-  const existing = existsSync(filePath) ? readFileSync(filePath, 'utf-8') : '';
-  if (existing === content) {
-    console.log(`  · ${filePath} — already up to date`);
-    return false;
-  }
-  if (CHECK) {
-    console.error(`  ✘ ${filePath} — out of sync`);
-    outOfSync++;
-    return false;
-  }
-  writeFileSync(filePath, content, 'utf-8');
-  console.log(`  ✔ ${filePath}`);
-  return true;
-}
 
 function loadSchema() {
   return JSON.parse(readFileSync(SCHEMA_PATH, 'utf-8'));
@@ -69,4 +52,4 @@ injectIntoFile(join(ROOT, 'README.md'), md);
 injectIntoFile(join(ROOT, 'skills', 'loom-using-loom', 'SKILL.md'), md);
 
 console.log('\n✔ Review summary generation complete');
-if (outOfSync > 0) process.exit(1);
+exitIfOutOfSync();

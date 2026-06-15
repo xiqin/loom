@@ -54,4 +54,9 @@ describe('MemoryStore', () => {
 
     expect(() => store.list()).toThrow(/Corrupt memory store/);
   });
+
+  it('rejects unsafe archive slugs before writing session files', () => {
+    expect(() => store.archiveSession('../escape', 'content')).toThrow(/Invalid session slug/);
+    expect(() => store.archiveSession('feature/name', 'content')).toThrow(/Invalid session slug/);
+  });
 });

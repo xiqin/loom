@@ -1,31 +1,14 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { exitIfOutOfSync, writeIfChanged } from './lib/generate-check.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const RULES_PATH = join(ROOT, 'config', 'shared-rules.json');
 const SKILLS_DIR = join(ROOT, 'skills');
-const CHECK = process.env.LOOM_GENERATE_CHECK === '1' || process.argv.includes('--check');
-let outOfSync = 0;
-
-function writeIfChanged(filePath, content) {
-  const existing = existsSync(filePath) ? readFileSync(filePath, 'utf-8') : '';
-  if (existing === content) {
-    console.log(`  · ${filePath} — already up to date`);
-    return false;
-  }
-  if (CHECK) {
-    console.error(`  ✘ ${filePath} — out of sync`);
-    outOfSync++;
-    return false;
-  }
-  writeFileSync(filePath, content, 'utf-8');
-  console.log(`  ✔ ${filePath}`);
-  return true;
-}
 
 function loadRules() {
   return JSON.parse(readFileSync(RULES_PATH, 'utf-8'));
@@ -78,4 +61,4 @@ for (const rule of rules) {
 }
 
 console.log(`\n✔ Shared rules generation complete (${injectedCount} injection(s) applied)`);
-if (outOfSync > 0) process.exit(1);
+exitIfOutOfSync();

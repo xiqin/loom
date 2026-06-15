@@ -2,6 +2,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { BaseAdapter, codegraphMcpDescriptor } from './base.js';
+import { readTextConfig } from './config-utils.js';
 
 function tomlString(value) {
   return JSON.stringify(value);
@@ -98,10 +99,7 @@ export class CodexAdapter extends BaseAdapter {
 
   _ensureMcpConfig(log) {
     const configPath = this._getConfigPath();
-    let config = '';
-    if (existsSync(configPath)) {
-      try { config = readFileSync(configPath, 'utf-8'); } catch { config = ''; }
-    }
+    let config = readTextConfig(configPath, { log, label: 'mcp', name: 'config.toml' });
 
     let changed = false;
     if (hasMcpServer(config, 'loom')) {

@@ -2,6 +2,7 @@
 name: loom-requesting-code-review
 description: >
   Prepare a code review request with change summary, self-test results, and focus areas for reviewers.
+  Use when: verified changes are ready for reviewer handoff or a PR needs a review request summary.
 ---
 
 # 请求代码审查

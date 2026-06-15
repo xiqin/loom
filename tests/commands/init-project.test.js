@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
-const TEST_DIR = join(import.meta.dirname, '__test_init_project_command__');
+let TEST_DIR;
 
 beforeEach(() => {
+  TEST_DIR = mkdtempSync(join(tmpdir(), 'loom-init-project-command-'));
   mkdirSync(TEST_DIR, { recursive: true });
 });
 

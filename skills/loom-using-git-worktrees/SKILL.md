@@ -2,6 +2,7 @@
 name: loom-using-git-worktrees
 description: >
   Create an isolated git branch/worktree before coding begins. Verifies baseline tests pass.
+  Use when: starting implementation work that should be isolated from the current branch or workspace.
 ---
 
 # Git 工作树隔离

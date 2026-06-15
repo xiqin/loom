@@ -2,6 +2,7 @@
 name: loom-brainstorming
 description: >
   Explore 2-3 implementation options with trade-offs when the user describes a new feature or requirement.
+  Use when: the user asks for a new feature design, implementation options, or technical trade-off analysis.
 ---
 
 # 需求头脑风暴

@@ -34,6 +34,7 @@ const SCRIPTS = [
     inputs: [
       'config/tools.schema.json',
       'scripts/generate-tooling.mjs',
+      'scripts/lib/generate-check.mjs',
     ],
   },
   {
@@ -42,6 +43,7 @@ const SCRIPTS = [
     inputs: [
       'config/tools.schema.json',
       'scripts/generate-plugin-meta.mjs',
+      'scripts/lib/generate-check.mjs',
     ],
   },
   {
@@ -50,30 +52,45 @@ const SCRIPTS = [
     inputs: [
       'skills/',
       'scripts/generate-skills-catalog.mjs',
+      'scripts/lib/generate-check.mjs',
+    ],
+  },
+  {
+    name: 'generate-progress-rules',
+    cmd: 'node scripts/generate-progress-rules.mjs',
+    inputs: [
+      'config/pipeline.schema.json',
+      'skills/',
+      'scripts/generate-progress-rules.mjs',
+      'scripts/lib/generate-check.mjs',
     ],
   },
   {
     name: 'generate-model-selection',
     cmd: 'node scripts/generate-model-selection.mjs',
     inputs: [
-      'config/model-selection.md',
+      'config/model-selection.schema.json',
       'scripts/generate-model-selection.mjs',
+      'scripts/lib/generate-check.mjs',
     ],
   },
   {
     name: 'generate-shared-rules',
     cmd: 'node scripts/generate-shared-rules.mjs',
     inputs: [
-      'config/shared-rules.md',
+      'config/shared-rules.json',
+      'skills/',
       'scripts/generate-shared-rules.mjs',
+      'scripts/lib/generate-check.mjs',
     ],
   },
   {
     name: 'generate-review-summary',
     cmd: 'node scripts/generate-review-summary.mjs',
     inputs: [
-      'config/review-summary.md',
+      'config/review.schema.json',
       'scripts/generate-review-summary.mjs',
+      'scripts/lib/generate-check.mjs',
     ],
   },
 ];

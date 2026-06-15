@@ -8,7 +8,7 @@
  */
 
 import { NodeFileSystem } from './fs-interface.js';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 
 // 同一进程内的退出 handler 只注册一次，避免长生命周期进程（MCP server）累积监听器
@@ -35,6 +35,7 @@ export class SpecLock {
 
   /** 尝试加锁。返回 { acquired: bool, pid?: number, startedAt?: string } */
   acquire() {
+    this.fs.mkdirSync(dirname(this.lockPath), { recursive: true });
     const token = randomBytes(8).toString('hex');
     const startedAt = new Date().toISOString();
     const payload = `${process.pid}\n${startedAt}\n${token}`;

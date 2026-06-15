@@ -2,6 +2,7 @@
 name: loom-dispatching-parallel-agents
 description: >
   Dispatch multiple independent tasks to parallel subagents when no shared file conflicts exist.
+  Use when: a confirmed plan has independent tasks that can run concurrently without touching shared files.
 ---
 
 # 并行派发
@@ -81,4 +82,3 @@ description: >
 - 必须等待所有并行 subagent 完成后才能继续
 - 并行任务的结果需要合并验证
 - 根据任务复杂度选择模型（cheap/standard/capable）
-

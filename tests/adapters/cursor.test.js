@@ -142,4 +142,21 @@ description: >
     // 紧凑模式包含 MCP 引用
     expect(mdcContent).toContain('loom_get_skill_context');
   });
+
+  it('backs up invalid mcp.json before rebuilding', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.cursor'));
+
+    const mcpDir = join(TEST_DIR, '.cursor', 'mcp');
+    const mcpPath = join(mcpDir, 'mcp.json');
+    mkdirSync(mcpDir, { recursive: true });
+    writeFileSync(mcpPath, '{ invalid json', 'utf-8');
+
+    const log = [];
+    adapter._ensureMcpConfig(log);
+
+    expect(readFileSync(`${mcpPath}.bak`, 'utf-8')).toBe('{ invalid json');
+    const config = JSON.parse(readFileSync(mcpPath, 'utf-8'));
+    expect(config.mcpServers.loom.command).toBe('loom');
+    expect(log.some(l => l.includes('解析失败'))).toBe(true);
+  });
 });

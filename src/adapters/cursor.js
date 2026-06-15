@@ -1,8 +1,9 @@
-import { mkdirSync, rmSync, readdirSync, existsSync, cpSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, readdirSync, existsSync, cpSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { convertAllSkills, convertAllCommands } from './cursor-converter.js';
 import { codegraphMcpDescriptor } from './base.js';
+import { readJsonConfig } from './config-utils.js';
 
 export class CursorAdapter {
   get toolName() { return 'cursor'; }
@@ -49,10 +50,7 @@ export class CursorAdapter {
   _ensureMcpConfig(log) {
     const mcpDir = join(this.getUserDir(), 'mcp');
     const mcpPath = join(mcpDir, 'mcp.json');
-    let config = {};
-    if (existsSync(mcpPath)) {
-      try { config = JSON.parse(readFileSync(mcpPath, 'utf-8')); } catch {}
-    }
+    let config = readJsonConfig(mcpPath, { log, label: 'mcp', name: '.cursor/mcp/mcp.json' });
     if (!config.mcpServers) config.mcpServers = {};
     let changed = false;
 

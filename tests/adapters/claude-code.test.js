@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ClaudeCodeAdapter } from '../../src/adapters/claude-code.js';
 
@@ -57,5 +57,21 @@ describe('ClaudeCodeAdapter', () => {
     const log = adapter.uninstall(TEST_DIR);
     expect(Array.isArray(log)).toBe(true);
     expect(log.some(l => l.includes('Uninstalling'))).toBe(true);
+  });
+
+  it('backs up invalid settings.json before rebuilding MCP config', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.claude'));
+
+    const settingsPath = join(TEST_DIR, '.claude', 'settings.json');
+    mkdirSync(join(TEST_DIR, '.claude'), { recursive: true });
+    writeFileSync(settingsPath, '{ invalid json', 'utf-8');
+
+    const log = [];
+    adapter._ensureMcpConfig(log);
+
+    expect(readFileSync(`${settingsPath}.bak`, 'utf-8')).toBe('{ invalid json');
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
+    expect(settings.mcpServers.loom.command).toBe('loom');
+    expect(log.some(l => l.includes('解析失败'))).toBe(true);
   });
 });

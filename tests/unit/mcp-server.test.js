@@ -22,7 +22,7 @@ function parseFrames(output) {
   return frames;
 }
 
-async function runServer(input) {
+async function runServer(input, isComplete) {
   return await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['src/mcp/server.js'], {
       cwd: process.cwd(),
@@ -31,17 +31,32 @@ async function runServer(input) {
     });
     let stdout = '';
     let stderr = '';
+    let settled = false;
+    function stopChild() {
+      try { child.kill(); } catch {}
+    }
+    function finish() {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      stopChild();
+      resolve({ stdout, stderr });
+    }
     const timer = setTimeout(() => {
-      child.kill();
+      if (settled) return;
+      settled = true;
+      stopChild();
       reject(new Error(`server timed out\nstdout=${stdout}\nstderr=${stderr}`));
     }, 2000);
     child.stdout.setEncoding('utf-8');
     child.stderr.setEncoding('utf-8');
-    child.stdout.on('data', d => { stdout += d; });
+    child.stdout.on('data', d => {
+      stdout += d;
+      if (isComplete?.(stdout)) finish();
+    });
     child.stderr.on('data', d => { stderr += d; });
     child.on('close', () => {
-      clearTimeout(timer);
-      resolve({ stdout, stderr });
+      finish();
     });
     child.stdin.end(input);
   });
@@ -50,7 +65,10 @@ async function runServer(input) {
 describe('MCP stdio transport', () => {
   it('handles newline-delimited JSON-RPC', async () => {
     const ping = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' });
-    const { stdout } = await runServer(ping + '\n');
+    const { stdout } = await runServer(ping + '\n', output => {
+      try { return JSON.parse(output.trim()).id === 1; }
+      catch { return false; }
+    });
 
     expect(JSON.parse(stdout.trim())).toEqual({ jsonrpc: '2.0', id: 1, result: {} });
   });
@@ -58,12 +76,25 @@ describe('MCP stdio transport', () => {
   it('handles Content-Length framed JSON-RPC messages', async () => {
     const ping = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' });
     const initialize = JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'initialize', params: {} }, null, 2);
-    const { stdout } = await runServer(frame(ping) + frame(initialize));
+    const { stdout } = await runServer(frame(ping) + frame(initialize), output => parseFrames(output).length === 2);
     const responses = parseFrames(stdout);
 
     expect(responses).toHaveLength(2);
     expect(responses[0]).toEqual({ jsonrpc: '2.0', id: 1, result: {} });
     expect(responses[1].id).toBe(2);
     expect(responses[1].result.serverInfo.name).toBe('loom-mcp-server');
+  });
+
+  it('negotiates the latest supported MCP protocol version', async () => {
+    const initialize = JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: { protocolVersion: '2025-11-25' }
+    });
+    const { stdout } = await runServer(frame(initialize), output => parseFrames(output).length === 1);
+    const [response] = parseFrames(stdout);
+
+    expect(response.result.protocolVersion).toBe('2025-11-25');
   });
 });

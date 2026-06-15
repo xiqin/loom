@@ -3,6 +3,7 @@ name: loom-systematic-debugging
 description: >
   Structured debugging when facing bugs, test failures, or unexpected runtime behavior.
   Follows a phased approach: reproduce → gather info → hypothesize → verify → fix.
+  Use when: diagnosing bugs, failing tests, flaky behavior, or unexplained runtime errors.
 ---
 
 # 系统化调试

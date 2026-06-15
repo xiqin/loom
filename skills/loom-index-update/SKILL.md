@@ -2,6 +2,7 @@
 name: loom-index-update
 description: >
   Synchronize codegraph index, structured memory, and entry docs with code after verification passes.
+  Use when: verified code changes need codegraph sync, memory updates, or entry documentation refresh.
 ---
 
 # codegraph 与记忆同步 Skill

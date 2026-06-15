@@ -44,7 +44,7 @@
     "docs/"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "generate": "node scripts/generate-incremental.mjs",
@@ -59,6 +59,8 @@
     "test:skills": "node skills/loom-writing-skills/scripts/lint-skills.mjs",
     "pretest": "node scripts/generate-incremental.mjs",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "audit:high": "npm audit --audit-level=high",
     "test:watch": "vitest",
     "prepack": "node scripts/generate-incremental.mjs --force && node scripts/generate-plugin-meta.mjs && node scripts/sync-version.mjs && npm test",
     "prepublishOnly": "node scripts/generate-incremental.mjs --force && node scripts/generate-plugin-meta.mjs && node scripts/sync-version.mjs && npm test"

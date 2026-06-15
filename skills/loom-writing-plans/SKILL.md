@@ -2,6 +2,7 @@
 name: loom-writing-plans
 description: >
   Break a confirmed spec into ordered, independently-verifiable task files with dependency analysis.
+  Use when: an approved spec must be decomposed into ordered, testable implementation tasks.
 ---
 
 # 实现计划拆解

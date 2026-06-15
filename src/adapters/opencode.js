@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, cpSync } fr
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { BaseAdapter } from './base.js';
+import { readJsonConfig } from './config-utils.js';
 
 export class OpenCodeAdapter extends BaseAdapter {
   get toolName() { return 'opencode'; }
@@ -40,20 +41,7 @@ export class OpenCodeAdapter extends BaseAdapter {
 
   _addNpmPlugin(loomRoot, log) {
     const configPath = join(this.getUserDir(), 'opencode.json');
-    let config = {};
-    if (existsSync(configPath)) {
-      try {
-        config = JSON.parse(readFileSync(configPath, 'utf-8'));
-      } catch (e) {
-        log.push(`  plugin: opencode.json 解析失败 (${e.message})，将备份并重建`);
-        try {
-          const backup = configPath + '.bak';
-          cpSync(configPath, backup, { force: true });
-          log.push(`  plugin: 已备份至 ${backup}`);
-        } catch {}
-        config = {};
-      }
-    }
+    let config = readJsonConfig(configPath, { log, label: 'plugin', name: 'opencode.json' });
 
     let changed = false;
 
@@ -133,20 +121,7 @@ export class OpenCodeAdapter extends BaseAdapter {
 
   _ensureMcpConfig(log) {
     const configPath = join(this.getUserDir(), 'opencode.json');
-    let config = {};
-    if (existsSync(configPath)) {
-      try {
-        config = JSON.parse(readFileSync(configPath, 'utf-8'));
-      } catch (e) {
-        log.push(`  mcp: opencode.json 解析失败 (${e.message})，将备份并重建`);
-        try {
-          const backup = configPath + '.bak';
-          cpSync(configPath, backup, { force: true });
-          log.push(`  mcp: 已备份至 ${backup}`);
-        } catch {}
-        config = {};
-      }
-    }
+    let config = readJsonConfig(configPath, { log, label: 'mcp', name: 'opencode.json' });
 
     if (!config.mcp) config.mcp = {};
 

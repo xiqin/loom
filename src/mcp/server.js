@@ -26,7 +26,8 @@ const SERVER_VERSION = (() => {
     return JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8')).version || '0.0.0';
   } catch { return '0.0.0'; }
 })();
-const PROTOCOL_VERSION = '2025-06-18';
+const SUPPORTED_PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18'];
+const PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0];
 
 const sessionStore = new SessionStore();
 // 每个 server 进程对应一个 stdio 连接，握手时生成唯一 sessionId
@@ -66,6 +67,11 @@ function makeError(id, code, message) {
   return { jsonrpc: '2.0', id, error: { code, message } };
 }
 
+function negotiateProtocolVersion(requested) {
+  if (SUPPORTED_PROTOCOL_VERSIONS.includes(requested)) return requested;
+  return PROTOCOL_VERSION;
+}
+
 async function handleRequest(msg) {
   const { id, method, params } = msg;
 
@@ -74,7 +80,7 @@ async function handleRequest(msg) {
     case 'initialize':
       sessionId = randomUUID(); // 新握手 → 新会话，清掉上一连接的 spec 绑定残留
       return makeResponse(id, {
-        protocolVersion: PROTOCOL_VERSION,
+        protocolVersion: negotiateProtocolVersion(params?.protocolVersion),
         capabilities: { tools: { listChanged: lazyToolsEnabled() } },
         serverInfo: { name: SERVER_NAME, version: SERVER_VERSION }
       });

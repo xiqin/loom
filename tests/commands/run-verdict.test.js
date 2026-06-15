@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -75,5 +75,46 @@ describe('loom run --verdict', () => {
     const { exitCode, output } = await runVerdict(dir, { verdictFile: 'custom-report.md' });
     expect(output.trim()).toBe('PASS');
     expect(exitCode).toBe(0);
+  });
+});
+
+async function runCommandWithCapture(options = {}) {
+  const outputs = [];
+  const errors = [];
+  const origExit = process.exitCode;
+  process.exitCode = undefined;
+  const origLog = console.log;
+  const origErr = console.error;
+  console.log = (msg) => outputs.push(String(msg));
+  console.error = (msg) => errors.push(String(msg));
+  try {
+    const { default: runCommand } = await import('../../src/commands/run.js?bust=' + Date.now() + Math.random());
+    await runCommand(options);
+  } finally {
+    console.log = origLog;
+    console.error = origErr;
+  }
+  const exitCode = process.exitCode;
+  process.exitCode = origExit;
+  return { exitCode, output: outputs.join('\n'), error: errors.join('\n') };
+}
+
+describe('loom run write locking', () => {
+  it('keeps the spec lock after task update failure when another process holds it', async () => {
+    const root = tmp();
+    const specDir = join(root, 'specs', 'feature');
+    mkdirSync(specDir, { recursive: true });
+    writeFileSync(join(specDir, '.loom-run.lock'), `${process.pid}\n2026-01-01T00:00:00.000Z\nother-token`, 'utf-8');
+
+    const result = await runCommandWithCapture({
+      cwd: root,
+      specDir: 'specs/feature',
+      task: 'T1',
+      taskStatus: 'done'
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.error).toMatch(/spec is locked/);
+    expect(existsSync(join(specDir, '.loom-run.lock'))).toBe(true);
   });
 });

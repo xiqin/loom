@@ -56,6 +56,16 @@ describe('PipelineStateStore', () => {
     expect(tasks.map(t => t.task_id)).toEqual(['T1', 'T2', 'T10']);
   });
 
+  it('rejects unsafe task ids before writing state files', () => {
+    expect(() => store.updateTask('../evil', { status: 'done' })).toThrow(/Invalid task id/);
+    expect(() => store.updateTask('T1/evil', { status: 'done' })).toThrow(/Invalid task id/);
+    expect(existsSync(join(dir, 'evil.state.json'))).toBe(false);
+  });
+
+  it('rejects invalid task statuses', () => {
+    expect(() => store.updateTask('T1', { status: 'almost-done' })).toThrow(/Invalid task status/);
+  });
+
   it('readAllTasks skips a corrupt task file without throwing', () => {
     store.updateTask('T1', { status: 'done' });
     mkdirSync(join(dir, 'task-states'), { recursive: true });
@@ -63,6 +73,19 @@ describe('PipelineStateStore', () => {
     const tasks = store.readAllTasks();
     expect(tasks).toHaveLength(1);
     expect(tasks[0].task_id).toBe('T1');
+  });
+
+  it('escapes dynamic markdown fields in progress.md', () => {
+    store.init('feature|type');
+    store.updateTask('T1', { status: 'blocked', blocker: 'line1\nline|2' });
+    store.fail('bad|reason\nnext');
+
+    const progress = readFileSync(join(dir, 'progress.md'), 'utf-8');
+    expect(progress).toContain('`feature\\|type`');
+    expect(progress).toContain('bad\\|reason<br>next');
+    expect(progress).toContain('`T1`');
+    expect(progress).toContain('blocked');
+    expect(progress).toContain('line1<br>line\\|2');
   });
 });
 

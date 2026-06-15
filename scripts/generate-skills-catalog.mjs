@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { exitIfOutOfSync, writeIfChanged } from './lib/generate-check.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -11,24 +12,6 @@ const PIPELINE_SCHEMA_PATH = join(ROOT, 'config', 'pipeline.schema.json');
 
 const MARKER_OPEN = '<!-- loom:generate:skills-catalog -->';
 const MARKER_CLOSE = '<!-- /loom:generate:skills-catalog -->';
-const CHECK = process.env.LOOM_GENERATE_CHECK === '1' || process.argv.includes('--check');
-let outOfSync = 0;
-
-function writeIfChanged(filePath, content) {
-  const existing = existsSync(filePath) ? readFileSync(filePath, 'utf-8') : '';
-  if (existing === content) {
-    console.log(`  · ${filePath} — already up to date`);
-    return false;
-  }
-  if (CHECK) {
-    console.error(`  ✘ ${filePath} — out of sync`);
-    outOfSync++;
-    return false;
-  }
-  writeFileSync(filePath, content, 'utf-8');
-  console.log(`  ✔ ${filePath}`);
-  return true;
-}
 
 function parseFrontmatter(content) {
   const match = content.match(/^---\s*\n([\s\S]*?)\n---/);
@@ -209,4 +192,4 @@ injectIntoFile(join(ROOT, 'LOOM.md'), summaryCatalog);
 injectIntoFile(join(ROOT, 'README.md'), summaryCatalog);
 
 console.log('\n✔ Skills catalog generation complete');
-if (outOfSync > 0) process.exit(1);
+exitIfOutOfSync();

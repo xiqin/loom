@@ -195,6 +195,25 @@ describe('path sandboxing', () => {
         store, 's1')
     ).rejects.toThrow(/escapes project root/);
   });
+
+  it('rejects unsafe task ids and invalid statuses', async () => {
+    const root = tmp();
+    const specDir = join(root, 'specs', 'x');
+    mkdirSync(specDir, { recursive: true });
+    const store = new SessionStore();
+
+    await expect(
+      executeToolCall('loom_update_task_state',
+        { spec_dir: 'specs/x', task_id: '../evil', status: 'done', project_root: root },
+        store, 's1')
+    ).rejects.toThrow(/Invalid task id/);
+
+    await expect(
+      executeToolCall('loom_update_task_state',
+        { spec_dir: 'specs/x', task_id: 'T1', status: 'almost-done', project_root: root },
+        store, 's1')
+    ).rejects.toThrow(/Invalid task status/);
+  });
 });
 
 describe('happy path', () => {

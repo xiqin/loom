@@ -108,6 +108,22 @@ describe('CodexAdapter', () => {
     expect(log.some(l => l.includes('loom server already configured'))).toBe(true);
   });
 
+  it('backs up unreadable config.toml before rebuilding MCP config', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.codex'));
+
+    const codexDir = join(TEST_DIR, '.codex');
+    const configPath = join(codexDir, 'config.toml');
+    mkdirSync(configPath, { recursive: true });
+
+    const log = [];
+    adapter._ensureMcpConfig(log);
+
+    expect(existsSync(`${configPath}.bak`)).toBe(true);
+    const config = readFileSync(configPath, 'utf-8');
+    expect(config).toContain('[mcp_servers.loom]');
+    expect(log.some(l => l.includes('读取失败'))).toBe(true);
+  });
+
   it('uninstall removes only loom skills', () => {
     vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.codex'));
 

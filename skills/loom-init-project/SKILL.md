@@ -2,6 +2,7 @@
 name: loom-init-project
 description: >
   Bootstrap .loom/ context files for a new repository: constitution, structured memory, workflow, and agent entry files.
+  Use when: initializing loom context for a repository that lacks .loom/ files or standard agent entry docs.
 ---
 
 # 项目初始化 Skill

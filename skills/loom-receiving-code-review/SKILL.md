@@ -3,6 +3,7 @@ name: loom-receiving-code-review
 description: >
   Process code review feedback: classify items, implement fixes, push back with reasoning when needed.
   Triggered after receiving review comments on a PR or branch.
+  Use when: code review comments have arrived and need triage, fixes, or reasoned disagreement.
 ---
 
 # 接受代码审查

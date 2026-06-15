@@ -1,31 +1,14 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { exitIfOutOfSync, writeIfChanged } from './lib/generate-check.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const PIPELINE_PATH = join(ROOT, 'config', 'pipeline.schema.json');
 const SKILLS_DIR = join(ROOT, 'skills');
-const CHECK = process.env.LOOM_GENERATE_CHECK === '1' || process.argv.includes('--check');
-let outOfSync = 0;
-
-function writeIfChanged(filePath, content) {
-  const existing = existsSync(filePath) ? readFileSync(filePath, 'utf-8') : '';
-  if (existing === content) {
-    console.log(`  · ${filePath} — already up to date`);
-    return false;
-  }
-  if (CHECK) {
-    console.error(`  ✘ ${filePath} — out of sync`);
-    outOfSync++;
-    return false;
-  }
-  writeFileSync(filePath, content, 'utf-8');
-  console.log(`  ✔ ${filePath}`);
-  return true;
-}
 
 function markerPair(stateId) {
   return {
@@ -98,4 +81,4 @@ for (const [stateId, state] of Object.entries(schema.states || {})) {
 }
 
 console.log(`\n✔ Progress rules generation complete (${injected} injection(s) applied)`);
-if (outOfSync > 0) process.exit(1);
+exitIfOutOfSync();

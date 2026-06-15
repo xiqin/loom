@@ -4,6 +4,7 @@ import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 
 import { BaseAdapter, codegraphMcpDescriptor } from './base.js';
+import { readJsonConfig } from './config-utils.js';
 
 const EXEC_OPTS = { stdio: 'pipe', timeout: 10_000 };
 const CLAUDE_CMD = process.platform === 'win32' ? 'claude.cmd' : 'claude';
@@ -40,10 +41,7 @@ export class ClaudeCodeAdapter extends BaseAdapter {
 
   _ensureMcpConfig(log) {
     const settingsPath = join(this.getUserDir(), 'settings.json');
-    let settings = {};
-    if (existsSync(settingsPath)) {
-      try { settings = JSON.parse(readFileSync(settingsPath, 'utf-8')); } catch {}
-    }
+    let settings = readJsonConfig(settingsPath, { log, label: 'mcp', name: 'settings.json' });
     if (!settings.mcpServers) settings.mcpServers = {};
     let changed = false;
 

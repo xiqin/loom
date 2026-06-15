@@ -12,6 +12,7 @@
  */
 
 import { NodeFileSystem } from './fs-interface.js';
+import { escapeMarkdown } from './markdown.js';
 import { join } from 'node:path';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { execSync } from 'node:child_process';
@@ -30,10 +31,13 @@ function writeFileAtomic(path, content, fs) {
 
 function now() { return new Date().toISOString(); }
 function today() { return now().slice(0, 10); }
-function escapeMarkdown(value) {
-  return String(value ?? '-')
-    .replace(/\|/g, '\\|')
-    .replace(/\r?\n/g, '<br>');
+
+const SESSION_SLUG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
+
+function assertValidSessionSlug(slug) {
+  if (typeof slug !== 'string' || !SESSION_SLUG_RE.test(slug)) {
+    throw new Error(`Invalid session slug: ${slug}`);
+  }
 }
 
 export class MemoryStore {
@@ -124,6 +128,7 @@ export class MemoryStore {
    * 归档当前会话
    */
   archiveSession(featureSlug, content) {
+    assertValidSessionSlug(featureSlug);
     const data = this._load();
     this.fs.mkdirSync(this.sessionsDir, { recursive: true });
     const filename = `${today()}-${featureSlug}.md`;
