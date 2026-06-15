@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "skill": "loom-dispatching-parallel-agents",
+  "positive": [
+    {
+      "prompt": "这些 task 互不冲突，帮我分批并行派发。",
+      "reason": "用户明确要求根据独立任务创建并行组。"
+    },
+    {
+      "prompt": "检查 owns 冲突，然后决定哪些任务可以同时做。",
+      "reason": "owns 冲突检测和并行批次划分是该 skill 的核心边界。"
+    },
+    {
+      "prompt": "plan 已确认，T1/T2/T3 能不能并行跑？",
+      "reason": "询问已确认任务之间的并行执行关系。"
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "直接按 plan 执行所有 task，并安排 reviewer。",
+      "reason": "完整执行循环属于 subagent-driven-development。"
+    },
+    {
+      "prompt": "帮我写 plan.md 和 tasks/T1.md。",
+      "reason": "任务拆解产物属于 writing-plans。"
+    },
+    {
+      "prompt": "这个小修复你自己完成，不需要派 agent。",
+      "reason": "明确不需要 agent 派发，也没有并行调度需求。"
+    }
+  ]
+}

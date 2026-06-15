@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "skill": "loom-subagent-driven-development",
+  "positive": [
+    {
+      "prompt": "计划已确认，有 8 个 task，按 subagent 流程执行。",
+      "reason": "多 task 已确认计划适合隔离派发和 reviewer 检查点。"
+    },
+    {
+      "prompt": "这个改动跨多个模块，主上下文太乱了，用隔离 agent 推进。",
+      "reason": "跨模块且上下文污染符合 subagent 执行条件。"
+    },
+    {
+      "prompt": "按 plan.md 执行，每个任务完成后要有 reviewer。",
+      "reason": "明确要求基于计划的子任务执行和审查循环。"
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "只有一个小函数要改，你直接修。",
+      "reason": "小范围直接修改不应引入高 token 成本的 subagent 模式。"
+    },
+    {
+      "prompt": "帮我把任务分成可以并行的批次。",
+      "reason": "并行批次规划属于 dispatching-parallel-agents。"
+    },
+    {
+      "prompt": "spec 还没确认，先聊方案。",
+      "reason": "未确认 spec 时应使用 brainstorming，不应开始执行。"
+    }
+  ]
+}

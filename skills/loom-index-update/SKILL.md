@@ -100,6 +100,6 @@ loom memory export
 - 新增表名、路由路径、方法签名必须与源码完全一致。
 - 统一调 `loom index`；无 codegraph 时跳过，不生成任何 Markdown 索引。
 
-## 完成条件与下一步
+## 完成条件
 
 同步完成后输出报告；codegraph 不可用时必须明确注明已跳过。

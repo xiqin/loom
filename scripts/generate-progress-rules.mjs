@@ -26,7 +26,6 @@ function injectIntoFile(filePath, open, close, content) {
   const startIdx = fileContent.indexOf(open);
   const endIdx = fileContent.indexOf(close);
   if (startIdx === -1 || endIdx === -1) {
-    console.warn(`  ⚠ ${filePath} — progress markers not found, skipping`);
     return false;
   }
   const newContent = fileContent.slice(0, startIdx + open.length) + '\n' + content + '\n' + fileContent.slice(endIdx);

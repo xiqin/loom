@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "skill": "loom-verification-before-completion",
+  "positive": [
+    {
+      "prompt": "代码改完了，提交前帮我做最终验证。",
+      "reason": "完成声明前需要编译、测试、占位符和证据检查。"
+    },
+    {
+      "prompt": "确认这个 feature 是否真的可以交付。",
+      "reason": "交付判断需要读取证据并执行完整性门禁。"
+    },
+    {
+      "prompt": "根据 test-report 和 reviewer 结果出最终验收结论。",
+      "reason": "已有前置报告时需要完成前验证来汇总证据。"
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "测试失败了，先找原因。",
+      "reason": "失败原因未知时应先使用 systematic debugging。"
+    },
+    {
+      "prompt": "还没开始写代码，先拆任务。",
+      "reason": "计划拆解属于 writing-plans，不是完成前验证。"
+    },
+    {
+      "prompt": "只同步 codegraph 和 memory。",
+      "reason": "索引和记忆同步属于 index-update。"
+    }
+  ]
+}

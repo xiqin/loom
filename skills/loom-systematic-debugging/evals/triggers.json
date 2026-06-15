@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "skill": "loom-systematic-debugging",
+  "positive": [
+    {
+      "prompt": "测试偶尔失败，帮我定位根因。",
+      "reason": "不稳定失败需要复现、收集信息、假设验证的调试流程。"
+    },
+    {
+      "prompt": "启动后接口返回 500，不知道哪里坏了。",
+      "reason": "未知运行时异常需要系统化诊断。"
+    },
+    {
+      "prompt": "这个修了三次还没好，重新分析一下。",
+      "reason": "多次修复失败是回到根因分析的典型触发条件。"
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "按这个明确方案实现功能，并补测试。",
+      "reason": "已有明确实现目标时应使用开发/TDD 流程，而不是诊断流程。"
+    },
+    {
+      "prompt": "代码已经改完，做最终验证。",
+      "reason": "完成前完整性检查属于 verification skill。"
+    },
+    {
+      "prompt": "比较两种缓存设计方案的取舍。",
+      "reason": "方案权衡属于 brainstorming，不是故障诊断。"
+    }
+  ]
+}

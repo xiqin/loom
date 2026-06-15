@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { OpenCodeAdapter } from '../../src/adapters/opencode.js';
 
-const TEST_DIR = join(import.meta.dirname, '__test_opencode__');
+let TEST_DIR;
 
 beforeEach(() => {
+  TEST_DIR = mkdtempSync(join(tmpdir(), 'loom-opencode-adapter-'));
   mkdirSync(TEST_DIR, { recursive: true });
 });
 
@@ -16,7 +18,7 @@ afterEach(async () => {
       rmSync(TEST_DIR, { recursive: true, force: true });
       return;
     } catch (e) {
-      if (e.code === 'EBUSY' && i < 2) {
+      if ((e.code === 'EBUSY' || e.code === 'ENOTEMPTY') && i < 2) {
         await new Promise(r => setTimeout(r, 100));
       } else if (i === 2) {
       } else {
