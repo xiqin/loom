@@ -55,14 +55,14 @@ function maybeInitCodegraph(cwd) {
     return;
   }
   const win = process.platform === 'win32';
-  const probe = spawnSync('codegraph', ['--version'], { stdio: 'ignore', shell: win });
+  const probe = spawnSync('codegraph', ['--version'], { stdio: 'ignore', shell: win, windowsHide: true });
   if (probe.status !== 0) {
     console.log('\n  codegraph: CLI not found — codegraph indexing disabled');
     console.log('  Install for richer indexing: https://github.com/colbymchenry/codegraph');
     return;
   }
   console.log('\n  codegraph: building graph index (codegraph init)...');
-  const r = spawnSync('codegraph', ['init', cwd], { cwd, stdio: 'inherit', shell: win });
+  const r = spawnSync('codegraph', ['init', cwd], { cwd, stdio: 'inherit', shell: win, windowsHide: true });
   if (r.status === 0) {
     console.log('  codegraph: graph index ready — loom index will delegate to codegraph');
   } else {

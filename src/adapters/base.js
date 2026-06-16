@@ -14,7 +14,7 @@ const MANAGED_SKILL_PREFIX = 'loom-';
  */
 export function codegraphMcpDescriptor() {
   try {
-    execSync('codegraph --version', { stdio: 'ignore', timeout: 10_000 });
+    execSync('codegraph --version', { stdio: 'ignore', timeout: 10_000, windowsHide: true });
     return { command: 'codegraph', args: ['serve', '--mcp'] };
   } catch {
     return null;

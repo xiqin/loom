@@ -24,7 +24,7 @@ import { spawnSync } from 'node:child_process';
 function codegraphAvailable(root) {
   if (existsSync(join(root, '.codegraph'))) return true;
   try {
-    const r = spawnSync('codegraph', ['--version'], { stdio: 'ignore', shell: process.platform === 'win32' });
+    const r = spawnSync('codegraph', ['--version'], { stdio: 'ignore', shell: process.platform === 'win32', windowsHide: true });
     return r.status === 0;
   } catch {
     return false;
@@ -40,6 +40,7 @@ function delegateToCodegraph(root, checkOnly) {
     cwd: root,
     stdio: 'inherit',
     shell: process.platform === 'win32',
+    windowsHide: true,
   });
   return r.status ?? 0;
 }

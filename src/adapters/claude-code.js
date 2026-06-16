@@ -6,7 +6,7 @@ import { homedir } from 'node:os';
 import { BaseAdapter, codegraphMcpDescriptor } from './base.js';
 import { readJsonConfig } from './config-utils.js';
 
-const EXEC_OPTS = { stdio: 'pipe', timeout: 10_000 };
+const EXEC_OPTS = { stdio: 'pipe', timeout: 10_000, shell: process.platform === 'win32', windowsHide: true };
 const CLAUDE_CMD = process.platform === 'win32' ? 'claude.cmd' : 'claude';
 
 function _readMarketplaceNames(loomRoot) {
