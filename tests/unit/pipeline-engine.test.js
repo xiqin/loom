@@ -128,3 +128,117 @@ describe('PipelineEngine flow', () => {
     expect(s.loom_version).toBe('9.9.9');
   });
 });
+
+describe('PipelineEngine dynamic_steps', () => {
+  const WF_WITH_CATALOG = `
+defaults:
+  pipeline_type: feature
+  max_retries: 3
+pipelines:
+  feature:
+    steps:
+      - id: brainstorming
+        skill: loom-brainstorming
+        next: planning
+        outputs: [spec.md]
+      - id: planning
+        skill: loom-writing-plans
+        next: executing
+        requires: [spec.md]
+        outputs: [plan.md]
+      - id: executing
+        skill: loom-subagent-driven-development
+        next: synced
+        outputs: [test-report.md]
+      - id: synced
+        skill: loom-index-update
+        outputs: []
+step_catalog:
+  brainstorming:
+    skill: loom-brainstorming
+    requires: []
+    outputs: [spec.md]
+    description: "brainstorming"
+  planning:
+    skill: loom-writing-plans
+    requires: [spec.md]
+    outputs: [plan.md]
+    description: "planning"
+  executing:
+    skill: loom-subagent-driven-development
+    requires: [plan.md]
+    outputs: [test-report.md]
+    description: "executing"
+    mandatory: true
+  verification:
+    skill: loom-verification-before-completion
+    requires: [test-report.md]
+    outputs: [verify-report.md]
+    description: "verification"
+    mandatory: true
+  synced:
+    skill: loom-index-update
+    requires: [verify-report.md]
+    outputs: []
+    description: "synced"
+selection_rules:
+  must_include: [executing, verification]
+  max_steps: 8
+`;
+
+  it('initialize with dynamicSteps uses them as steps', () => {
+    const root = setupProject(WF_WITH_CATALOG);
+    const specDir = join(root, 'specs', 'd1');
+    mkdirSync(specDir, { recursive: true });
+    const eng = new PipelineEngine(root, specDir);
+    const dynamicSteps = [
+      { id: 'executing', skill: 'loom-subagent-driven-development', requires: [], outputs: ['test-report.md'], description: 'executing' },
+      { id: 'verification', skill: 'loom-verification-before-completion', requires: ['test-report.md'], outputs: ['verify-report.md'], description: 'verification' }
+    ];
+    const result = eng.initialize(null, { dynamicSteps });
+    expect(result.ok).toBe(true);
+    expect(result.state.dynamic_steps).toHaveLength(2);
+    expect(result.state.current_stage).toBe('executing');
+    const steps = eng.getSteps();
+    expect(steps).toHaveLength(2);
+    expect(steps[0].id).toBe('executing');
+  });
+
+  it('getSteps reads dynamic_steps when present', () => {
+    const root = setupProject(WF_WITH_CATALOG);
+    const specDir = join(root, 'specs', 'd2');
+    mkdirSync(specDir, { recursive: true });
+    const eng = new PipelineEngine(root, specDir);
+    eng.initialize('feature');
+    const state = eng.store.read();
+    eng.store.setDynamicSteps([
+      { id: 'executing', skill: 'loom-subagent-driven-development', requires: [], outputs: ['test-report.md'], description: 'executing' },
+      { id: 'verification', skill: 'loom-verification-before-completion', requires: ['test-report.md'], outputs: ['verify-report.md'], description: 'verification' }
+    ]);
+    const steps = eng.getSteps();
+    expect(steps).toHaveLength(2);
+    expect(steps.map(s => s.id)).toEqual(['executing', 'verification']);
+  });
+
+  it('adjust appends new steps preserving completed ones', () => {
+    const root = setupProject(WF_WITH_CATALOG);
+    const specDir = join(root, 'specs', 'd3');
+    mkdirSync(specDir, { recursive: true });
+    const eng = new PipelineEngine(root, specDir);
+    eng.initialize('feature');
+    // 写 spec.md 让 brainstorming 能推进
+    writeFileSync(join(specDir, 'spec.md'), '# spec', 'utf-8');
+    eng.advance(); // brainstorming → planning
+    const state = eng.store.read();
+    expect(state.current_stage).toBe('planning');
+    // adjust: 追加 verification
+    const result = eng.adjust([
+      { id: 'verification', skill: 'loom-verification-before-completion', requires: ['test-report.md'], outputs: ['verify-report.md'], description: 'verification' }
+    ]);
+    expect(result.ok).toBe(true);
+    const ids = result.dynamic_steps.map(s => s.id);
+    expect(ids).toContain('brainstorming');
+    expect(ids).toContain('planning');
+    expect(ids).toContain('verification');
+  });
+});

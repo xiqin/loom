@@ -92,6 +92,25 @@ export default async function run(options) {
     return;
   }
 
+  if (options.approvePipeline) {
+    await withWriteLock(lock, options, () => {
+      const selector = new PipelineSelector(cwd, absSpecDir);
+      const steps = selector.readPipelinePlan();
+      if (!steps || steps.length === 0) {
+        console.error('\n  ✗ pipeline-plan.md 不存在或未找到步骤段。先运行: loom select --spec-dir <dir> --request <text>\n');
+        process.exitCode = 1;
+        return;
+      }
+      const result = engine.initialize(null, { dynamicSteps: steps });
+      const ids = steps.map(s => s.id);
+      console.log(`\n  ✓ Pipeline 初始化（dynamic_steps）`);
+      console.log(`  Steps: ${ids.join(' → ')}`);
+      console.log(`  Stage: ${result.state.current_stage}`);
+      console.log(`  State: ${absSpecDir}/pipeline.state.json\n`);
+    });
+    return;
+  }
+
   if (options.advance) {
     await withWriteLock(lock, options, () => {
       const result = engine.advance();

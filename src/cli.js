@@ -91,6 +91,7 @@ program
   .option('--cwd <path>', 'Project root')
   .option('--advance', 'Advance to next stage')
   .option('--approve', 'Approve human-approval gate')
+  .option('--approve-pipeline', '读取 pipeline-plan.md 并初始化为 dynamic_steps')
   .option('--fail <reason>', 'Mark current stage as failed')
   .option('--recover <stage>', 'Recover from failed to target stage')
   .option('--task <id>', 'Task ID (for task-state updates)')
@@ -106,6 +107,18 @@ program
   .action(async (options) => {
     const { default: runCommand } = await import('./commands/run.js');
     await runCommand(options);
+  });
+
+program
+  .command('select')
+  .description('AI 自主选择 pipeline 步骤，生成 pipeline-plan.md（不初始化状态）')
+  .requiredOption('--spec-dir <path>', 'Path to spec directory')
+  .requiredOption('--request <text>', '需求描述')
+  .option('--cwd <path>', 'Project root')
+  .option('--json', 'JSON 输出（不写 pipeline-plan.md）')
+  .action(async (options) => {
+    const { default: selectCommand } = await import('./commands/select.js');
+    await selectCommand(options);
   });
 
 program

@@ -10,7 +10,7 @@ function tmp() { return mkdtempSync(join(tmpdir(), 'loom-mcp-')); }
 
 describe('MCP tool definitions', () => {
   it('exposes the documented tools incl. context + capabilities', () => {
-    expect(TOOL_DEFINITIONS).toHaveLength(14);
+    expect(TOOL_DEFINITIONS).toHaveLength(15);
     const names = TOOL_DEFINITIONS.map(t => t.name);
     expect(names).toContain('loom_attach_spec');
     expect(names).toContain('loom_get_context');
@@ -18,6 +18,7 @@ describe('MCP tool definitions', () => {
     expect(names).toContain('loom_load_tool_group');
     expect(names).toContain('loom_get_skill_context');
     expect(names).toContain('loom_select_pipeline');
+    expect(names).toContain('loom_adjust_pipeline');
   });
 
   it('every tool carries a group tag for capability grouping', () => {

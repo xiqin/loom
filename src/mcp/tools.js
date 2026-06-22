@@ -149,6 +149,31 @@ export const TOOL_DEFINITIONS = [
     }
   },
   {
+    name: 'loom_adjust_pipeline',
+    group: 'pipeline',
+    description: '执行中调整步骤（如发现改动跨模块）。已完成的阶段不可删除，新步骤追加到尾部。返回更新后的 dynamic_steps。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        spec_dir: { type: 'string', description: 'Path to spec directory (optional if attached)' },
+        new_remaining_steps: {
+          type: 'array',
+          description: '追加的步骤对象数组 [{id, skill?, description?}]',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              skill: { type: 'string' },
+              description: { type: 'string' }
+            },
+            required: ['id']
+          }
+        }
+      },
+      required: ['new_remaining_steps']
+    }
+  },
+  {
     name: 'loom_get_memory',
     group: 'memory',
     description: 'Read project memory entries: gotchas, decisions, preferences. Filter by type.',
@@ -237,7 +262,7 @@ export const CAPABILITY_GROUPS = {
   pipeline: {
     title: '流水线（状态机）',
     when: '推进开发流程、查当前阶段该做什么、推进/审批/更新任务状态时。强调"状态感知"：先读 pipeline context 了解现状，再决定动作。',
-    tools: ['loom_get_project_status', 'loom_get_pipeline_context', 'loom_select_pipeline', 'loom_advance_pipeline', 'loom_approve_gate', 'loom_update_task_state'],
+    tools: ['loom_get_project_status', 'loom_get_pipeline_context', 'loom_select_pipeline', 'loom_advance_pipeline', 'loom_approve_gate', 'loom_update_task_state', 'loom_adjust_pipeline'],
   },
   memory: {
     title: '结构化记忆',
@@ -408,6 +433,17 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
       }
       const state = store.updateTask(args.task_id, patch);
       return { ok: true, task: state };
+    }
+
+    case 'loom_adjust_pipeline': {
+      if (!specDir) return { error: 'No spec_dir' };
+      if (!args.new_remaining_steps?.length) return { error: 'new_remaining_steps is required and must not be empty' };
+      const abs = safeResolveSpecDir(projectRoot, specDir);
+      return await withSpecLock(abs, () => {
+        const engine = new PipelineEngine(projectRoot, abs, { fs: fsImpl });
+        const result = engine.adjust(args.new_remaining_steps);
+        return result;
+      }, fsImpl);
     }
 
     case 'loom_get_memory': {
