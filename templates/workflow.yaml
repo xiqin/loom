@@ -271,3 +271,114 @@ pipelines:
         requires: [qa-execution-report.md, manual-checklist.md]
         outputs: [qa-report.md]
         description: "汇总自动+手动结果，输出 qa-report.md（verdict: PASS/PARTIAL/FAIL）"
+
+# ─────────────────────────────────────────
+# Step 池 — AI 自主选择模式用
+# ─────────────────────────────────────────
+# 每个 step 是独立可选项；selection 阶段由 AI 按
+# 用户需求 + 信号选择 steps 子集，再校验依赖闭包与护栏。
+step_catalog:
+  brainstorming:
+    skill: loom-brainstorming
+    requires: []
+    outputs: [spec.md]
+    description: "需求头脑风暴，探索 2-3 种实现方案"
+    skip_when: "根因明确 + 改动范围已知"
+
+  planning:
+    skill: loom-writing-plans
+    requires: [spec.md]
+    outputs: [plan.md, tasks/]
+    description: "分层拆解实现计划"
+    skip_when: "单文件改动 + 无架构影响"
+
+  git-worktree:
+    skill: loom-using-git-worktrees
+    requires: [plan.md]
+    outputs: []
+    description: "创建隔离 feature 分支"
+    skip_when: "已在 worktree 内 / 用户偏好直接改"
+
+  executing:
+    skill: loom-subagent-driven-development
+    requires: [plan.md, tasks/]
+    outputs: [test-report.md]
+    gate_verdict: test-report.md
+    description: "subagent 并行编码执行"
+    mandatory: true
+
+  verification:
+    skill: loom-verification-before-completion
+    requires: [test-report.md]
+    outputs: [verify-report.md]
+    gate_verdict: verify-report.md
+    description: "spec 覆盖 / 类型一致性 / 编译测试"
+    mandatory: true
+
+  synced:
+    skill: loom-index-update
+    requires: [verify-report.md]
+    outputs: []
+    description: "codegraph 同步与结构化记忆更新"
+    skip_when: "未启用 codegraph + 无记忆更新"
+
+# ─────────────────────────────────────────
+# 选择规则 — AI 决策约束 + 规则短路
+# ─────────────────────────────────────────
+selection_rules:
+  # 硬性护栏：AI 选择必须满足
+  must_include: [executing, verification]
+  never_skip_gates: true          # human-approval gate 不可跳
+  dependency_closure: true        # 选 step 必须带依赖闭包
+  max_steps: 8                    # 防止过度膨胀
+
+  # 规则短路：明确信号 → 直接返回固定 pipeline，0 token
+  short_circuits:
+    - name: quickfix
+      match:
+        keywords_any: [typo, 错别字, 单文件, 小修复, 小改动, 文案]
+        file_scope_max: 1
+      steps: [executing, verification]
+
+    - name: chore
+      match:
+        keywords_any: [依赖升级, npm update, npm install, 配置调整, bump version, 依赖更新, package.json]
+      steps: [executing, verification]
+
+    - name: hotfix
+      match:
+        keywords_any: [生产紧急, 线上故障, P0, hotfix, 紧急修复, 线上报警]
+      steps: [approved, executing, verification]
+
+    - name: bugfix-no-brainstorm
+      match:
+        keywords_any: [bug, 修复, fix, 缺陷]
+        has_root_cause: true
+        file_scope_max: 5
+      steps: [planning, approved, executing, verification, synced]
+
+  # 风险等级 → 推荐策略
+  risk_profiles:
+    low:
+      description: "单文件、配置类低风险改动"
+      recommend_skip: [brainstorming, planning, git-worktree, synced]
+      require_gate: false
+    medium:
+      description: "多文件、有依赖影响"
+      recommend_skip: []
+      require_gate: true
+    high:
+      description: "架构级、跨模块"
+      recommend_skip: []
+      require_gate: true
+      require_brainstorming: true
+
+  # AI 选择输入信号（由 pipeline-selector 收集）
+  selection_signals:
+    - keyword_match
+    - file_scope
+    - module_count
+    - has_tests_impact
+    - has_spec_exists
+    - in_worktree
+    - user_history

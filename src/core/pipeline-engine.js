@@ -117,7 +117,11 @@ export class PipelineEngine {
   /** 获取流水线步骤定义 */
   getSteps(pipelineType = null) {
     if (!this.workflow) return [];
-    const type = pipelineType || this.store.read()?.pipeline_type || this.workflow.defaults.pipeline_type;
+    const state = this.store.read();
+    if (state?.dynamic_steps?.length) {
+      return state.dynamic_steps;
+    }
+    const type = pipelineType || state?.pipeline_type || this.workflow.defaults.pipeline_type;
     return this.workflow.pipelines[type] || [];
   }
 
@@ -142,15 +146,42 @@ export class PipelineEngine {
 
   /**
    * 初始化流水线
+   * @param {string|null} [pipelineType]
+   * @param {{ dynamicSteps?: object[] }} [opts] AI 自主选择模式时传入
    * @returns {{ ok: boolean, state?: object, error?: string }}
    */
-  initialize(pipelineType = null) {
+  initialize(pipelineType = null, { dynamicSteps } = {}) {
     const type = pipelineType || this.workflow?.defaults?.pipeline_type || 'feature';
     const version = this._readVersion();
-    const steps = this.getSteps(type);
+    const steps = dynamicSteps || this.getSteps(type);
     const firstStage = steps[0]?.id || 'brainstorming';
-    const state = this.store.init(type, version, firstStage);
+    const state = this.store.init(type, version, firstStage, dynamicSteps || null);
     return { ok: true, state };
+  }
+
+  /**
+   * 执行中调整步骤（如发现改动超出预期）
+   * - 已进入过的阶段不可删除
+   * - 新步骤追加到尾部
+   * @param {object[]} newRemainingSteps
+   * @returns {{ ok: boolean, dynamic_steps?: object[], error?: string }}
+   */
+  adjust(newRemainingSteps) {
+    const state = this.store.read();
+    if (!state) return { ok: false, error: 'Pipeline not initialized', hint: '执行 loom run --spec-dir <spec目录> 初始化流水线' };
+
+    const entered = new Set([
+      ...(state.stage_history || []).map(h => h.stage),
+      state.current_stage
+    ]);
+
+    const currentDynamic = state.dynamic_steps || this.getSteps(state.pipeline_type);
+    const enteredInOrder = currentDynamic.filter(s => entered.has(s.id));
+    const newRemaining = newRemainingSteps.filter(s => !entered.has(s.id));
+
+    const merged = [...enteredInOrder, ...newRemaining];
+    this.store.setDynamicSteps(merged);
+    return { ok: true, dynamic_steps: merged };
   }
 
   /**

@@ -93,7 +93,7 @@ export class PipelineStateStore {
   }
 
   /** 初始化（首次创建）*/
-  init(pipelineType = 'feature', loomVersion = '2.0.0', firstStage = 'brainstorming') {
+  init(pipelineType = 'feature', loomVersion = '2.0.0', firstStage = 'brainstorming', dynamicSteps = null) {
     if (this.fs.existsSync(this.statePath)) return this.read();
     this.fs.mkdirSync(this.specDir, { recursive: true });
     const state = {
@@ -104,10 +104,27 @@ export class PipelineStateStore {
       started_at: now(),
       updated_at: now(),
       stage_history: [],
-      metadata: {}
+      metadata: {},
+      ...(dynamicSteps ? { dynamic_steps: dynamicSteps } : {})
     };
     writeJSON(this.statePath, state, this.fs);
     return state;
+  }
+
+  /** 设置 dynamic_steps（AI 自主选择模式下持久化选择的步骤）*/
+  setDynamicSteps(steps) {
+    const state = this.read();
+    if (!state) return null;
+    state.dynamic_steps = steps;
+    state.updated_at = now();
+    writeJSON(this.statePath, state, this.fs);
+    return state;
+  }
+
+  /** 读取 dynamic_steps（无则返回 null）*/
+  getDynamicSteps() {
+    const state = this.read();
+    return state?.dynamic_steps || null;
   }
 
   /** 推进到新阶段 */
