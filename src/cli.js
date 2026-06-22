@@ -100,6 +100,8 @@ program
   .option('--verdict', 'Read qa-report.md verdict: exit 0=PASS, 1=FAIL, 2=PARTIAL')
   .option('--verdict-file <file>', 'Report filename to read verdict from (default: qa-report.md)')
   .option('--type <pipeline>', 'Pipeline type for init: feature|bugfix|hotfix|refactor|quickfix|chore|qa')
+  .option('--auto', 'AI 自主选择模式：分析需求后选择 steps，覆盖 --type')
+  .option('--request <text>', '需求描述（配合 --auto 使用）')
   .option('--force', 'Override spec lock')
   .action(async (options) => {
     const { default: runCommand } = await import('./commands/run.js');

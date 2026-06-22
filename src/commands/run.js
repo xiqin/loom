@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { PipelineEngine } from '../core/pipeline-engine.js';
+import { PipelineSelector } from '../core/pipeline-selector.js';
 import { SpecLock } from '../core/lock.js';
 import { parseVerdict } from '../core/artifact-checker.js';
 
@@ -156,7 +157,26 @@ export default async function run(options) {
     return;
   }
 
-  await withWriteLock(lock, options, () => {
+  await withWriteLock(lock, options, async () => {
+    if (options.auto) {
+      const request = options.request || '';
+      if (!request) {
+        console.error('\n  ✗ --auto requires --request <text>\n');
+        process.exitCode = 1;
+        return;
+      }
+      const selector = new PipelineSelector(cwd, absSpecDir);
+      const selection = await selector.select(request);
+      const ids = selection.steps.map(s => s.id);
+      console.log(`\n  ✓ Selected via ${selection.source} (risk: ${selection.risk})`);
+      console.log(`  Steps: ${ids.join(' → ')}`);
+      console.log(`  Reason: ${selection.reasoning}`);
+      const initResult = engine.initialize(null, { dynamicSteps: selection.steps });
+      console.log(`  Stage: ${initResult.state.current_stage}`);
+      console.log(`  State: ${absSpecDir}/pipeline.state.json\n`);
+      return;
+    }
+
     const type = options.type || null;
     const result = engine.initialize(type);
     console.log(`\n  ✓ Pipeline initialized: ${result.state.pipeline_type}`);

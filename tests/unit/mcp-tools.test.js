@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { executeToolCall, TOOL_DEFINITIONS } from '../../src/mcp/tools.js';
@@ -10,13 +10,14 @@ function tmp() { return mkdtempSync(join(tmpdir(), 'loom-mcp-')); }
 
 describe('MCP tool definitions', () => {
   it('exposes the documented tools incl. context + capabilities', () => {
-    expect(TOOL_DEFINITIONS).toHaveLength(13);
+    expect(TOOL_DEFINITIONS).toHaveLength(14);
     const names = TOOL_DEFINITIONS.map(t => t.name);
     expect(names).toContain('loom_attach_spec');
     expect(names).toContain('loom_get_context');
     expect(names).toContain('loom_list_capabilities');
     expect(names).toContain('loom_load_tool_group');
     expect(names).toContain('loom_get_skill_context');
+    expect(names).toContain('loom_select_pipeline');
   });
 
   it('every tool carries a group tag for capability grouping', () => {
@@ -239,5 +240,52 @@ describe('happy path', () => {
       store, 's1');
     expect(r.ok).toBe(true);
     expect(r.task.status).toBe('executing');
+  });
+});
+
+describe('loom_select_pipeline tool', () => {
+  function setupProjectRoot() {
+    const root = tmp();
+    mkdirSync(join(root, '.loom'), { recursive: true });
+    copyFileSync(
+      join(process.cwd(), 'templates', 'workflow.yaml'),
+      join(root, '.loom', 'workflow.yaml')
+    );
+    return root;
+  }
+
+  it('short-circuits for typo request without initializing', async () => {
+    const root = setupProjectRoot();
+    const store = new SessionStore();
+    const r = await executeToolCall('loom_select_pipeline',
+      { request: '修复 README 的 typo', project_root: root },
+      store, 's1');
+    expect(r.source).toBe('short-circuit:quickfix');
+    const ids = r.steps.map(s => s.id);
+    expect(ids).toEqual(['executing', 'verification']);
+    const statePath = join(root, 'specs', 'x', 'pipeline.state.json');
+    expect(existsSync(statePath)).toBe(false);
+  });
+
+  it('initializes with dynamic_steps when initialize=true', async () => {
+    const root = setupProjectRoot();
+    const specDir = join(root, 'specs', 'feat');
+    mkdirSync(specDir, { recursive: true });
+    const store = new SessionStore();
+    const r = await executeToolCall('loom_select_pipeline',
+      { request: '重构状态管理，跨模块改动', spec_dir: 'specs/feat', project_root: root, initialize: true },
+      store, 's1');
+    expect(r.initialized).toBe(true);
+    expect(r.state.dynamic_steps).toBeDefined();
+    expect(r.state.dynamic_steps.length).toBeGreaterThan(0);
+  });
+
+  it('errors on missing request', async () => {
+    const root = setupProjectRoot();
+    const store = new SessionStore();
+    const r = await executeToolCall('loom_select_pipeline',
+      { project_root: root },
+      store, 's1');
+    expect(r.error).toMatch(/request is required/);
   });
 });

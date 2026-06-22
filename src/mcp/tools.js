@@ -16,6 +16,7 @@ import { MemoryStore } from '../core/memory-store.js';
 import { SpecLock } from '../core/lock.js';
 import { loadContextIndex, DOC_KEYS } from '../core/context-index.js';
 import { SkillLoader } from '../core/skill-loader.js';
+import { PipelineSelector } from '../core/pipeline-selector.js';
 import { getSnapshot } from './telemetry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -94,6 +95,20 @@ export const TOOL_DEFINITIONS = [
       properties: {
         spec_dir: { type: 'string', description: 'Path to spec directory (optional if attached)' }
       }
+    }
+  },
+  {
+    name: 'loom_select_pipeline',
+    group: 'pipeline',
+    description: 'AI 自主流程选择：根据用户需求 + 信号选择步骤组合（规则短路 → AI fallback → 规则兜底）。返回 steps 数组、风险等级、选择来源。未传 initialize=true 时只返回建议不写状态。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        request: { type: 'string', description: '用户原始需求描述' },
+        spec_dir: { type: 'string', description: 'Path to spec directory (optional if attached)' },
+        initialize: { type: 'boolean', description: 'true: 把选中的 steps 写入 pipeline.state.json (dynamic_steps)，初始化流水线。false (默认): 仅返回建议。' }
+      },
+      required: ['request']
     }
   },
   {
@@ -222,7 +237,7 @@ export const CAPABILITY_GROUPS = {
   pipeline: {
     title: '流水线（状态机）',
     when: '推进开发流程、查当前阶段该做什么、推进/审批/更新任务状态时。强调"状态感知"：先读 pipeline context 了解现状，再决定动作。',
-    tools: ['loom_get_project_status', 'loom_get_pipeline_context', 'loom_advance_pipeline', 'loom_approve_gate', 'loom_update_task_state'],
+    tools: ['loom_get_project_status', 'loom_get_pipeline_context', 'loom_select_pipeline', 'loom_advance_pipeline', 'loom_approve_gate', 'loom_update_task_state'],
   },
   memory: {
     title: '结构化记忆',
@@ -351,6 +366,22 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
         'Do not advance without producing required outputs',
       ];
       return ctx;
+    }
+
+    case 'loom_select_pipeline': {
+      if (!args.request) return { error: 'request is required' };
+      const absSpec = specDir ? safeResolveSpecDir(projectRoot, specDir) : null;
+      const selector = new PipelineSelector(projectRoot, absSpec, { fs: fsImpl });
+      const result = await selector.select(args.request);
+
+      if (!args.initialize) return result;
+
+      if (!absSpec) return { error: 'spec_dir is required when initialize=true' };
+      return await withSpecLock(absSpec, () => {
+        const engine = new PipelineEngine(projectRoot, absSpec, { fs: fsImpl });
+        const initResult = engine.initialize(null, { dynamicSteps: result.steps });
+        return { ...result, initialized: true, state: initResult.state };
+      }, fsImpl);
     }
 
     case 'loom_advance_pipeline': {
