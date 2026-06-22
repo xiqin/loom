@@ -145,6 +145,38 @@ export class MemoryStore {
     return filename;
   }
 
+  /**
+   * 按 feature slug 归档条目：标记 archived + 写归档文件
+   * @param {string} featureSlug
+   * @param {string} [sessionContent] 附加到归档文件的会话内容
+   * @returns {{ archivePath: string, entriesCount: number }}
+   */
+  archive(featureSlug, sessionContent = '') {
+    assertValidSessionSlug(featureSlug);
+    const data = this._load();
+    const archiveVersion = today().replace(/-/g, '');
+
+    const relevant = data.entries.filter(e => !e.archived);
+    for (const entry of relevant) {
+      entry.archived = true;
+      entry.archive_version = archiveVersion;
+    }
+    this._save(data);
+
+    this.fs.mkdirSync(this.sessionsDir, { recursive: true });
+    const archiveFilename = `archive-${featureSlug}-${archiveVersion}.json`;
+    const archivePath = join(this.sessionsDir, archiveFilename);
+    this.fs.writeFileSync(archivePath, JSON.stringify({
+      featureSlug,
+      version: archiveVersion,
+      archived_at: now(),
+      sessionContent,
+      entries: relevant
+    }, null, 2), 'utf-8');
+
+    return { archivePath, entriesCount: relevant.length };
+  }
+
   // ── 导出 MEMORY.md ───────────────────────────────────────────────────────
 
   exportMarkdown() {

@@ -15,7 +15,7 @@ const PLACEHOLDER_MARKER_RE = /\b(TBD|TODO|FIXME|XXX)\b/;
 const PLACEHOLDER_PHRASE_RE = /\b(implement later|fill in details|placeholder text)\b/i;
 const TEMPLATE_VAR_RE = /\{\{[A-Z_]+\}\}/; // 未渲染的模板变量 {{FOO}}
 
-function hasPlaceholder(content) {
+export function hasPlaceholder(content) {
   return PLACEHOLDER_MARKER_RE.test(content)
     || PLACEHOLDER_PHRASE_RE.test(content)
     || TEMPLATE_VAR_RE.test(content);
@@ -129,6 +129,122 @@ export function parseVerdict(content) {
     }
   }
   return null;
+}
+
+// ── Skill-specific 验证 ────────────────────────────────────────────────────
+
+/**
+ * 按 skill 粒度验证产物完整性和质量
+ * @param {string} specDir
+ * @param {string} skillName - skill 名称（如 'loom-brainstorming'）
+ * @param {object} [fs]
+ * @returns {{ valid: boolean, errors: string[], warnings: string[] }}
+ */
+export function validateSkillOutput(specDir, skillName, fs = new NodeFileSystem()) {
+  const errors = [];
+  const warnings = [];
+
+  const checks = {
+    'loom-brainstorming': {
+      required: ['spec.md'],
+      validate(dir) {
+        const specPath = join(dir, 'spec.md');
+        if (!fs.existsSync(specPath)) return;
+        const content = fs.readFileSync(specPath, 'utf-8');
+        if (hasPlaceholder(content)) {
+          const markers = content.match(/\b(TBD|TODO|FIXME|XXX)\b|\{\{[A-Z_]+\}\}/g) || [];
+          errors.push(`spec.md 包含未填充占位符: ${[...new Set(markers)].join(', ')}`);
+        }
+        if (content.length < 200) {
+          warnings.push('spec.md 内容过短（<200字），可能分析不足');
+        }
+      }
+    },
+    'loom-writing-plans': {
+      required: ['plan.md'],
+      validate(dir) {
+        const planPath = join(dir, 'plan.md');
+        if (!fs.existsSync(planPath)) return;
+        const content = fs.readFileSync(planPath, 'utf-8');
+        if (!/^[-*]\s+\[[\sx]\]/m.test(content) && !/^[|]/m.test(content)) {
+          warnings.push('plan.md 未找到明确的任务拆解（缺少 checklist 或表格）');
+        }
+        if (hasPlaceholder(content)) {
+          errors.push('plan.md 包含未填充占位符');
+        }
+      }
+    },
+    'loom-subagent-driven-development': {
+      required: [],
+      validate(dir) {
+        const testReportPath = join(dir, 'test-report.md');
+        if (!fs.existsSync(testReportPath)) {
+          warnings.push('缺少测试报告 (test-report.md)');
+        } else {
+          const reportContent = fs.readFileSync(testReportPath, 'utf-8');
+          if (!/\bPASS\b|\bFAIL\b|✓|✗|成功|失败/i.test(reportContent)) {
+            errors.push('测试报告格式不明确（无法识别测试结果）');
+          }
+        }
+      }
+    },
+    'loom-verification-before-completion': {
+      required: ['verification-report.md'],
+      validate(dir) {
+        const reportPath = join(dir, 'verification-report.md');
+        if (!fs.existsSync(reportPath)) return;
+        const content = fs.readFileSync(reportPath, 'utf-8');
+        const requiredChecks = ['spec-coverage', 'type-consistency', 'compilation'];
+        for (const check of requiredChecks) {
+          if (!content.includes(check) && !content.includes(check.replace('-', ' '))) {
+            warnings.push(`验证报告缺少 ${check} 检查项`);
+          }
+        }
+      }
+    }
+  };
+
+  const check = checks[skillName];
+  if (!check) return { valid: true, errors: [], warnings: [] };
+
+  for (const file of check.required) {
+    if (!fs.existsSync(join(specDir, file))) {
+      errors.push(`缺少产物: ${file}`);
+    }
+  }
+
+  if (check.validate) check.validate(specDir);
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+/**
+ * 验证流水线一致性：已完成的阶段必须有对应产物
+ * @param {string} specDir
+ * @param {string[]} completedStages - 已完成的阶段 ID 列表
+ * @param {object} [fs]
+ * @returns {{ valid: boolean, errors: string[], warnings: string[] }}
+ */
+export function validatePipelineConsistency(specDir, completedStages, fs = new NodeFileSystem()) {
+  const errors = [];
+  const stageOutputs = {
+    'brainstorming': ['spec.md'],
+    'planning': ['plan.md'],
+    'executing': ['test-report.md'],
+    'verification': ['verification-report.md']
+  };
+
+  for (const stage of completedStages) {
+    const outputs = stageOutputs[stage];
+    if (!outputs) continue;
+    for (const out of outputs) {
+      if (!fs.existsSync(join(specDir, out))) {
+        errors.push(`阶段 "${stage}" 已完成，但缺少产物: ${out}`);
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, errors, warnings: [] };
 }
 
 /**
