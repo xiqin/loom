@@ -33,7 +33,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 ## Skills 清单
 
 <!-- loom:generate:skills-catalog -->
-6 流水线 + 2 辅助 + 8 通用 + 1 测试 Skill，共 17 个
+6 流水线 + 2 辅助 + 7 通用 + 1 测试 Skill，共 16 个
 
 **核心流水线 Skills：**
 
@@ -57,7 +57,6 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 
 | Skill                               | 说明                                              |
 | ----------------------------------- | ------------------------------------------------- |
-| loom-pipeline-selector | AI 自主流程选择（规则短路 + AI fallback + 规则兜底），持久化 dynamic_steps 并记录 progress.md |
 | loom-test-driven-development | TDD 测试驱动开发，+流程图、好/坏示例、常见借口表 |
 | loom-systematic-debugging | 系统化调试, +4阶段流程图、条件等待、纵深防御 |
 | loom-requesting-code-review | 请求代码审查, +预审查清单、审查模板 |
