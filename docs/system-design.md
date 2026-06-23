@@ -43,7 +43,7 @@ Loom 是 AI 工程化框架，基于**技能（Skill）+ 流水线（Pipeline）
 ┌──────────────▼────────┐ ┌───────▼──────────────────┐
 │    MCP Server 层       │ │     CLI 层               │
 │  server.js             │ │  cli.js (commander)       │
-│  tools.js (12工具)     │ │  commands/*.js (13命令)   │
+│  tools.js (15工具)     │ │  commands/*.js (14命令)   │
 │  session-store.js      │ │                           │
 └──────────┬────────────┘ └───────────┬───────────────┘
            │                          │
@@ -81,7 +81,8 @@ Loom 是 AI 工程化框架，基于**技能（Skill）+ 流水线（Pipeline）
 | MCP | mcp/tools.js | 12 个工具定义 + executeToolCall 分发 |
 | MCP | mcp/session-store.js | 会话绑定（spec_dir + 工具分组延迟加载） |
 | Core | pipeline-engine.js | 流水线状态机：初始化、推进、审批、失败、恢复 |
-| Core | state-store.js | 流水线状态 + 任务状态持久化（JSON 文件） |
+| Core | pipeline-selector.js | AI 自主流程选择：信号收集、规则短路、AI fallback、规则兜底、校验修正 |
+| Core | state-store.js | 流水线状态 + 任务状态持久化（JSON 文件），支持 dynamic_steps |
 | Core | artifact-checker.js | 产物完整性检查（存在性 + 占位符扫描） |
 | Core | compliance-tracker.js | 合规率追踪和历史记录 |
 | Core | memory-store.js | 结构化记忆 CRUD + Markdown 导出 |
@@ -89,6 +90,8 @@ Loom 是 AI 工程化框架，基于**技能（Skill）+ 流水线（Pipeline）
 | Core | context-index.js | 上下文文件渐进式披露（outline / section） |
 | Core | lock.js | 文件锁（PID + token，防并发） |
 | Core | installer.js | 适配器安装/卸载协调 |
+| Core | failure-diagnostics.js | 失败诊断与恢复建议 |
+| Core | task-lock.js | 任务级并发锁 |
 | Core | fs-interface.js | 文件系统抽象（NodeFS / InMemoryFS） |
 | Adapter | base.js | 适配器基类，定义安装/卸载接口 |
 | Adapter | claude-code.js | Claude Code 适配器（settings.json + hooks） |
@@ -107,6 +110,7 @@ cli.js
        │                           ─→ core/lock.js
        │                           ─→ core/artifact-checker.js
        │                           ─→ core/compliance-tracker.js
+       ├→ core/pipeline-selector.js ─→ core/fs-interface.js
        ├→ core/installer.js ─→ adapters/*.js（动态加载）
        ├→ core/memory-store.js
        ├→ core/context-index.js
@@ -122,8 +126,10 @@ mcp/server.js
 ```
 Level 0（叶子）:  fs-interface.js
 Level 1:          artifact-checker, compliance-tracker, context-index,
-                  lock, memory-store, state-store
+                  lock, memory-store, state-store, task-lock,
+                  failure-diagnostics
 Level 2:          skill-loader（→ context-index）
+                  pipeline-selector（→ fs-interface）
 Level 3（顶层）:  pipeline-engine（→ state-store, lock, artifact-checker, compliance-tracker）
 ```
 
@@ -236,6 +242,7 @@ specs/<date+feature>/
 |------|------|------|------|
 | spec_dir | string | 必填 | 规格目录绝对路径 |
 | pipeline_type | enum | feature/bugfix/hotfix/refactor/pm-prototype/chore/qa | 流水线类型 |
+| dynamic_steps | array | 可选 | AI 选择的动态步骤列表（优先于 pipeline_type 步骤） |
 | current_stage | enum | brainstorming/planning/approved/git-worktree/executing/verification/synced/failed | 当前阶段 |
 | started_at | ISO8601 | 必填 | 启动时间 |
 | updated_at | ISO8601 | 必填 | 最后更新时间 |
@@ -304,6 +311,8 @@ specs/<date+feature>/
 | loom_advance_pipeline | pipeline | spec_dir, project_root? | AdvanceResult | 推进流水线（加锁） |
 | loom_approve_gate | pipeline | spec_dir | transition 结果 | 通过人工审批门禁（加锁） |
 | loom_update_task_state | pipeline | spec_dir, task_id, status | 更新结果 | 更新任务状态 |
+| loom_select_pipeline | pipeline | request, spec_dir?, initialize? | 选择结果；initialize=true 时写入 dynamic_steps | AI 自主流程选择（规则短路 / AI / 兜底） |
+| loom_adjust_pipeline | pipeline | spec_dir, new_remaining_steps | 调整结果 | 执行中追加步骤（保留已完成） |
 | loom_get_memory | memory | spec_dir?, type?, limit? | Entry 列表 | 读取记忆条目 |
 | loom_add_memory | memory | spec_dir, type, content, context? | 新 Entry | 写入记忆条目 |
 | loom_attach_spec | session | spec_dir, project_root? | 绑定结果 | 绑定会话到 spec 目录 |
@@ -319,7 +328,8 @@ specs/<date+feature>/
 | loom uninstall | | --tool \<targets\> | 卸载 |
 | loom doctor | | | 诊断安装和项目健康 |
 | loom list | | | 列出可用 skills 和 commands |
-| loom run | | --spec-dir, --advance, --approve, --fail, --recover, --task, --task-status, --context, --verdict | 流水线执行引擎 |
+| loom run | | --spec-dir, --advance, --approve, --fail, --recover, --task, --task-status, --context, --verdict, --auto, --request, --approve-pipeline | 流水线执行引擎 |
+| loom select | | --spec-dir, --request, --json | AI 自主流程选择，可选输出 pipeline-plan.md 供人工审查 |
 | loom status | | | 显示流水线状态 |
 | loom tasks | | --spec-dir | 分析任务归属 |
 | loom index | | | 同步 codegraph 图索引 |
@@ -389,7 +399,9 @@ specs/<date+feature>/
     └── verification → executing (blocker_found, 增量修复)
 ```
 
-### 5.2 七种流水线类型
+### 5.2 七种流水线类型 + 动态选择
+
+**类型模式**（`loom run --type <type>`）：
 
 | 类型 | 步骤序列 | 特点 |
 |------|----------|------|
@@ -400,6 +412,16 @@ specs/<date+feature>/
 | pm-prototype | brainstorming → spec-approved → prototype | PM 专用，直出 HTML 原型 |
 | chore | executing → verification | 低风险改动，无需审批 |
 | qa | qa-analysis → qa-design → qa-approved → qa-execution → qa-signoff → qa-report | QA 验收流水线，含两次 human-approval gate |
+
+**动态选择模式**（`loom run --auto --request "<text>"` 或 MCP `loom_select_pipeline`）：
+
+PipelineSelector 从 `step_catalog` 中按需组合步骤，三段决策：
+
+1. **规则短路**：关键词命中 → 固定步骤，0 token
+2. **AI fallback**：信号模糊 + aiClient 注入 → AI 从 catalog 选步骤
+3. **规则兜底**：无 AI 或 AI 失败 → 按风险等级生成基础流程
+
+选择结果经 `_validateAndFix` 校验：must_include、dependency_closure、never_skip_gates、max_steps。`loom run --auto` 会先向用户打印选择来源、风险等级、步骤顺序和理由，然后写入 `pipeline.state.json` 的 `dynamic_steps`；`progress.md` 自动记录当前阶段和动态步骤，供后续无上下文续跑。需要先审查或手动调整时，可用 `loom select` 生成 `pipeline-plan.md` 后再 `--approve-pipeline`。
 
 ### 5.3 门禁执行顺序（advance 流程）
 

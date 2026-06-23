@@ -41,6 +41,6 @@
 
 ## 下一步
 
-- 确认方案：`loom run --spec-dir {{spec_dir}} --approve-pipeline`
+- 确认方案：`loom run --spec-dir {{spec_dir}} --approve-pipeline`，写入 `dynamic_steps` 并生成/更新 `progress.md`
 - 调整步骤：手动编辑本文件后执行 `loom run --spec-dir {{spec_dir}} --approve-pipeline`
 - 重新选择：`loom run --spec-dir {{spec_dir}} --auto --request "<新需求>"`

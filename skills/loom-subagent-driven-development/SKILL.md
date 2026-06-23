@@ -85,8 +85,8 @@ notes: "JWT 密钥从环境变量 JWT_SECRET 读取，未硬编码"
    LOOP:
      派发 implementer（首次实现 或 修复模式）
      
-     若 subagent 超时（> timeout_minutes）：
-       → 更新 progress.md 为 ❌ 失败，备注"subagent 超时"
+      若 subagent 超时（> timeout_minutes）：
+        → 通过 loom task/pipeline 状态记录失败，progress.md 由 loom 自动更新
        → 上报用户：任务名、已耗时、建议（拆分 task 或手动介入）
        → 停止当前 task，等待用户指示，禁止自动重试超时任务
      
@@ -119,10 +119,7 @@ notes: "JWT 密钥从环境变量 JWT_SECRET 读取，未硬编码"
 
 熔断后**必须执行以下步骤，禁止自动继续**：
 
-1. 更新 `specs/<date+feature>/progress.md`：
-   ```
-   ❌ 熔断 | HH:mm | TN <task名> | 原因：已重试 N 次 / 超时
-   ```
+1. 通过 loom task/pipeline 状态记录熔断原因（已重试 N 次 / 超时），让 `progress.md` 自动反映失败状态；不要手动编辑 `progress.md`。
 2. 输出熔断报告给用户，包含：
    - 熔断的 task 编号和名称
    - 最后一次 reviewer 的阻断问题列表（或超时信息）

@@ -65,6 +65,15 @@ description: loom 全部技能快速参考
 - **触发**：宣布任务完成前
 - **检查**：编译、测试、代码质量、功能完整性、文档同步
 
+### pipeline-selector
+
+- **用途**：AI 自主流程选择
+- **触发**：用户未指定 `--type`，或调用 `loom run --auto` / MCP `loom_select_pipeline`
+- **输出**：选择结果；初始化后持久化到 `pipeline.state.json` 的 `dynamic_steps`，并反映在 `progress.md`
+- **决策**：规则短路 → AI fallback → 规则兜底
+- **护栏**：must_include、dependency_closure、never_skip_gates、max_steps
+- **下一步**：向用户说明选择结果后执行；如需人工审查，可先用 `loom select` 生成 `pipeline-plan.md` 再 `loom run --approve-pipeline`
+
 ### using-git-worktrees
 
 - **用途**：Git 工作树隔离

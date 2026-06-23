@@ -108,6 +108,7 @@ export class PipelineStateStore {
       ...(dynamicSteps ? { dynamic_steps: dynamicSteps } : {})
     };
     writeJSON(this.statePath, state, this.fs);
+    this._rebuildProgress();
     return state;
   }
 
@@ -318,6 +319,16 @@ export class PipelineStateStore {
       }
     }
 
+    const dynamicSteps = pipeline?.dynamic_steps?.map(s => s.id || String(s)).join(' → ');
+    if (dynamicSteps) {
+      const row = `| Dynamic Steps | ${escapeMarkdown(dynamicSteps)} |`;
+      if (updated.includes('| Dynamic Steps |')) {
+        updated = updated.replace(/\| Dynamic Steps \| [^|]+ \|/, row);
+      } else {
+        updated = updated.replace(/\| Type\s+\| [^|]+ \|/, `$&\n${row}`);
+      }
+    }
+
     // 重建 Tasks 表格（task 状态变化频繁，整块替换）
     const taskSectionStart = updated.indexOf('## Tasks');
     if (taskSectionStart >= 0 && tasks.length > 0) {
@@ -385,6 +396,10 @@ export class PipelineStateStore {
       lines.push(`|-------|-------|`);
       lines.push(`| Stage | \`${escapeMarkdown(pipeline.current_stage)}\` |`);
       lines.push(`| Type  | \`${escapeMarkdown(pipeline.pipeline_type)}\` |`);
+      if (pipeline.dynamic_steps?.length) {
+        const steps = pipeline.dynamic_steps.map(s => s.id || String(s)).join(' → ');
+        lines.push(`| Dynamic Steps | ${escapeMarkdown(steps)} |`);
+      }
       lines.push(`| Started | ${pipeline.started_at?.slice(0, 16).replace('T', ' ')} |`);
       lines.push(`| Updated | ${pipeline.updated_at?.slice(0, 16).replace('T', ' ')} |`);
       if (pipeline.failure_reason) {

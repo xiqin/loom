@@ -17,6 +17,7 @@ loom/
 │   │   ├── doctor.js       # loom doctor
 │   │   ├── list.js         # loom list
 │   │   ├── run.js          # loom run（流水线执行引擎）
+│   │   ├── select.js      # loom select（AI 自主流程选择）
 │   │   ├── status.js       # loom status（流水线状态）
 │   │   ├── tasks.js        # loom tasks（任务并行批次分析）
 │   │   ├── index.js        # loom index（codegraph 委派；无 codegraph 时跳过）
@@ -32,7 +33,19 @@ loom/
 │   │   ├── opencode.js     # OpenCode 适配器
 │   │   └── codex.js        # Codex 适配器
 │   ├── core/               # 核心逻辑
-│   │   └── installer.js    # 安装器
+│   │   ├── pipeline-engine.js    — 流水线状态机
+│   │   ├── pipeline-selector.js  — AI 自主流程选择
+│   │   ├── state-store.js        — 状态持久化
+│   │   ├── artifact-checker.js   — 产物完整性检查
+│   │   ├── memory-store.js       — 结构化记忆
+│   │   ├── skill-loader.js       — Skill 渐进式披露
+│   │   ├── context-index.js      — 上下文文件分节
+│   │   ├── compliance-tracker.js — Skill 质量度量
+│   │   ├── lock.js               — 文件锁
+│   │   ├── installer.js          — 安装器
+│   │   ├── failure-diagnostics.js — 失败诊断
+│   │   ├── task-lock.js          — 任务锁
+│   │   └── fs-interface.js       — 文件系统抽象
 │   └── generated/          # 自动生成
 │       └── tooling.js      # 从 tools.schema.json 生成
 ├── config/                 # Schema 定义
@@ -87,7 +100,7 @@ bin/loom.js → src/cli.js → src/commands/*.js
 | 项目初始化 | `init-project`                                     |
 | 安装管理   | `install` / `update` / `uninstall`                 |
 | 诊断       | `doctor` / `list`                                  |
-| 执行引擎   | `run` / `status` / `tasks` / `index` / `start`     |
+| 执行引擎   | `run` / `select` / `status` / `tasks` / `index` / `start` |
 | 结构化记忆 | `memory add\|list\|export\|merge\|remove\|archive` |
 | MCP        | `mcp-serve`                                        |
 
@@ -104,7 +117,19 @@ src/core/installer.js → src/adapters/<tool>.js → src/adapters/base.js
 ### 核心层
 
 ```
-src/core/installer.js    — 适配器注册与获取（ADAPTER_MAP、getUserAdapter）
+src/core/installer.js          — 适配器注册与获取（ADAPTER_MAP、getUserAdapter）
+src/core/pipeline-engine.js    — 流水线状态机：初始化、推进、审批、失败、恢复
+src/core/pipeline-selector.js  — AI 自主流程选择：信号收集、规则短路、AI fallback、规则兜底
+src/core/state-store.js        — pipeline.state.json + task-states/ 持久化，支持 dynamic_steps
+src/core/artifact-checker.js   — 产物存在性 + 占位符扫描 + 阶段推断
+src/core/lock.js               — PID 文件锁（.loom-run.lock）
+src/core/memory-store.js       — 结构化记忆 JSON 存储
+src/core/skill-loader.js       — SKILL.md 渐进式披露（L0/L1/L2）
+src/core/context-index.js      — 上下文文件按 ## 切节（L0/L1）
+src/core/compliance-tracker.js — Skill 质量度量（遵守率追踪）
+src/core/failure-diagnostics.js — 失败诊断与恢复建议
+src/core/task-lock.js          — 任务级并发锁
+src/core/fs-interface.js       — 文件系统抽象层（NodeFileSystem + InMemoryFileSystem）
 ```
 
 **安装流程** (`loom install --tool <target>`)：
@@ -212,6 +237,7 @@ npm run test:watch  # 监听模式
 ```
 src/core/
 ├── pipeline-engine.js    — 状态机控制器（检查产物→推进阶段→校验→阻断）
+├── pipeline-selector.js  — AI 自主流程选择（信号收集→短路/AI/兜底→校验修正）
 ├── state-store.js        — 每 spec 独立的 pipeline.state.json + task-states/*.state.json
 ├── lock.js               — PID 文件锁（.loom-run.lock）防重复启动
 ├── artifact-checker.js   — 产物存在性 + 内容校验 + 阶段推断
@@ -219,10 +245,13 @@ src/core/
 ├── skill-loader.js       — SKILL.md 渐进式披露（L0 摘要 / L1 完整 / L2 单节）
 ├── memory-store.js       — 结构化记忆 JSON 存储
 ├── context-index.js      — 上下文文件按 ## 切节（L0 目录 / L1 单节）
-└── compliance-tracker.js — Skill 质量度量（遵守率追踪）
+├── compliance-tracker.js — Skill 质量度量（遵守率追踪）
+├── failure-diagnostics.js — 失败诊断与恢复建议
+└── task-lock.js          — 任务级并发锁
 
 src/commands/
 ├── run.js                — loom run (init / advance / approve / fail / recover / task-state)
+├── select.js             — loom select (AI 自主流程选择，可选输出 pipeline-plan.md)
 ├── status.js             — loom status (单 spec 详情 / 全景视图)
 ├── tasks.js              — loom tasks (任务文件归属分析 → 安全并行批次)
 ├── index.js              — loom index (codegraph 委派；无 codegraph 时跳过，--check 查状态)
@@ -301,7 +330,7 @@ args = ["mcp-serve"]
 | -------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
 | meta     | `loom_list_capabilities` / `loom_load_tool_group`                                                                                  | 分组能力目录 + 按需加载工具组             |
 | context  | `loom_get_context` / `loom_get_skill_context`                                                                                      | 上下文文件 + Skill 渐进式披露（L0/L1/L2） |
-| pipeline | `loom_get_project_status` / `loom_get_pipeline_context` / `loom_advance_pipeline` / `loom_approve_gate` / `loom_update_task_state` | 流水线状态机                              |
+| pipeline | `loom_get_project_status` / `loom_get_pipeline_context` / `loom_advance_pipeline` / `loom_approve_gate` / `loom_update_task_state` / `loom_select_pipeline` / `loom_adjust_pipeline` | 流水线状态机 + AI 流程选择 + 运行时调整 |
 | memory   | `loom_get_memory` / `loom_add_memory`                                                                                              | 结构化记忆读写                            |
 | session  | `loom_attach_spec`                                                                                                                 | 连接级 spec 绑定                          |
 

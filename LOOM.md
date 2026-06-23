@@ -2,7 +2,13 @@
 
 ## 核心流水线
 
-流水线由 `.loom/workflow.yaml` 集中定义，执行时自动读取。
+流水线由 `.loom/workflow.yaml` 集中定义，支持两种模式：
+
+- **类型模式**：`loom run --type <feature|bugfix|hotfix|refactor|chore|quickfix>` — 按预设类型选择固定流水线
+- **智能模式**：`loom run --auto --request "<需求描述>"` — AI 自主分析需求，从 step_catalog 中选择最优步骤组合
+
+智能模式三段决策：规则短路（0 token）→ AI fallback（可选）→ 规则兜底。执行前向用户说明选择来源、风险等级和步骤顺序；初始化后把 `dynamic_steps` 写入 `pipeline.state.json`，并在 `progress.md` 中记录当前阶段和动态步骤，便于无上下文续跑。
+
 示例：
 
 ```
@@ -27,7 +33,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 ## Skills 清单
 
 <!-- loom:generate:skills-catalog -->
-6 流水线 + 2 辅助 + 7 通用 + 1 测试 Skill，共 16 个
+6 流水线 + 2 辅助 + 8 通用 + 1 测试 Skill，共 17 个
 
 **核心流水线 Skills：**
 
@@ -51,6 +57,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 
 | Skill                               | 说明                                              |
 | ----------------------------------- | ------------------------------------------------- |
+| loom-pipeline-selector | AI 自主流程选择（规则短路 + AI fallback + 规则兜底），持久化 dynamic_steps 并记录 progress.md |
 | loom-test-driven-development | TDD 测试驱动开发，+流程图、好/坏示例、常见借口表 |
 | loom-systematic-debugging | 系统化调试, +4阶段流程图、条件等待、纵深防御 |
 | loom-requesting-code-review | 请求代码审查, +预审查清单、审查模板 |

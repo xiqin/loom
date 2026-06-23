@@ -22,13 +22,38 @@
 
 **默认不要一口气读取所有上下文文件全文。仅在变更涉及架构决策或跨多模块时例外。**
 
-## 开发流水线（按任务类型自适应）
+## 开发流水线（智能优先，类型兜底）
 
-收到功能需求或开发任务时，**先判断任务类型，再决定是否进入流水线**：
+收到功能需求或开发任务时，**优先走智能选择**让 `loom-pipeline-selector` 按需求自动选步骤；**仅当智能选择失败或无法判断时**，回退到类型模式按预设流水线执行。
 
-### 第一步：判断任务类型和复杂度
+### 第一步：智能选择（优先）
 
-根据用户描述，从以下类型中选择一个，**必须明确告知用户**：
+调 MCP 工具 `loom_select_pipeline`（或 CLI `loom select --spec-dir <dir> --request "<需求>"`），传入用户需求描述。选择器三段决策：
+
+1. **规则短路**：关键词命中（typo/小修复/hotfix/依赖升级/根因明确的 bug）→ 0 token 直接返回固定步骤
+2. **AI fallback**：信号模糊时调 AI（若注入 aiClient）从 `step_catalog` 选步骤
+3. **规则兜底**：无 AI 或 AI 失败时按风险等级生成基础流程
+
+选择器自动校验护栏：`must_include`（executing + verification）、`dependency_closure`（选 step 自动带 producer）、`never_skip_gates`（planning 后必插 approved）、`max_steps: 8`。
+
+结果必须先明确告知用户，至少包含：
+
+- 用户需求 + AI 分析（风险/关键词/影响文件/spec 状态/worktree 状态）
+- 选择步骤（含 skill、requires、outputs）
+- 来源（short-circuit / ai / fallback）+ 理由
+
+初始化后，选择结果写入 `specs/<date+feature>/pipeline.state.json` 的 `dynamic_steps`，并由 loom 自动生成/更新 `progress.md`，记录当前阶段和动态步骤。后续 AI 即使没有对话上下文，也必须先读取 pipeline context / status，再按状态继续。
+
+### 第二步：失败回退类型模式
+
+**仅当以下情况**回退类型模式：
+
+- `loom_select_pipeline` 抛错或返回空 steps
+- 智能选择步骤超出 `max_steps=8`（提示用户拆分后仍超）
+- `.loom/workflow.yaml` 缺少 `step_catalog` 或 `selection_rules`
+- 用户显式指定 `--type <X>` 跳过智能选择
+
+回退后按 `.loom/workflow.yaml > pipelines.<type>` 的固定步骤执行，类型表：
 
 | 类型           | 适用场景                                                                | 复杂度 |
 | -------------- | ----------------------------------------------------------------------- | ------ |
@@ -41,32 +66,35 @@
 | `pm-prototype` | PM 需求到原型：需求 → spec → HTML 原型（无编码）                        | 中     |
 | `qa`           | QA 验收测试：变更范围分析 → 用例生成 → 自动化执行 → 手动确认 → 报告汇总 | 中     |
 
-如无法判断，默认使用 `feature`，并告知用户。
+无法判断类型时默认 `feature`，并告知用户。
 
-### 第二步：展示流水线（简化版）
+### 第三步：向用户展示选择结果
 
-读取 `.loom/workflow.yaml`，找到对应类型的流水线步骤，以简化格式展示：
+简化展示：
 
 ```
-📋 <type> 流水线：<step1> → <step2> → ... → <stepN>
+📋 流水线（来源：<source|type-mode>，风险：<risk>）：
+<step1> → <step2> → ... → <stepN>
+
+理由：<reasoning>
 ```
 
-**对于 `quickfix` 和 `chore` 类型，只需一行摘要，无需等待用户确认即可开始执行。**
+执行方式：
 
-**对于其他类型，展示完整步骤后等待用户确认。**
+- 默认：用户知晓后，`loom run --spec-dir <dir> --auto --request "<需求>"` 直接写入 `dynamic_steps` 并初始化，同时生成/更新 `progress.md`
+- 需要先审查或手动调整：`loom select --spec-dir <dir> --request "<需求>"` 生成 `pipeline-plan.md`，调整后执行 `loom run --spec-dir <dir> --approve-pipeline`
+- 重新选择：`loom run --spec-dir <dir> --auto --request "<新需求>"`
 
-### 第三步：按步骤执行
+### 第四步：按步骤执行
 
-确认后（quickfix/chore 无需确认），按流水线步骤执行：
+用户知晓后（quickfix/chore 类短路命中只需简短说明），按选择的步骤执行：
 
 1. **加载对应 skill**（`step.skill` 字段指定的 skill，`null` 表示直接执行无特定 skill）。
 2. **执行该 skill 的流程**，产出对应产物。
 3. **遇到 `gate: human-approval` 时，停下来等待用户确认**。
-4. **更新进度文件** `specs/<date+feature>/progress.md`：
-   - 开始时：`▶ 进行中`，填写实际开始时间 HH:mm
-   - 完成时：`✅ 完成`，填写实际结束时间 HH:mm，备注栏注明产物路径
-   - 失败时：`❌ 失败`，填写时间，备注栏注明失败原因
+4. **通过 loom 状态机更新进度**：阶段完成后用 `loom_advance_pipeline` / `loom run --advance` 推进；遇到失败用 `loom run --fail <reason>` 标记。`progress.md` 由 loom 自动生成/更新，不手动编辑。
 5. **完成后告知用户**本步骤产物，再进入下一步。
+6. **执行中发现跨模块影响**：调 `loom_adjust_pipeline` 追加步骤（保留已完成阶段）。
 
 ### Subagent 触发规则
 
@@ -83,10 +111,13 @@
 ### 特殊规则
 
 - **验证未通过**：回到 `executing` 步骤修复，不重跑整个流水线。
-- **小改动**（单文件修复、配置调整）：使用 `quickfix` 流水线，跳过规划和审批。
+- **小改动**（单文件修复、配置调整）：智能选择会命中 `quickfix` 短路，跳过规划和审批。
 - **workflow.yaml 不可读**：停止执行，告知用户文件缺失，不得凭记忆假设流水线内容。
-- **步骤中途失败**：更新 progress.md 为 `❌ 失败`，向用户报告失败原因和建议，等待指示。
-- **quickfix 升级**：执行中发现改动涉及 2+ 文件或跨模块依赖，立即暂停并告知用户，建议升级为 `bugfix`流水线。
+- **步骤中途失败**：用 `loom run --fail <reason>` 记录失败，向用户报告失败原因和建议，等待指示。
+- **智能选择超 max_steps=8**：提示用户拆分需求；拆分后仍超则回退类型模式。
+- **无上下文续跑**：先读 `loom_get_pipeline_context` / `loom_get_project_status` 或 `pipeline.state.json` + `progress.md`，以 `dynamic_steps` 和当前阶段为准继续执行。
+- **需要人工调整步骤**：用 `loom select` 生成 `pipeline-plan.md`，调整后再 `--approve-pipeline`；不要把 `pipeline-plan.md` 作为默认续跑依据。
+- **quickfix 升级**：执行中发现改动涉及 2+ 文件或跨模块依赖，立即暂停并告知用户，建议升级为 `bugfix` 流水线。
 
 ## 工作方式
 
