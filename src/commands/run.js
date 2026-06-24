@@ -4,6 +4,7 @@ import { PipelineEngine } from '../core/pipeline-engine.js';
 import { PipelineSelector } from '../core/pipeline-selector.js';
 import { SpecLock } from '../core/lock.js';
 import { parseVerdict } from '../core/artifact-checker.js';
+import { resolvePipelineDir } from '../core/spec-dir.js';
 
 async function withWriteLock(lock, options, action) {
   if (options.force) lock.release();
@@ -45,8 +46,16 @@ export default async function run(options) {
     return;
   }
 
-  const absSpecDir = resolve(cwd, specDir);
-  const engine = new PipelineEngine(cwd, absSpecDir);
+  const requiresTypePipelines = !options.auto && !options.approvePipeline;
+  let absSpecDir;
+  try {
+    absSpecDir = options.verdict ? resolve(cwd, specDir) : resolvePipelineDir(cwd, specDir);
+  } catch (err) {
+    console.error(`\n  ✗ ${err.message}\n`);
+    process.exitCode = 1;
+    return;
+  }
+  const engine = new PipelineEngine(cwd, absSpecDir, { requirePipelines: requiresTypePipelines });
   const lock = new SpecLock(absSpecDir);
 
   if (options.verdict) {

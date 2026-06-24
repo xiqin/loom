@@ -27,6 +27,10 @@ description: >
 - git worktree 已创建（或明确不需要隔离分支）。
 - 用户确认 plan 后进入执行阶段。
 
+## 产物根目录
+
+本阶段的 `specDir` 是 `specs/<date+feature>/`。所有阶段产物都必须写入该目录内；禁止在项目根目录写 `test-report.md`、`progress.md`、`task-states/`、`handoffs/` 或复制 `plan.md`、`tasks/`。
+
 ## 核心机制
 
 每个 task 派发一个 fresh subagent；实现后由 reviewer 做合并审查（spec 合规 + 代码质量）。审查、测试或验证失败时，提取修复指令，派发 implementer 的修复模式，只传递修复指令 + `.loom/contexts/subagent-context.md`。
@@ -61,24 +65,30 @@ loom tasks --spec-dir specs/<date+feature>
 
 ## Handoff 协议（任务交接）
 
-每个 subagent task **完成后必须生成交接文件** `specs/<date+feature>/handoffs/TN.yaml`，格式：
+每个 subagent task **完成后必须生成交接文件** `specs/<date+feature>/handoffs/TN.json`，格式：
 
-```yaml
-task_id: T1
-status: done          # done | partial | blocked
-exported_interfaces:
-  - name: Authenticate
-    path: src/auth/index.ts
-    signature: "(token: string) => Promise<User>"
-breaking_changes: []  # 影响其他 task 的接口变更
-notes: "JWT 密钥从环境变量 JWT_SECRET 读取，未硬编码"
+```json
+{
+  "task_id": "T1",
+  "status": "done",
+  "summary": "认证接口已完成，JWT 密钥从环境变量 JWT_SECRET 读取，未硬编码",
+  "artifacts": ["src/auth/index.ts", "tests/auth.test.ts"],
+  "exported_interfaces": [
+    {
+      "name": "Authenticate",
+      "path": "src/auth/index.ts",
+      "signature": "(token: string) => Promise<User>"
+    }
+  ],
+  "breaking_changes": []
+}
 ```
 
 下游 task 的 subagent **派发前必须读取所有上游 handoff 文件**（来自 `depends_on` 中列出的 task），再开始实现，避免对上游接口的猜测性假设。
 
-1. 读取 `plan.md` Task 概览和 `tasks/TN.md` 详细内容，创建任务追踪列表。
+1. 读取 `specs/<date+feature>/plan.md` Task 概览和 `specs/<date+feature>/tasks/TN.md` 详细内容，创建任务追踪列表。
 2. 读取 `.loom/workflow.yaml` 的 `defaults`，获取 `max_retries` 和 `timeout_minutes`；当前 step 有 `config` 字段时以 step 级别为准。
-3. 读取 `.loom/contexts/subagent-context.md`，必要时读取 `spec.md` 相关章节。
+3. 读取 `.loom/contexts/subagent-context.md`，必要时读取 `specs/<date+feature>/spec.md` 相关章节。
 4. 对每个 task，执行以下循环（`retry_count` 初始为 0）：
 
    ```
@@ -109,9 +119,10 @@ notes: "JWT 密钥从环境变量 JWT_SECRET 读取，未硬编码"
    ```
 
 5. 所有 task PASS 后，派发 test-reporter。
-6. test-reporter 编写持久化集成测试、运行回归测试、对照 spec 验证并输出 `test-report.md`。
+6. test-reporter 编写持久化集成测试、运行回归测试、对照 spec 验证并输出 `specs/<date+feature>/test-report.md`。
 7. test-reporter FAIL 时提取修复指令，派发 implementer（修复模式），再重跑 test-reporter。
    - test-reporter 的修复重试同样受 `max_retries` 限制，超限触发熔断。
+8. 执行阶段整体完成后写入 `specs/<date+feature>/handoffs/executing.json`，摘要说明已完成 task、验证命令、关键产物和遗留风险。
 
 ## 熔断处理
 
@@ -177,4 +188,4 @@ notes: "JWT 密钥从环境变量 JWT_SECRET 读取，未硬编码"
 
 ## 完成条件
 
-全部 task、reviewer、test-reporter 通过。
+全部 task、reviewer、test-reporter 通过，并完成 `specs/<date+feature>/handoffs/executing.json`。阶段结束后压缩原始派发记录、review 往返和长测试日志；下一阶段只依赖 `specs/<date+feature>/spec.md`、`specs/<date+feature>/plan.md`、`specs/<date+feature>/tasks/`、`specs/<date+feature>/test-report.md`、`specs/<date+feature>/progress.md` 和必要 handoff。

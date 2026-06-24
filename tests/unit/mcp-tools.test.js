@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, copyFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, copyFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { executeToolCall, TOOL_DEFINITIONS } from '../../src/mcp/tools.js';
@@ -10,7 +10,7 @@ function tmp() { return mkdtempSync(join(tmpdir(), 'loom-mcp-')); }
 
 describe('MCP tool definitions', () => {
   it('exposes the documented tools incl. context + capabilities', () => {
-    expect(TOOL_DEFINITIONS).toHaveLength(15);
+    expect(TOOL_DEFINITIONS).toHaveLength(16);
     const names = TOOL_DEFINITIONS.map(t => t.name);
     expect(names).toContain('loom_attach_spec');
     expect(names).toContain('loom_get_context');
@@ -19,6 +19,7 @@ describe('MCP tool definitions', () => {
     expect(names).toContain('loom_get_skill_context');
     expect(names).toContain('loom_select_pipeline');
     expect(names).toContain('loom_adjust_pipeline');
+    expect(names).toContain('loom_write_handoff');
   });
 
   it('every tool carries a group tag for capability grouping', () => {
@@ -34,6 +35,11 @@ describe('MCP tool definitions', () => {
 
     expect(getMemory.inputSchema.properties.project_root).toBeDefined();
     expect(addMemory.inputSchema.properties.project_root).toBeDefined();
+  });
+
+  it('write_handoff schema restricts status values', () => {
+    const tool = TOOL_DEFINITIONS.find(t => t.name === 'loom_write_handoff');
+    expect(tool.inputSchema.properties.status.enum).toEqual(['done', 'partial', 'blocked', 'failed']);
   });
 });
 
@@ -188,6 +194,14 @@ describe('path sandboxing', () => {
     ).rejects.toThrow(/escapes project root/);
   });
 
+  it('rejects project root as spec_dir', async () => {
+    const root = tmp();
+    const store = new SessionStore();
+    await expect(
+      executeToolCall('loom_get_pipeline_context', { spec_dir: '.', project_root: root }, store, 's1')
+    ).rejects.toThrow(/points at project root/);
+  });
+
   it('rejects escape via update_task_state too', async () => {
     const root = tmp();
     const store = new SessionStore();
@@ -216,6 +230,29 @@ describe('path sandboxing', () => {
         store, 's1')
     ).rejects.toThrow(/Invalid task status/);
   });
+
+  it('rejects escape via write_handoff too', async () => {
+    const root = tmp();
+    const store = new SessionStore();
+    await expect(
+      executeToolCall('loom_write_handoff',
+        { spec_dir: '../../../tmp/evil', stage: 'planning', summary: 'x', project_root: root },
+        store, 's1')
+    ).rejects.toThrow(/escapes project root/);
+  });
+
+  it('rejects invalid handoff statuses', async () => {
+    const root = tmp();
+    const specDir = join(root, 'specs', 'x');
+    mkdirSync(specDir, { recursive: true });
+    const store = new SessionStore();
+
+    await expect(
+      executeToolCall('loom_write_handoff',
+        { spec_dir: 'specs/x', stage: 'planning', status: 'almost-done', project_root: root },
+        store, 's1')
+    ).rejects.toThrow(/Invalid handoff status/);
+  });
 });
 
 describe('happy path', () => {
@@ -241,6 +278,29 @@ describe('happy path', () => {
       store, 's1');
     expect(r.ok).toBe(true);
     expect(r.task.status).toBe('executing');
+  });
+
+  it('write_handoff writes a stage handoff and refreshes progress', async () => {
+    const root = tmp();
+    const specDir = join(root, 'specs', 'x');
+    mkdirSync(specDir, { recursive: true });
+    const store = new SessionStore();
+    await executeToolCall('loom_attach_spec', { spec_dir: 'specs/x', project_root: root }, store, 's1');
+
+    const r = await executeToolCall('loom_write_handoff', {
+      stage: 'planning',
+      status: 'done',
+      summary: '计划完成',
+      artifacts: ['plan.md', 'tasks/']
+    }, store, 's1');
+
+    expect(r.ok).toBe(true);
+    expect(r.path).toBe('handoffs/planning.json');
+    expect(r.next_required_action).toMatch(/compress closed-stage raw context/);
+    expect(r.handoff).toMatchObject({ stage: 'planning', task_id: 'planning', summary: '计划完成' });
+    const progress = readFileSync(join(specDir, 'progress.md'), 'utf-8');
+    expect(progress).toContain('## Handoffs');
+    expect(progress).toContain('计划完成');
   });
 });
 

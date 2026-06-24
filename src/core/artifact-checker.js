@@ -49,11 +49,14 @@ export function checkStageOutputs(specDir, outputs, fs = new NodeFileSystem()) {
   const withPlaceholders = [];
 
   for (const file of (outputs || [])) {
-    const path = join(specDir, file);
+    const isDir = file.endsWith('/');
+    const rel = isDir ? file.slice(0, -1) : file;
+    const path = join(specDir, rel);
     if (!fs.existsSync(path)) {
       missing.push(file);
       continue;
     }
+    if (isDir) continue;
     const content = fs.readFileSync(path, 'utf-8');
     if (hasPlaceholder(content)) withPlaceholders.push(file);
   }

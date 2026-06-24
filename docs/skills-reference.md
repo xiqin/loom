@@ -72,7 +72,7 @@ description: loom 全部技能快速参考
 - **输出**：选择结果；初始化后持久化到 `pipeline.state.json` 的 `dynamic_steps`，并反映在 `progress.md`
 - **决策**：规则短路 → AI fallback → 规则兜底
 - **护栏**：must_include、dependency_closure、never_skip_gates、max_steps
-- **下一步**：向用户说明选择结果后执行；如需人工审查，可先用 `loom select` 生成 `pipeline-plan.md` 再 `loom run --approve-pipeline`
+- **下一步**：向用户说明选择结果并等待明确确认后执行；如需人工审查，可先用 `loom select` 生成 `pipeline-plan.md` 再 `loom run --approve-pipeline`
 
 ### using-git-worktrees
 

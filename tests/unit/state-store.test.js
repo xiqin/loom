@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { PipelineStateStore, scanAllSpecs } from '../../src/core/state-store.js';
+import { HANDOFF_STATUSES, PipelineStateStore, scanAllSpecs } from '../../src/core/state-store.js';
 
 function tmp() { return mkdtempSync(join(tmpdir(), 'loom-state-')); }
 
@@ -105,6 +105,52 @@ describe('PipelineStateStore', () => {
     expect(progress).toContain('`T1`');
     expect(progress).toContain('blocked');
     expect(progress).toContain('line1<br>line\\|2');
+  });
+
+  it('writes stage handoff and summarizes it in progress.md', () => {
+    store.init('feature');
+    store.writeStageHandoff('brainstorming', {
+      status: 'done',
+      summary: '方案已确认|包含换行\n下一步规划',
+      artifacts: ['spec.md']
+    });
+
+    const handoff = JSON.parse(readFileSync(join(dir, 'handoffs', 'brainstorming.json'), 'utf-8'));
+    expect(handoff.stage).toBe('brainstorming');
+    expect(handoff.task_id).toBe('brainstorming');
+
+    const progress = readFileSync(join(dir, 'progress.md'), 'utf-8');
+    expect(progress).toContain('## Handoffs');
+    expect(progress).toContain('| `brainstorming` | done | 方案已确认\\|包含换行<br>下一步规划 | spec.md |');
+  });
+
+  it('updates handoff summary incrementally', () => {
+    store.init('feature');
+    store.writeStageHandoff('planning', {
+      status: 'done',
+      summary: '初版计划',
+      artifacts: ['plan.md']
+    });
+    store.writeStageHandoff('planning', {
+      status: 'done',
+      summary: '修订后计划',
+      artifacts: ['plan.md', 'tasks/']
+    });
+
+    const progress = readFileSync(join(dir, 'progress.md'), 'utf-8');
+    expect(progress).toContain('修订后计划');
+    expect(progress).not.toContain('初版计划');
+    expect(progress).toContain('plan.md, tasks/');
+  });
+
+  it('rejects invalid handoff statuses', () => {
+    store.init('feature');
+    expect(HANDOFF_STATUSES).toEqual(['done', 'partial', 'blocked', 'failed']);
+    expect(() => store.writeStageHandoff('planning', {
+      status: 'almost-done',
+      summary: 'bad status'
+    })).toThrow(/Invalid handoff status/);
+    expect(existsSync(join(dir, 'handoffs', 'planning.json'))).toBe(false);
   });
 });
 

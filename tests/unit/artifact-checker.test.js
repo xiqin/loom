@@ -72,6 +72,17 @@ describe('checkStageOutputs placeholders', () => {
     expect(r.withPlaceholders).toHaveLength(0);
     expect(r.ok).toBe(true);
   });
+
+  it('accepts directory outputs without reading them as files', () => {
+    const dir = tmp();
+    mkdirSync(join(dir, 'tasks'), { recursive: true });
+    write(dir, 'tasks/T1.md', 'TODO inside task file is not checked through directory output');
+
+    const r = checkStageOutputs(dir, ['tasks/']);
+    expect(r.ok).toBe(true);
+    expect(r.missing).toHaveLength(0);
+    expect(r.withPlaceholders).toHaveLength(0);
+  });
 });
 
 describe('inferStageFromArtifacts', () => {

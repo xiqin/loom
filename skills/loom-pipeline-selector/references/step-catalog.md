@@ -2,6 +2,8 @@
 
 `workflow.yaml > step_catalog` 定义的可用步骤池。
 
+所有 requires、outputs 和 gate verdict 都是相对 `specDir`（即 `specs/<date+feature>/`）的路径，不是项目根目录路径。
+
 ## 步骤列表
 
 ### brainstorming

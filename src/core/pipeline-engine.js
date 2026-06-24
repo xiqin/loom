@@ -23,6 +23,71 @@ import {
   inferStageFromArtifacts
 } from './artifact-checker.js';
 
+const CONTEXT_PRESERVE = [
+  'spec.md',
+  'plan.md',
+  'tasks/',
+  'test-report.md',
+  'verify-report.md',
+  'pipeline.state.json',
+  'progress.md',
+  'handoffs/'
+];
+
+const STAGE_RECOMMENDED_READS = {
+  brainstorming: [
+    '.loom/rules/product.md',
+    '.loom/rules/constitution.md',
+    'progress.md'
+  ],
+  planning: [
+    'spec.md',
+    'progress.md',
+    'handoffs/brainstorming.json',
+    '.loom/rules/constitution.md',
+    '.loom/contexts/subagent-context.md'
+  ],
+  'git-worktree': [
+    'spec.md',
+    'plan.md',
+    'progress.md',
+    'handoffs/planning.json'
+  ],
+  executing: [
+    'spec.md',
+    'plan.md',
+    'tasks/',
+    'progress.md',
+    'handoffs/planning.json',
+    '.loom/contexts/subagent-context.md'
+  ],
+  verification: [
+    'spec.md',
+    'test-report.md',
+    'progress.md',
+    'handoffs/executing.json',
+    '.loom/rules/constitution.md'
+  ],
+  synced: [
+    'verify-report.md',
+    'progress.md',
+    'handoffs/verification.json',
+    '.loom/memory/MEMORY.md'
+  ]
+};
+
+function summarizeHandoffs(handoffs) {
+  return handoffs.map(h => ({
+    id: h.stage || h.task_id || null,
+    stage: h.stage || null,
+    task_id: h.task_id || null,
+    status: h.status || null,
+    summary: h.summary || h.notes || h.description || null,
+    artifacts: h.artifacts || h.outputs || h.files || h.changed_files || [],
+    written_at: h.written_at || null
+  }));
+}
+
 // ── Workflow 解析 ──────────────────────────────────────────────────────────
 
 /**
@@ -41,7 +106,7 @@ function normalizePipelines(parsed) {
   }
 }
 
-export function loadWorkflow(projectRoot, fs = new NodeFileSystem()) {
+export function loadWorkflow(projectRoot, fs = new NodeFileSystem(), { requirePipelines = true } = {}) {
   const wfPath = join(projectRoot, '.loom', 'workflow.yaml');
   if (!fs.existsSync(wfPath)) return null;
 
@@ -53,7 +118,19 @@ export function loadWorkflow(projectRoot, fs = new NodeFileSystem()) {
     throw new Error(`YAML syntax error in ${wfPath}${detail}: ${err.reason || err.message}`);
   }
 
-  if (!parsed || typeof parsed !== 'object' || !parsed.pipelines) {
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error(
+      `Failed to parse workflow from ${wfPath}. ` +
+      `Check indentation (2-space) and YAML structure.`
+    );
+  }
+
+  if (!parsed.pipelines) {
+    if (!requirePipelines) {
+      parsed.pipelines = {};
+      parsed.defaults ||= {};
+      return parsed;
+    }
     throw new Error(
       `Failed to parse any pipelines from ${wfPath}. ` +
       `Check indentation (2-space) and structure (pipelines: <name>: steps: - id: ...).`
@@ -91,13 +168,13 @@ export class PipelineEngine {
    * @param {string} projectRoot  项目根目录
    * @param {string} specDir      specs/<date+feature> 的绝对路径
    */
-  constructor(projectRoot, specDir, { fs } = {}) {
+  constructor(projectRoot, specDir, { fs, requirePipelines = true } = {}) {
     this.projectRoot = resolve(projectRoot);
     this.specDir = resolve(specDir);
     this.fs = fs || new NodeFileSystem();
     this.store = new PipelineStateStore(this.specDir, { fs: this.fs });
     this.lock = new SpecLock(this.specDir, { fs: this.fs });
-    this.workflow = loadWorkflow(this.projectRoot, this.fs);
+    this.workflow = loadWorkflow(this.projectRoot, this.fs, { requirePipelines });
   }
 
   // ── 状态查询（无副作用）───────────────────────────────────────────────────
@@ -199,12 +276,6 @@ export class PipelineEngine {
       return { ok: false, error: 'Pipeline is in failed state. Use: loom run --recover <stage>', hint: '执行 loom run --spec-dir <spec目录> --recover <阶段名> 从失败恢复' };
     }
 
-    // 找下一步
-    const next = this.nextStep(current);
-    if (!next) {
-      return { ok: false, error: `No next step after "${current}". Pipeline may be complete.`, hint: '流水线可能已完成，检查当前阶段状态' };
-    }
-
     // 如果当前是 gate，必须由用户确认（不能自动跳过）
     if (this.isGate(current)) {
       return { ok: false, error: `Stage "${current}" is a human-approval gate. Use: loom run --approve`, hint: '执行 loom run --spec-dir <spec目录> --approve 通过审批门禁' };
@@ -226,6 +297,12 @@ export class PipelineEngine {
       if (!isReportPassing(this.specDir, currentStep.gate_verdict, this.fs)) {
         return { ok: false, error: `${currentStep.gate_verdict} does not contain PASS verdict. Fix before advancing.`, hint: `在 ${currentStep.gate_verdict} 中添加 PASS 判定后再推进` };
       }
+    }
+
+    // 当前阶段产物完整后再判断是否有下一步，确保终止阶段也受 outputs/verdict 门禁约束。
+    const next = this.nextStep(current);
+    if (!next) {
+      return { ok: false, error: `No next step after "${current}". Pipeline may be complete.`, hint: '流水线可能已完成，检查当前阶段状态' };
     }
 
     // 检查下一阶段的前置条件（requires 在 next step 声明）
@@ -298,15 +375,47 @@ export class PipelineEngine {
     const currentStep = steps.find(s => s.id === state.current_stage);
     const nextStep = this.nextStep();
     const tasks = this.store.readAllTasks();
+    const handoffs = this.store.readAllHandoffs();
+    const recommendedReads = [
+      ...(currentStep?.requires || []),
+      ...(STAGE_RECOMMENDED_READS[state.current_stage] || []),
+      'pipeline.state.json',
+      'progress.md'
+    ];
 
     return {
       spec_dir: this.specDir,
       pipeline_type: state.pipeline_type,
       current_stage: state.current_stage,
       current_skill: currentStep?.skill || null,
+      current_step: currentStep ? {
+        id: currentStep.id,
+        skill: currentStep.skill || null,
+        requires: currentStep.requires || [],
+        outputs: currentStep.outputs || [],
+        gate_verdict: currentStep.gate_verdict || null,
+        gate: currentStep.gate || null
+      } : null,
       is_gate: this.isGate(),
       next_stage: nextStep?.id || null,
+      next_step: nextStep ? {
+        id: nextStep.id,
+        skill: nextStep.skill || null,
+        requires: nextStep.requires || [],
+        outputs: nextStep.outputs || [],
+        gate_verdict: nextStep.gate_verdict || null,
+        gate: nextStep.gate || null
+      } : null,
       defaults: this.workflow?.defaults || {},
+      handoffs_summary: summarizeHandoffs(handoffs),
+      recommended_reads: [...new Set(recommendedReads)],
+      compression_policy: {
+        preserve: CONTEXT_PRESERVE,
+        compress_after_stage: true,
+        mandatory_before_next_stage: true,
+        write_stage_handoff: `handoffs/${state.current_stage}.json`,
+        guidance: '阶段结束后必须先写 handoff，再压缩该阶段原始讨论、搜索输出、中间推理和大段日志，然后才进入下一阶段。保留 spec/plan/tasks/reports/state/progress/handoffs；下一阶段先读 progress.md 的 Handoffs 摘要，再按需读取 handoffs/<stage>.json。'
+      },
       tasks_summary: {
         total: tasks.length,
         pending: tasks.filter(t => t.status === 'pending').length,

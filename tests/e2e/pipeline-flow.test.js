@@ -23,6 +23,9 @@ function setupRealProject() {
 }
 
 const write = (dir, file, body) => writeFileSync(join(dir, file), body, 'utf-8');
+const writeStageHandoff = (engine, stage, artifacts = []) => {
+  engine.store.writeStageHandoff(stage, { status: 'done', summary: `${stage} complete`, artifacts });
+};
 
 describe('feature pipeline end-to-end (real workflow.yaml)', () => {
   it('walks brainstorming → planning → approved → git-worktree → executing → verification → synced', () => {
@@ -33,10 +36,14 @@ describe('feature pipeline end-to-end (real workflow.yaml)', () => {
 
     // brainstorming → planning
     write(specDir, 'spec.md', '# Spec\nComplete requirement.');
+    writeStageHandoff(engine, 'brainstorming', ['spec.md']);
     expect(engine.advance()).toMatchObject({ ok: true, to: 'planning' });
 
     // planning → approved (gate)
     write(specDir, 'plan.md', '# Plan\nTasks laid out.');
+    mkdirSync(join(specDir, 'tasks'), { recursive: true });
+    write(specDir, 'tasks/T1.md', 'task one');
+    writeStageHandoff(engine, 'planning', ['plan.md', 'tasks/']);
     expect(engine.advance()).toMatchObject({ ok: true, to: 'approved' });
 
     // gate: must approve, cannot auto-advance
@@ -44,16 +51,16 @@ describe('feature pipeline end-to-end (real workflow.yaml)', () => {
     expect(engine.approve()).toMatchObject({ ok: true, to: 'git-worktree' });
 
     // git-worktree → executing (executing precondition needs tasks/ dir)
-    mkdirSync(join(specDir, 'tasks'), { recursive: true });
-    write(specDir, 'tasks/T1.md', 'task one');
     expect(engine.advance()).toMatchObject({ ok: true, to: 'executing' });
 
     // executing → verification requires test-report PASS
     write(specDir, 'test-report.md', 'ran suite\nverdict: PASS');
+    writeStageHandoff(engine, 'executing', ['test-report.md']);
     expect(engine.advance()).toMatchObject({ ok: true, to: 'verification' });
 
     // verification → synced requires verify-report PASS
     write(specDir, 'verify-report.md', 'all checks passed\nverdict: PASS');
+    writeStageHandoff(engine, 'verification', ['verify-report.md']);
     expect(engine.advance()).toMatchObject({ ok: true, to: 'synced' });
 
     expect(engine.currentStage()).toBe('synced');
@@ -68,16 +75,20 @@ describe('feature pipeline end-to-end (real workflow.yaml)', () => {
     const engine = new PipelineEngine(root, specDir);
     engine.initialize('feature');
     write(specDir, 'spec.md', '# Spec');
+    writeStageHandoff(engine, 'brainstorming', ['spec.md']);
     engine.advance();
     write(specDir, 'plan.md', '# Plan');
-    engine.advance();
-    engine.approve();
     mkdirSync(join(specDir, 'tasks'), { recursive: true });
     write(specDir, 'tasks/T1.md', 't');
+    writeStageHandoff(engine, 'planning', ['plan.md', 'tasks/']);
+    engine.advance();
+    engine.approve();
     engine.advance(); // executing
     write(specDir, 'test-report.md', 'verdict: PASS');
+    writeStageHandoff(engine, 'executing', ['test-report.md']);
     engine.advance(); // verification
     write(specDir, 'verify-report.md', 'verdict: FAIL');
+    writeStageHandoff(engine, 'verification', ['verify-report.md']);
     const r = engine.advance();
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/verify-report/);

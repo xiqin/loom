@@ -14,6 +14,10 @@ description: >
 
 ## 执行流程
 
+## 产物根目录
+
+本阶段应创建或使用 `specs/<date+feature>/` 作为 `specDir`。所有阶段产物都必须写入该目录内；禁止在项目根目录写 `spec.md`、`progress.md` 或 `handoffs/`。
+
 ### Step 1：理解需求
 
 1. 若存在 `.loom/rules/product.md`，先读取，作为产品定位、目标用户和原型约束的视角依据（PM / pm-prototype 流水线）。
@@ -58,6 +62,23 @@ description: >
 
 自审通过后让用户审查 spec。用户要求修改时，修复并重新自审；只有用户批准后才继续 writing-plans。
 
+### Step 8：阶段交接与压缩
+
+用户批准 spec 后，写入 `specs/<date+feature>/handoffs/brainstorming.json`，至少包含：
+
+```json
+{
+  "stage": "brainstorming",
+  "status": "done",
+  "summary": "已确认的方案和关键取舍摘要",
+  "artifacts": ["spec.md"],
+  "decisions": ["用户已选择的关键方案"],
+  "open_questions": []
+}
+```
+
+阶段结束后压缩 brainstorming 原始讨论、方案比较和搜索输出；下一阶段必须重新读取 `specs/<date+feature>/spec.md`、`specs/<date+feature>/progress.md`、`specs/<date+feature>/handoffs/brainstorming.json` 和必要规则文件，不依赖旧对话全文。
+
 ## 约束
 
 - 每个方案必须有 trade-off。
@@ -68,4 +89,4 @@ description: >
 
 ## 完成条件
 
-`spec.md` 保存、自审完成。
+`specs/<date+feature>/spec.md` 保存、自审完成、用户批准，并完成 `specs/<date+feature>/handoffs/brainstorming.json`。

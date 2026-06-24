@@ -29,9 +29,11 @@ description: >
 
 ## 执行流程
 
+当前 task 的需求产物必须从 `specs/<date+feature>/` 读取；不要在项目根目录读取或生成 `spec.md`、`plan.md`、`tasks/` 等 loom 阶段产物。
+
 ### Step 1：理解需求
 
-读取 `spec.md`、`plan.md` 和当前 `tasks/TN.md`，明确当前 task 的测试范围。
+读取 `specs/<date+feature>/spec.md`、`specs/<date+feature>/plan.md` 和当前 `specs/<date+feature>/tasks/TN.md`，明确当前 task 的测试范围。
 
 ### Step 2：红
 

@@ -8,8 +8,9 @@
  *   loom status --json                     JSON 输出（给 MCP 用）
  */
 
-import { resolve, basename, relative } from 'node:path';
+import { basename, relative } from 'node:path';
 import { PipelineStateStore, scanAllSpecs } from '../core/state-store.js';
+import { resolvePipelineDir } from '../core/spec-dir.js';
 
 const STAGE_ICONS = {
   brainstorming: '💡', planning: '📝', approved: '✅',
@@ -17,12 +18,31 @@ const STAGE_ICONS = {
   synced: '🏁', failed: '❌'
 };
 
+function summarizeArtifacts(handoff) {
+  const artifacts = handoff.artifacts || handoff.outputs || handoff.files || handoff.changed_files || [];
+  if (Array.isArray(artifacts)) {
+    return artifacts.map(a => typeof a === 'string' ? a : a?.path || a?.name || JSON.stringify(a)).join(', ');
+  }
+  return artifacts ? String(artifacts) : '';
+}
+
+function summarizeHandoff(handoff) {
+  return handoff.summary || handoff.notes || handoff.description || '';
+}
+
 export default async function status(options) {
   const cwd = options.cwd || process.cwd();
 
   // ── 单个 spec 详情 ────────────────────────────────────────────────────────
   if (options.specDir) {
-    const absDir = resolve(cwd, options.specDir);
+    let absDir;
+    try {
+      absDir = resolvePipelineDir(cwd, options.specDir);
+    } catch (err) {
+      console.error(`\n  ✗ ${err.message}\n`);
+      process.exitCode = 1;
+      return;
+    }
     const store = new PipelineStateStore(absDir);
     const snap = store.snapshot();
 
@@ -60,8 +80,14 @@ export default async function status(options) {
     if (snap.handoffs.length > 0) {
       console.log('\n  Handoffs:');
       for (const h of snap.handoffs) {
-        const ifaces = (h.exported_interfaces || []).map(i => i.name).join(', ');
-        console.log(`    ${h.task_id}: ${h.status || 'done'} → exports: [${ifaces}]`);
+        const label = h.stage || h.task_id;
+        const summary = summarizeHandoff(h);
+        const artifacts = summarizeArtifacts(h);
+        let line = `    ${label}: ${h.status || 'done'}`;
+        if (summary) line += ` — ${summary}`;
+        if (artifacts) line += ` → artifacts: [${artifacts}]`;
+        else if (h.exported_interfaces?.length) line += ` → exports: [${h.exported_interfaces.map(i => i.name).join(', ')}]`;
+        console.log(line);
       }
     }
 

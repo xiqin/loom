@@ -11,9 +11,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { NodeFileSystem } from '../core/fs-interface.js';
 import { PipelineEngine } from '../core/pipeline-engine.js';
-import { PipelineStateStore, scanAllSpecs } from '../core/state-store.js';
+import { HANDOFF_STATUSES, PipelineStateStore, scanAllSpecs } from '../core/state-store.js';
 import { MemoryStore } from '../core/memory-store.js';
 import { SpecLock } from '../core/lock.js';
+import { resolvePipelineDir } from '../core/spec-dir.js';
 import { loadContextIndex, DOC_KEYS } from '../core/context-index.js';
 import { SkillLoader } from '../core/skill-loader.js';
 import { PipelineSelector } from '../core/pipeline-selector.js';
@@ -28,7 +29,7 @@ const SKILLS_DIR = join(__dirname, '..', '..', 'skills');
  */
 function safeResolveSpecDir(projectRoot, specDir) {
   const root = resolve(projectRoot);
-  const abs = resolve(root, specDir);
+  const abs = resolvePipelineDir(root, specDir);
   if (abs !== root && !abs.startsWith(root + sep)) {
     throw new Error(`spec_dir escapes project root: ${specDir}`);
   }
@@ -100,13 +101,13 @@ export const TOOL_DEFINITIONS = [
   {
     name: 'loom_select_pipeline',
     group: 'pipeline',
-    description: 'AI 自主流程选择：根据用户需求 + 信号选择步骤组合（规则短路 → AI fallback → 规则兜底）。返回 steps 数组、风险等级、选择来源。未传 initialize=true 时只返回建议不写状态。',
+    description: 'AI 自主流程选择：根据用户需求 + 信号选择步骤组合（规则短路 → AI fallback → 规则兜底）。首次调用必须只返回建议不写状态，并向用户展示 steps、风险、来源和理由；只有用户明确确认后才可传 initialize=true 写入状态。',
     inputSchema: {
       type: 'object',
       properties: {
         request: { type: 'string', description: '用户原始需求描述' },
         spec_dir: { type: 'string', description: 'Path to spec directory (optional if attached)' },
-        initialize: { type: 'boolean', description: 'true: 把选中的 steps 写入 pipeline.state.json (dynamic_steps)，初始化流水线。false (默认): 仅返回建议。' }
+        initialize: { type: 'boolean', description: 'false/default: 仅返回建议，不写状态。true: 仅限用户已明确确认所展示流水线后使用，把选中的 steps 写入 pipeline.state.json (dynamic_steps) 并初始化流水线。' }
       },
       required: ['request']
     }
@@ -146,6 +147,23 @@ export const TOOL_DEFINITIONS = [
         blocker: { type: 'string', description: 'Blocker reason (when status is blocked)' }
       },
       required: ['task_id', 'status']
+    }
+  },
+  {
+    name: 'loom_write_handoff',
+    group: 'pipeline',
+    description: 'Write a stage or task handoff JSON file under specs/<date+feature>/handoffs/ and refresh progress.md. Use after a stage/task completes before advancing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        spec_dir: { type: 'string', description: 'Path to spec directory (optional if attached)' },
+        stage: { type: 'string', description: 'Stage id, e.g. brainstorming/planning/executing/verification' },
+        task_id: { type: 'string', description: 'Task id, e.g. T1. Use either stage or task_id, not both.' },
+        status: { type: 'string', enum: HANDOFF_STATUSES, description: 'done | partial | blocked | failed', default: 'done' },
+        summary: { type: 'string', description: 'Short handoff summary' },
+        artifacts: { type: 'array', items: { type: 'string' }, description: 'Artifact paths to show in progress.md' },
+        data: { type: 'object', description: 'Additional JSON fields to merge into the handoff' }
+      }
     }
   },
   {
@@ -262,7 +280,7 @@ export const CAPABILITY_GROUPS = {
   pipeline: {
     title: '流水线（状态机）',
     when: '推进开发流程、查当前阶段该做什么、推进/审批/更新任务状态时。强调"状态感知"：先读 pipeline context 了解现状，再决定动作。',
-    tools: ['loom_get_project_status', 'loom_get_pipeline_context', 'loom_select_pipeline', 'loom_advance_pipeline', 'loom_approve_gate', 'loom_update_task_state', 'loom_adjust_pipeline'],
+    tools: ['loom_get_project_status', 'loom_get_pipeline_context', 'loom_select_pipeline', 'loom_advance_pipeline', 'loom_approve_gate', 'loom_update_task_state', 'loom_write_handoff', 'loom_adjust_pipeline'],
   },
   memory: {
     title: '结构化记忆',
@@ -389,6 +407,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
       ctx.forbidden_actions = [
         'Do not skip the current stage skill',
         'Do not advance without producing required outputs',
+        'Do not start the next stage before compressing closed-stage raw context',
       ];
       return ctx;
     }
@@ -403,7 +422,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
 
       if (!absSpec) return { error: 'spec_dir is required when initialize=true' };
       return await withSpecLock(absSpec, () => {
-        const engine = new PipelineEngine(projectRoot, absSpec, { fs: fsImpl });
+        const engine = new PipelineEngine(projectRoot, absSpec, { fs: fsImpl, requirePipelines: false });
         const initResult = engine.initialize(null, { dynamicSteps: result.steps });
         return { ...result, initialized: true, state: initResult.state };
       }, fsImpl);
@@ -433,6 +452,38 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
       }
       const state = store.updateTask(args.task_id, patch);
       return { ok: true, task: state };
+    }
+
+    case 'loom_write_handoff': {
+      if (!specDir) return { error: 'No spec_dir' };
+      if (!args.stage && !args.task_id) return { error: 'stage or task_id is required' };
+      if (args.stage && args.task_id) return { error: 'Use only one of stage or task_id' };
+      const abs = safeResolveSpecDir(projectRoot, specDir);
+      return await withSpecLock(abs, () => {
+        const store = new PipelineStateStore(abs, { fs: fsImpl });
+        const payload = {
+          ...(args.data || {}),
+          status: args.status || args.data?.status || 'done',
+          ...(args.summary ? { summary: args.summary } : {}),
+          ...(args.artifacts ? { artifacts: args.artifacts } : {})
+        };
+        if (args.stage) {
+          store.writeStageHandoff(args.stage, payload);
+          return {
+            ok: true,
+            path: `handoffs/${args.stage}.json`,
+            handoff: store.readHandoff(args.stage),
+            next_required_action: 'compress closed-stage raw context before advancing or starting the next stage'
+          };
+        }
+        store.writeHandoff(args.task_id, payload);
+        return {
+          ok: true,
+          path: `handoffs/${args.task_id}.json`,
+          handoff: store.readHandoff(args.task_id),
+          next_required_action: 'use this handoff as compact context for downstream tasks'
+        };
+      }, fsImpl);
     }
 
     case 'loom_adjust_pipeline': {

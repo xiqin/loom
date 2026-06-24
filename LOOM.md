@@ -7,7 +7,7 @@
 - **类型模式**：`loom run --type <feature|bugfix|hotfix|refactor|chore|quickfix>` — 按预设类型选择固定流水线
 - **智能模式**：`loom run --auto --request "<需求描述>"` — AI 自主分析需求，从 step_catalog 中选择最优步骤组合
 
-智能模式三段决策：规则短路（0 token）→ AI fallback（可选）→ 规则兜底。执行前向用户说明选择来源、风险等级和步骤顺序；初始化后把 `dynamic_steps` 写入 `pipeline.state.json`，并在 `progress.md` 中记录当前阶段和动态步骤，便于无上下文续跑。
+智能模式三段决策：规则短路（0 token）→ AI fallback（可选）→ 规则兜底。首次选择只返回结果，不初始化；执行前必须向用户说明选择来源、风险等级和步骤顺序，并等待用户明确确认。确认后把 `dynamic_steps` 写入 `pipeline.state.json`，并在 `progress.md` 中记录当前阶段和动态步骤，便于无上下文续跑。
 
 示例：
 

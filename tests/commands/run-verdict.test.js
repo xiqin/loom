@@ -100,6 +100,18 @@ async function runCommandWithCapture(options = {}) {
 }
 
 describe('loom run write locking', () => {
+  it('rejects project root as spec_dir before initializing', async () => {
+    const root = tmp();
+
+    const result = await runCommandWithCapture({
+      cwd: root,
+      specDir: '.'
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.error).toContain('points at project root');
+  });
+
   it('keeps the spec lock after task update failure when another process holds it', async () => {
     const root = tmp();
     const specDir = join(root, 'specs', 'feature');

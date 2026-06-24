@@ -16,17 +16,23 @@ description: >
 
 - `specs/<date+feature>/plan.md`：摘要 + Task 概览。
 - `specs/<date+feature>/tasks/T1.md`、`T2.md`...：每个 task 一个独立文件。
+- `specs/<date+feature>/handoffs/planning.json`：规划阶段交接摘要。
+
+## 产物根目录
+
+本阶段的 `specDir` 是 `specs/<date+feature>/`。所有阶段产物都必须写入该目录内；禁止在项目根目录写 `spec.md`、`plan.md`、`tasks/`、`progress.md` 或 `handoffs/`。
 
 使用 `assets/plan-template.md` 和 `assets/task-template.md` 作为输出模板。
 
 ## 执行流程
 
-1. 读取 `spec.md`，提取功能点、接口、数据模型和边界场景。
+1. 读取 `specs/<date+feature>/spec.md`，提取功能点、接口、数据模型和边界场景。
 2. 读取 `.loom/rules/constitution.md`；如存在，读取 `.loom/contexts/subagent-context.md`。
 3. 先规划文件结构：创建/修改哪些文件、每个文件职责、哪些文件一起变化。
 4. 按项目实际分层和依赖顺序拆 task：数据/模型 → 业务逻辑 → 接口/UI → 路由/配置 → 集成。
-5. 写 `plan.md` 概览，再为每个 task 写完整 `tasks/TN.md`。
+5. 写 `specs/<date+feature>/plan.md` 概览，再为每个 task 写完整 `specs/<date+feature>/tasks/TN.md`。
 6. 自检并运行自动校验。
+7. 写入 `specs/<date+feature>/handoffs/planning.json`，摘要说明 task 拆分、依赖顺序、关键接口约束、并行/串行边界和主要产物。
 
 如果 spec 涵盖多个独立子系统，建议拆成多个计划；每个计划都应能产出可工作、可测试的独立软件。
 
@@ -41,7 +47,7 @@ description: >
 
 ## 自动校验
 
-完成 `plan.md` 和 `tasks/Tn.md` 后运行：
+完成 `specs/<date+feature>/plan.md` 和 `specs/<date+feature>/tasks/Tn.md` 后运行：
 
 ```bash
 node <skill-dir>/scripts/validate-plan.mjs --spec-dir specs/<date+feature>
@@ -55,6 +61,10 @@ node <skill-dir>/scripts/validate-plan.mjs --spec-dir specs/<date+feature>
 loom tasks --spec-dir specs/<date+feature> --validate
 ```
 
+## 上下文交接
+
+planning 完成后，拆分过程、中间推理和探索性搜索输出可以压缩；executing 阶段只应依赖 `specs/<date+feature>/spec.md`、`specs/<date+feature>/plan.md`、`specs/<date+feature>/tasks/`、`specs/<date+feature>/progress.md`、`specs/<date+feature>/handoffs/brainstorming.json`、`specs/<date+feature>/handoffs/planning.json` 和必要规则文件。
+
 ## 检查清单
 
 <!-- loom:generate:rule:placeholder-scan-ban -->
@@ -63,7 +73,7 @@ loom tasks --spec-dir specs/<date+feature> --validate
 禁止使用以下占位符，发现即视为未完成：TBD、TODO、implement later、fill in details、Similar to Task N、"add appropriate error handling"
 <!-- /loom:generate:rule:placeholder-scan-ban -->
 
-- [ ] plan.md 包含摘要和 Task 概览表。
+- [ ] `specs/<date+feature>/plan.md` 包含摘要和 Task 概览表。
 - [ ] 每个 task 文件包含完整字段和可执行步骤。
 - [ ] task 可独立编译或验证。
 - [ ] 分层顺序来自 constitution.md。
@@ -89,4 +99,4 @@ loom tasks --spec-dir specs/<date+feature> --validate
 
 ## 完成条件
 
-`plan.md`、所有 `tasks/TN.md` 和自动校验完成。
+`specs/<date+feature>/plan.md`、所有 `specs/<date+feature>/tasks/TN.md`、自动校验和 `specs/<date+feature>/handoffs/planning.json` 完成。

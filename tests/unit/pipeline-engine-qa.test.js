@@ -24,12 +24,12 @@ pipelines:
       - id: qa-analysis
         skill: loom-qa
         next: qa-design
-        outputs: [qa-plan.md]
+        outputs: [qa-plan.md, handoffs/qa-analysis.json]
       - id: qa-design
         skill: loom-qa
         next: qa-approved
         requires: [qa-plan.md]
-        outputs: [qa-cases.md]
+        outputs: [qa-cases.md, handoffs/qa-design.json]
       - id: qa-approved
         gate: human-approval
         next: qa-execution
@@ -37,7 +37,7 @@ pipelines:
         skill: loom-qa
         next: qa-signoff
         requires: [qa-cases.md]
-        outputs: [qa-execution-report.md, manual-checklist.md]
+        outputs: [qa-execution-report.md, manual-checklist.md, handoffs/qa-execution.json]
         gate_verdict: qa-execution-report.md
       - id: qa-signoff
         gate: human-approval
@@ -45,7 +45,7 @@ pipelines:
       - id: qa-report
         skill: loom-qa
         requires: [qa-execution-report.md, manual-checklist.md]
-        outputs: [qa-report.md]
+        outputs: [qa-report.md, handoffs/qa-report.json]
 `;
 
 describe('QA 流水线 — 从 qa-analysis 起步（#1 修复验证）', () => {
@@ -71,6 +71,7 @@ describe('QA 流水线 — 声明式产物门禁（#2#3#5 验证）', () => {
   });
 
   const write = (file, content) => writeFileSync(join(specDir, file), content, 'utf-8');
+  const handoff = (stage) => engine.store.writeStageHandoff(stage, { status: 'done', summary: `${stage} done` });
 
   it('缺少 qa-plan.md 时阻断 qa-analysis 推进', () => {
     const r = engine.advance();
@@ -79,8 +80,16 @@ describe('QA 流水线 — 声明式产物门禁（#2#3#5 验证）', () => {
     expect(r.error).toMatch(/qa-plan\.md/);
   });
 
+  it('缺少 qa-analysis handoff 时阻断 qa-analysis 推进', () => {
+    write('qa-plan.md', '# QA 测试矩阵\n内容完整');
+    const r = engine.advance();
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/handoffs\/qa-analysis\.json/);
+  });
+
   it('qa-plan.md 落地后推进到 qa-design', () => {
     write('qa-plan.md', '# QA 测试矩阵\n内容完整');
+    handoff('qa-analysis');
     const r = engine.advance();
     expect(r.ok).toBe(true);
     expect(r.to).toBe('qa-design');
@@ -89,6 +98,7 @@ describe('QA 流水线 — 声明式产物门禁（#2#3#5 验证）', () => {
   it('qa-execution requires qa-cases.md，缺失时阻断从 qa-approved 进入', () => {
     // 推进到 qa-approved gate，不写 qa-cases.md
     write('qa-plan.md', '# plan');
+    handoff('qa-analysis');
     engine.advance(); // qa-analysis → qa-design（需要 qa-plan.md outputs ✓）
     // 此时未写 qa-cases.md，qa-design 的 outputs 检查会阻断
     const r = engine.advance();
@@ -99,13 +109,16 @@ describe('QA 流水线 — 声明式产物门禁（#2#3#5 验证）', () => {
   it('qa-execution gate_verdict=FAIL 时阻断推进', () => {
     // 推进到 qa-execution
     write('qa-plan.md', '# plan');
+    handoff('qa-analysis');
     engine.advance(); // → qa-design
     write('qa-cases.md', '# cases');
+    handoff('qa-design');
     engine.advance(); // → qa-approved (gate)
     engine.approve(); // → qa-execution
     // 写 FAIL 的执行报告
     write('qa-execution-report.md', 'verdict: FAIL\n有用例失败');
     write('manual-checklist.md', '# checklist');
+    handoff('qa-execution');
     const r = engine.advance();
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/qa-execution-report\.md/);
@@ -113,12 +126,15 @@ describe('QA 流水线 — 声明式产物门禁（#2#3#5 验证）', () => {
 
   it('qa-execution gate_verdict=PASS 后推进到 qa-signoff', () => {
     write('qa-plan.md', '# plan');
+    handoff('qa-analysis');
     engine.advance();
     write('qa-cases.md', '# cases');
+    handoff('qa-design');
     engine.advance(); // → qa-approved
     engine.approve(); // → qa-execution
     write('qa-execution-report.md', 'verdict: PASS\n全部通过');
     write('manual-checklist.md', '# checklist');
+    handoff('qa-execution');
     const r = engine.advance();
     expect(r.ok).toBe(true);
     expect(r.to).toBe('qa-signoff');
@@ -126,12 +142,15 @@ describe('QA 流水线 — 声明式产物门禁（#2#3#5 验证）', () => {
 
   it('qa-signoff gate 阻断自动推进，approve 后进入 qa-report', () => {
     write('qa-plan.md', '# plan');
+    handoff('qa-analysis');
     engine.advance();
     write('qa-cases.md', '# cases');
+    handoff('qa-design');
     engine.advance(); // → qa-approved
     engine.approve(); // → qa-execution
     write('qa-execution-report.md', 'verdict: PASS');
     write('manual-checklist.md', '# checklist');
+    handoff('qa-execution');
     engine.advance(); // → qa-signoff
     expect(engine.advance().ok).toBe(false); // gate
     const r = engine.approve();

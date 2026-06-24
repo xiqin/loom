@@ -37,6 +37,7 @@ QA 流水线（`pipeline_type: qa`）有 6 个阶段，每个阶段对应本 ski
 3. 用例库：`.loom/qa-suite/`，进版本控制，随功能迭代更新
 4. verdict 三态：`PASS`（全绿）/ `PARTIAL`（自动绿但手动有遗留）/ `FAIL`（有测试失败）
 5. CI 门禁：`loom run --spec-dir qa/<target> --verdict`，exit 0=PASS，1=FAIL，2=PARTIAL
+6. 每个非 gate 阶段完成后写入 `qa/<date+target>/handoffs/<stage>.json`，摘要说明阶段结论、关键产物、未决风险和下一阶段注意事项；不要把完整测试日志写进 handoff。
 
 ## 触发方式
 
@@ -60,3 +61,7 @@ loom run --spec-dir qa/<target> --verdict
 - `references/qa-designer-prompt.md`
 - `references/qa-executor-prompt.md`
 - `references/qa-reporter-prompt.md`
+
+## 完成条件
+
+QA 阶段产物和对应 `handoffs/<stage>.json` 均完成后再推进状态机；`qa-report` 作为终止阶段也必须写入 `qa-report.md` 与 `handoffs/qa-report.json`。

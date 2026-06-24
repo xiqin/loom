@@ -3,7 +3,7 @@ name: loom-pipeline-selector
 description: >
   Analyze user request + collect signals (file scope, keywords, worktree state, spec existence),
   then select pipeline steps via rule short-circuit / AI fallback / rule-based fallback.
-  Persist selected dynamic_steps and expose the choice to the user; pipeline-plan.md is optional for manual review.
+  Select steps first, expose the choice to the user, and persist selected dynamic_steps only after explicit user confirmation; pipeline-plan.md is optional for manual review.
   Use when: user is unsure which pipeline type to pick, or wants AI to choose steps automatically.
 ---
 
@@ -63,9 +63,9 @@ description: >
 - `never_skip_gates`：planning 后必插 approved（low risk 除外）
 - `max_steps: 8`：超出报错
 
-### Step 6：输出与持久化
+### Step 6：输出与确认门禁
 
-默认路径是让调用方把选择结果告知用户，并在初始化时写入 `pipeline.state.json` 的 `dynamic_steps`；`progress.md` 会由 state-store 自动生成/更新，记录当前阶段和动态步骤。需要人工审查或手动调整时，可在 specDir 写 `pipeline-plan.md`：
+默认路径是先只返回选择结果，不初始化状态。调用方必须把选择结果告知用户，并等待用户明确确认后，才能在初始化时写入 `pipeline.state.json` 的 `dynamic_steps`；`progress.md` 会由 state-store 自动生成/更新，记录当前阶段和动态步骤。需要人工审查或手动调整时，可在 specDir 写 `pipeline-plan.md`：
 
 ```markdown
 # Pipeline Plan
@@ -103,12 +103,13 @@ description: >
 <详细推理>
 ```
 
-### Step 7：继续执行
+### Step 7：确认后继续执行
 
-默认模式：向用户说明来源、风险、步骤和理由后即可初始化并继续执行。若使用 `pipeline-plan.md` 审查模式，则提示用户：
+默认模式：向用户说明来源、风险、步骤和理由，等待用户明确确认后，才可以初始化并继续执行。首次选择禁止调用 `loom run --auto` 或 MCP `loom_select_pipeline initialize=true`，避免在用户看到流水线前写入状态并开始执行。若使用 `pipeline-plan.md` 审查模式，则提示用户：
 
 - `loom run --spec-dir <dir> --approve-pipeline` 确认并初始化
 - 或手动调整 `pipeline-plan.md` 后再确认
+- 已确认且无需 `pipeline-plan.md` 时，可调用 MCP `loom_select_pipeline initialize=true` 或执行 `loom run --spec-dir <dir> --auto --request "<需求>"`
 
 初始化后必须能通过 `pipeline.state.json` 的 `dynamic_steps` 和 `progress.md` 在无对话上下文时恢复执行。
 

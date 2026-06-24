@@ -32,7 +32,7 @@
 如果 task 声明了依赖（如 "依赖: Task 1, Task 2"）：
 
 1. 检查前置 task 的输出代码是否已存在于项目中
-2. **读取前置 task 的 handoff 文件** `specs/<date+feature>/handoffs/TN.yaml`，了解其导出接口、方法签名和注意事项。handoff 文件是跨 task 上下文传递的唯一可信来源，优先于对源码的推断。
+2. **读取前置 task 的 handoff 文件** `specs/<date+feature>/handoffs/TN.json`，了解其导出接口、方法签名和注意事项。handoff 文件是跨 task 上下文传递的唯一可信来源，优先于对源码的推断。
 3. 如果前置代码不存在或未完成，报告 **BLOCKED** 并说明缺少哪个 task 的输出
 4. 如果前置代码已存在，基于它继续实现，不要重复创建已有代码
 5. 如果发现前置代码有问题，报告中注明但不擅自修改，由协调者决定
@@ -108,17 +108,25 @@
 1. 列出所有创建/修改的文件路径
 2. 对每个文件附上完整代码
 3. 说明每个文件的作用和与 task 步骤的对应关系
-4. **生成 handoff 文件** `specs/<date+feature>/handoffs/<task-id>.yaml`，格式：
-   ```yaml
-   task_id: TN
-   status: done   # done | partial | blocked
-   exported_interfaces:
-     - name: <函数/类/接口名>
-       path: <文件路径>
-       signature: "<签名>"
-   breaking_changes: []
-   notes: "<需要告知下游 task 的关键信息>"
+4. **生成 handoff 文件** `specs/<date+feature>/handoffs/<task-id>.json`，格式：
+   ```json
+   {
+     "task_id": "TN",
+     "status": "done",
+     "summary": "<本 task 完成内容摘要>",
+     "artifacts": ["<创建或修改的关键文件路径>"],
+     "exported_interfaces": [
+       {
+         "name": "<函数/类/接口名>",
+         "path": "<文件路径>",
+         "signature": "<签名>"
+       }
+     ],
+     "breaking_changes": [],
+     "notes": "<需要告知下游 task 的关键信息>"
+   }
    ```
+   `status` 只能使用 `done`、`partial`、`blocked`、`failed`。
 
 **修复模式**：
 

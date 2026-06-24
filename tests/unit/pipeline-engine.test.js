@@ -58,6 +58,13 @@ describe('loadWorkflow / parser', () => {
     expect(() => loadWorkflow(root)).toThrow(/Failed to parse any pipelines/);
   });
 
+  it('allows workflow without pipelines when only dynamic steps are required', () => {
+    const root = setupProject('defaults:\n  pipeline_type: feature\nstep_catalog:\n  executing:\n    outputs: [test-report.md]\nselection_rules:\n  must_include: [executing]\n');
+    const wf = loadWorkflow(root, undefined, { requirePipelines: false });
+    expect(wf.pipelines).toEqual({});
+    expect(wf.step_catalog.executing.outputs).toEqual(['test-report.md']);
+  });
+
   it('throws YAML syntax error with line number for malformed YAML', () => {
     const root = setupProject('defaults:\n  pipeline_type: feature\npipelines:\n  feature:\n    steps:\n      - id: test\n        skill: test\n        outputs: [unbalanced bracket\n');
     expect(() => loadWorkflow(root)).toThrow(/YAML syntax error.*line/);
@@ -102,6 +109,36 @@ describe('PipelineEngine flow', () => {
     expect(r.to).toBe('planning');
   });
 
+  it('blocks advance when required stage handoff is missing', () => {
+    const wf = `
+defaults:
+  pipeline_type: feature
+pipelines:
+  feature:
+    steps:
+      - id: planning
+        skill: loom-writing-plans
+        next: executing
+        outputs: [plan.md, handoffs/planning.json]
+      - id: executing
+        skill: loom-subagent-driven-development
+        outputs: []
+`;
+    const handoffRoot = setupProject(wf);
+    const handoffSpecDir = join(handoffRoot, 'specs', 'handoff-gate');
+    mkdirSync(handoffSpecDir, { recursive: true });
+    const handoffEngine = new PipelineEngine(handoffRoot, handoffSpecDir);
+    handoffEngine.initialize('feature');
+
+    writeFileSync(join(handoffSpecDir, 'plan.md'), '# plan', 'utf-8');
+    const blocked = handoffEngine.advance();
+    expect(blocked.ok).toBe(false);
+    expect(blocked.error).toContain('handoffs/planning.json');
+
+    handoffEngine.store.writeStageHandoff('planning', { status: 'done', summary: 'plan ready' });
+    expect(handoffEngine.advance()).toMatchObject({ ok: true, to: 'executing' });
+  });
+
   it('refuses to auto-advance past a human-approval gate', () => {
     writeFileSync(join(specDir, 'spec.md'), '# spec', 'utf-8');
     writeFileSync(join(specDir, 'plan.md'), '# plan', 'utf-8');
@@ -126,6 +163,35 @@ describe('PipelineEngine flow', () => {
   it('reads version from project package.json', () => {
     const s = engine.snapshot().pipeline;
     expect(s.loom_version).toBe('9.9.9');
+  });
+
+  it('returns stage artifact context and context policy', () => {
+    engine.store.writeStageHandoff('brainstorming', {
+      status: 'done',
+      summary: 'spec ready',
+      artifacts: ['spec.md']
+    });
+
+    const context = engine.getStageContext();
+    expect(context.current_step).toMatchObject({
+      id: 'brainstorming',
+      requires: [],
+      outputs: ['spec.md'],
+      gate_verdict: null
+    });
+    expect(context.next_step).toMatchObject({ id: 'planning' });
+    expect(context.handoffs_summary[0]).toMatchObject({
+      id: 'brainstorming',
+      stage: 'brainstorming',
+      status: 'done',
+      summary: 'spec ready',
+      artifacts: ['spec.md']
+    });
+    expect(context.recommended_reads).toContain('progress.md');
+    expect(context.compression_policy.write_stage_handoff).toBe('handoffs/brainstorming.json');
+    expect(context.compression_policy.preserve).toContain('pipeline.state.json');
+    expect(context.compression_policy.mandatory_before_next_stage).toBe(true);
+    expect(context.compression_policy.guidance).toContain('必须先写 handoff');
   });
 });
 
@@ -204,6 +270,31 @@ selection_rules:
     expect(steps[0].id).toBe('executing');
   });
 
+  it('initializes dynamicSteps without a pipelines section', () => {
+    const root = setupProject(`
+defaults:
+  pipeline_type: feature
+step_catalog:
+  executing:
+    skill: loom-subagent-driven-development
+    requires: []
+    outputs: [test-report.md]
+selection_rules:
+  must_include: [executing]
+`);
+    const specDir = join(root, 'specs', 'dynamic-only');
+    mkdirSync(specDir, { recursive: true });
+    const eng = new PipelineEngine(root, specDir, { requirePipelines: false });
+    const result = eng.initialize(null, {
+      dynamicSteps: [
+        { id: 'executing', skill: 'loom-subagent-driven-development', requires: [], outputs: ['test-report.md'] }
+      ]
+    });
+    expect(result.ok).toBe(true);
+    expect(result.state.current_stage).toBe('executing');
+    expect(eng.getSteps().map(s => s.id)).toEqual(['executing']);
+  });
+
   it('getSteps reads dynamic_steps when present', () => {
     const root = setupProject(WF_WITH_CATALOG);
     const specDir = join(root, 'specs', 'd2');
@@ -218,6 +309,34 @@ selection_rules:
     const steps = eng.getSteps();
     expect(steps).toHaveLength(2);
     expect(steps.map(s => s.id)).toEqual(['executing', 'verification']);
+  });
+
+  it('checks terminal stage outputs before reporting completion', () => {
+    const root = setupProject(WF_WITH_CATALOG);
+    const specDir = join(root, 'specs', 'terminal');
+    mkdirSync(specDir, { recursive: true });
+    const eng = new PipelineEngine(root, specDir);
+    eng.initialize(null, {
+      dynamicSteps: [
+        { id: 'executing', skill: null, outputs: ['test-report.md'], description: 'executing' },
+        { id: 'verification', skill: 'loom-verification-before-completion', requires: ['test-report.md'], outputs: ['verify-report.md', 'handoffs/verification.json'], gate_verdict: 'verify-report.md', description: 'verification' }
+      ]
+    });
+
+    writeFileSync(join(specDir, 'test-report.md'), 'PASS', 'utf-8');
+    expect(eng.advance()).toMatchObject({ ok: true, to: 'verification' });
+
+    const missing = eng.advance();
+    expect(missing.ok).toBe(false);
+    expect(missing.error).toContain('outputs incomplete');
+    expect(missing.error).toContain('verify-report.md');
+    expect(missing.error).toContain('handoffs/verification.json');
+
+    writeFileSync(join(specDir, 'verify-report.md'), 'PASS', 'utf-8');
+    eng.store.writeStageHandoff('verification', { status: 'done', summary: 'verified' });
+    const complete = eng.advance();
+    expect(complete.ok).toBe(false);
+    expect(complete.error).toContain('No next step');
   });
 
   it('adjust appends new steps preserving completed ones', () => {

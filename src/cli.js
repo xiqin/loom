@@ -133,6 +133,27 @@ program
     await statusCommand(options);
   });
 
+const handoffCmd = program
+  .command('handoff')
+  .description('Write stage/task handoff files and refresh progress.md');
+
+handoffCmd
+  .command('write')
+  .description('Write a stage or task handoff JSON file')
+  .requiredOption('--spec-dir <path>', 'Path to spec directory')
+  .option('--cwd <path>', 'Project root')
+  .option('--stage <stage>', 'Stage id, e.g. planning')
+  .option('--task <id>', 'Task id, e.g. T1')
+  .option('--status <status>', 'Handoff status (default: done)', 'done')
+  .option('--summary <text>', 'Short handoff summary')
+  .option('--artifacts <csv>', 'Comma-separated artifact paths')
+  .option('--data <json>', 'Additional JSON object fields')
+  .option('--force', 'Override spec lock')
+  .action(async (options) => {
+    const { default: handoffCommand } = await import('./commands/handoff.js');
+    await handoffCommand('write', options);
+  });
+
 // ── 方向1 continued: tasks / index / start ──────────────────────────────────
 
 program

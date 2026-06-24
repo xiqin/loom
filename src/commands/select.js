@@ -1,9 +1,16 @@
-import { resolve } from 'node:path';
 import { PipelineSelector } from '../core/pipeline-selector.js';
+import { resolvePipelineDir } from '../core/spec-dir.js';
 
 export default async function select(options) {
   const cwd = options.cwd || process.cwd();
-  const absSpecDir = resolve(cwd, options.specDir);
+  let absSpecDir;
+  try {
+    absSpecDir = resolvePipelineDir(cwd, options.specDir);
+  } catch (err) {
+    console.error(`\n  ✗ ${err.message}\n`);
+    process.exitCode = 1;
+    return;
+  }
 
   const selector = new PipelineSelector(cwd, absSpecDir);
   const selection = await selector.select(options.request);

@@ -75,10 +75,11 @@ Loom 是 AI 工程化框架，基于**技能（Skill）+ 流水线（Pipeline）
 | CLI | commands/mcp-serve.js | 启动 MCP 服务器 |
 | CLI | commands/start.js | 输出项目 loom 状态和上下文 |
 | CLI | commands/status.js | 显示流水线当前状态 |
+| CLI | commands/handoff.js | 写入阶段或任务 handoff |
 | CLI | commands/tasks.js | 分析任务文件归属 |
 | CLI | commands/index.js | 同步 codegraph 图索引 |
 | MCP | mcp/server.js | JSON-RPC 2.0 服务器，stdio 传输 |
-| MCP | mcp/tools.js | 12 个工具定义 + executeToolCall 分发 |
+| MCP | mcp/tools.js | 16 个工具定义 + executeToolCall 分发 |
 | MCP | mcp/session-store.js | 会话绑定（spec_dir + 工具分组延迟加载） |
 | Core | pipeline-engine.js | 流水线状态机：初始化、推进、审批、失败、恢复 |
 | Core | pipeline-selector.js | AI 自主流程选择：信号收集、规则短路、AI fallback、规则兜底、校验修正 |
@@ -313,6 +314,7 @@ specs/<date+feature>/
 | loom_update_task_state | pipeline | spec_dir, task_id, status | 更新结果 | 更新任务状态 |
 | loom_select_pipeline | pipeline | request, spec_dir?, initialize? | 选择结果；initialize=true 时写入 dynamic_steps | AI 自主流程选择（规则短路 / AI / 兜底） |
 | loom_adjust_pipeline | pipeline | spec_dir, new_remaining_steps | 调整结果 | 执行中追加步骤（保留已完成） |
+| loom_write_handoff | pipeline | spec_dir?, stage?, task_id?, status?, summary?, artifacts?, data? | 写入结果 | 写入 stage 或 task handoff，并刷新 progress.md；status 允许 done/partial/blocked/failed |
 | loom_get_memory | memory | spec_dir?, type?, limit? | Entry 列表 | 读取记忆条目 |
 | loom_add_memory | memory | spec_dir, type, content, context? | 新 Entry | 写入记忆条目 |
 | loom_attach_spec | session | spec_dir, project_root? | 绑定结果 | 绑定会话到 spec 目录 |
@@ -330,6 +332,7 @@ specs/<date+feature>/
 | loom list | | | 列出可用 skills 和 commands |
 | loom run | | --spec-dir, --advance, --approve, --fail, --recover, --task, --task-status, --context, --verdict, --auto, --request, --approve-pipeline | 流水线执行引擎 |
 | loom select | | --spec-dir, --request, --json | AI 自主流程选择，可选输出 pipeline-plan.md 供人工审查 |
+| loom handoff write | | --spec-dir, --stage 或 --task, --status, --summary, --artifacts, --data | 写入阶段或任务 handoff，并刷新 progress.md |
 | loom status | | | 显示流水线状态 |
 | loom tasks | | --spec-dir | 分析任务归属 |
 | loom index | | | 同步 codegraph 图索引 |
@@ -413,6 +416,8 @@ specs/<date+feature>/
 | chore | executing → verification | 低风险改动，无需审批 |
 | qa | qa-analysis → qa-design → qa-approved → qa-execution → qa-signoff → qa-report | QA 验收流水线，含两次 human-approval gate |
 
+所有非 gate 阶段都应在推进前写入 `handoffs/<stage>.json`，包括 PM 原型和 QA 验收流水线；终止阶段同样先校验 outputs，再返回流水线已结束。
+
 **动态选择模式**（`loom run --auto --request "<text>"` 或 MCP `loom_select_pipeline`）：
 
 PipelineSelector 从 `step_catalog` 中按需组合步骤，三段决策：
@@ -421,7 +426,7 @@ PipelineSelector 从 `step_catalog` 中按需组合步骤，三段决策：
 2. **AI fallback**：信号模糊 + aiClient 注入 → AI 从 catalog 选步骤
 3. **规则兜底**：无 AI 或 AI 失败 → 按风险等级生成基础流程
 
-选择结果经 `_validateAndFix` 校验：must_include、dependency_closure、never_skip_gates、max_steps。`loom run --auto` 会先向用户打印选择来源、风险等级、步骤顺序和理由，然后写入 `pipeline.state.json` 的 `dynamic_steps`；`progress.md` 自动记录当前阶段和动态步骤，供后续无上下文续跑。需要先审查或手动调整时，可用 `loom select` 生成 `pipeline-plan.md` 后再 `--approve-pipeline`。
+选择结果经 `_validateAndFix` 校验：must_include、dependency_closure、never_skip_gates、max_steps。默认首次选择必须只返回结果，不写状态；AI 工具向用户打印选择来源、风险等级、步骤顺序和理由，并等待用户明确确认后，才能通过 `loom run --auto` 或 MCP `loom_select_pipeline initialize=true` 写入 `pipeline.state.json` 的 `dynamic_steps`；`progress.md` 自动记录当前阶段和动态步骤，供后续无上下文续跑。需要先审查或手动调整时，可用 `loom select` 生成 `pipeline-plan.md` 后再 `--approve-pipeline`。
 
 ### 5.3 门禁执行顺序（advance 流程）
 
@@ -429,10 +434,10 @@ PipelineSelector 从 `step_catalog` 中按需组合步骤，三段决策：
 engine.advance() 执行检查（严格顺序）：
 
 1. 当前状态是否 failed？         → 是：拒绝推进
-2. 是否存在 next step？         → 否：拒绝（流水线已结束）
-3. 当前是否 human-approval gate？ → 是：拒绝，要求 --approve
-4. 当前阶段 outputs 完整性？     → 检查文件存在 + 无占位符
-5. gate_verdict 报告裁定？      → 检查 verdict === PASS
+2. 当前是否 human-approval gate？ → 是：拒绝，要求 --approve
+3. 当前阶段 outputs 完整性？     → 检查文件存在 + 无占位符
+4. gate_verdict 报告裁定？      → 检查 verdict === PASS
+5. 是否存在 next step？         → 否：拒绝（流水线已结束）
 6. 下一阶段 requires 前置条件？  → 检查文件/目录存在
 7. 全部通过 → store.transition(nextStage)
 ```

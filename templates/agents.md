@@ -12,6 +12,7 @@
 2. `loom_get_project_status` — 获取活跃流水线、阶段、任务概要
 3. `loom_get_context(doc="constitution")` / `"memory"` — 先取 outline（L0），只在需要某 section 时才取 L1 全文
 4. codegraph：仅在可用时使用 `codegraph_search` / `codegraph_context` / `codegraph_impact`；不可用时跳过图查询并用源码搜索补充判断
+5. 阶段切换或无上下文续跑时，优先读取 `progress.md` 中的 Handoffs 摘要；只有摘要不足以继续时，才按需读取 `handoffs/<stage>.json`
 
 ### 第二步：按需深入（仅在任务涉及时）
 
@@ -21,6 +22,8 @@
 - `.loom/memory/MEMORY.md`：仅当需要回忆历史决策时读取导出视图；新增记忆用 `loom_add_memory` 或 `loom memory add`
 
 **默认不要一口气读取所有上下文文件全文。仅在变更涉及架构决策或跨多模块时例外。**
+
+阶段完成后，必须先写入 `handoffs/<stage>.json`，再调用当前环境提供的上下文压缩能力压缩旧阶段原始对话、探索搜索输出、中间推理和大段日志，然后才进入下一阶段。保留 `spec.md`、`plan.md`、`tasks/`、`pipeline.state.json`、`progress.md`、`handoffs/` 和必要报告；不要重新加载旧阶段原始对话或完整日志来续跑。
 
 ## 开发流水线（智能优先，类型兜底）
 
@@ -36,13 +39,15 @@
 
 选择器自动校验护栏：`must_include`（executing + verification）、`dependency_closure`（选 step 自动带 producer）、`never_skip_gates`（planning 后必插 approved）、`max_steps: 8`。
 
-结果必须先明确告知用户，至少包含：
+结果必须先明确告知用户，并等待用户明确确认后才能初始化或执行。至少包含：
 
 - 用户需求 + AI 分析（风险/关键词/影响文件/spec 状态/worktree 状态）
 - 选择步骤（含 skill、requires、outputs）
 - 来源（short-circuit / ai / fallback）+ 理由
 
-初始化后，选择结果写入 `specs/<date+feature>/pipeline.state.json` 的 `dynamic_steps`，并由 loom 自动生成/更新 `progress.md`，记录当前阶段和动态步骤。后续 AI 即使没有对话上下文，也必须先读取 pipeline context / status，再按状态继续。
+用户确认后，选择结果写入 `specs/<date+feature>/pipeline.state.json` 的 `dynamic_steps`，并由 loom 自动生成/更新 `progress.md`，记录当前阶段和动态步骤。后续 AI 即使没有对话上下文，也必须先读取 pipeline context / status，再按状态继续。
+
+**确认门禁**：`loom_select_pipeline` 首次调用必须省略 `initialize` 或传 `initialize=false`；CLI 首次调用必须使用 `loom select`。禁止在展示结果前调用 `loom run --auto` 或 MCP `loom_select_pipeline initialize=true`，也禁止用“需求很简单”“我直接执行”绕过确认。
 
 ### 第二步：失败回退类型模式
 
@@ -81,18 +86,19 @@
 
 执行方式：
 
-- 默认：用户知晓后，`loom run --spec-dir <dir> --auto --request "<需求>"` 直接写入 `dynamic_steps` 并初始化，同时生成/更新 `progress.md`
+- 默认：先用 `loom_select_pipeline`（`initialize=false`）或 `loom select --spec-dir <dir> --request "<需求>"` 只生成选择结果，向用户展示并等待确认
+- 用户明确确认后：调用 `loom_select_pipeline initialize=true`，或执行 `loom run --spec-dir <dir> --auto --request "<需求>"` 写入 `dynamic_steps` 并初始化，同时生成/更新 `progress.md`
 - 需要先审查或手动调整：`loom select --spec-dir <dir> --request "<需求>"` 生成 `pipeline-plan.md`，调整后执行 `loom run --spec-dir <dir> --approve-pipeline`
 - 重新选择：`loom run --spec-dir <dir> --auto --request "<新需求>"`
 
 ### 第四步：按步骤执行
 
-用户知晓后（quickfix/chore 类短路命中只需简短说明），按选择的步骤执行：
+用户明确确认后（quickfix/chore 类短路命中也必须先简短说明并等待确认），按选择的步骤执行：
 
 1. **加载对应 skill**（`step.skill` 字段指定的 skill，`null` 表示直接执行无特定 skill）。
 2. **执行该 skill 的流程**，产出对应产物。
 3. **遇到 `gate: human-approval` 时，停下来等待用户确认**。
-4. **通过 loom 状态机更新进度**：阶段完成后用 `loom_advance_pipeline` / `loom run --advance` 推进；遇到失败用 `loom run --fail <reason>` 标记。`progress.md` 由 loom 自动生成/更新，不手动编辑。
+4. **写入阶段 handoff、压缩上下文并通过 loom 状态机更新进度**：阶段完成后写入 `handoffs/<stage>.json`，立即压缩已结束阶段的原始上下文，再用 `loom_advance_pipeline` / `loom run --advance` 推进；遇到失败用 `loom run --fail <reason>` 标记。`progress.md` 由 loom 自动生成/更新，不手动编辑。
 5. **完成后告知用户**本步骤产物，再进入下一步。
 6. **执行中发现跨模块影响**：调 `loom_adjust_pipeline` 追加步骤（保留已完成阶段）。
 
@@ -115,7 +121,7 @@
 - **workflow.yaml 不可读**：停止执行，告知用户文件缺失，不得凭记忆假设流水线内容。
 - **步骤中途失败**：用 `loom run --fail <reason>` 记录失败，向用户报告失败原因和建议，等待指示。
 - **智能选择超 max_steps=8**：提示用户拆分需求；拆分后仍超则回退类型模式。
-- **无上下文续跑**：先读 `loom_get_pipeline_context` / `loom_get_project_status` 或 `pipeline.state.json` + `progress.md`，以 `dynamic_steps` 和当前阶段为准继续执行。
+- **无上下文续跑**：先读 `loom_get_pipeline_context` / `loom_get_project_status` 或 `pipeline.state.json` + `progress.md`，以 `dynamic_steps` 和当前阶段为准继续执行；先看 `progress.md` 的 Handoffs 摘要，再按需读 `handoffs/<stage>.json`。
 - **需要人工调整步骤**：用 `loom select` 生成 `pipeline-plan.md`，调整后再 `--approve-pipeline`；不要把 `pipeline-plan.md` 作为默认续跑依据。
 - **quickfix 升级**：执行中发现改动涉及 2+ 文件或跨模块依赖，立即暂停并告知用户，建议升级为 `bugfix` 流水线。
 

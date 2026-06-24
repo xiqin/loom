@@ -285,12 +285,15 @@ specs/2026-05-27+user-auth/
     T1.state.json         ← 只由 T1 的 subagent 写
     T2.state.json
   handoffs/
+    planning.json         ← 阶段交接摘要
     T1.json
     T2.json
   progress.md             ← 由 state-store 增量更新（只读视图，阶段变化追加变更日志）
 ```
 
 每一层的写入者唯一，不需要锁、不需要事务。
+
+handoff 是跨阶段、跨 task 的上下文压缩入口：阶段结束时写 `handoffs/<stage>.json`，task 完成时写 `handoffs/<task-id>.json`。CLI 使用 `loom handoff write --spec-dir <dir> --stage <stage> ...` 或 `--task <id>`；MCP 使用 `loom_write_handoff`。写入后 `state-store` 会自动刷新 `progress.md` 的 Handoffs 摘要，`loom status --spec-dir <dir>` 会展示 `status`、`summary` 和 artifacts；`status` 只允许 `done`、`partial`、`blocked`、`failed`。
 
 ### 结构化记忆
 
@@ -330,7 +333,7 @@ args = ["mcp-serve"]
 | -------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
 | meta     | `loom_list_capabilities` / `loom_load_tool_group`                                                                                  | 分组能力目录 + 按需加载工具组             |
 | context  | `loom_get_context` / `loom_get_skill_context`                                                                                      | 上下文文件 + Skill 渐进式披露（L0/L1/L2） |
-| pipeline | `loom_get_project_status` / `loom_get_pipeline_context` / `loom_advance_pipeline` / `loom_approve_gate` / `loom_update_task_state` / `loom_select_pipeline` / `loom_adjust_pipeline` | 流水线状态机 + AI 流程选择 + 运行时调整 |
+| pipeline | `loom_get_project_status` / `loom_get_pipeline_context` / `loom_advance_pipeline` / `loom_approve_gate` / `loom_update_task_state` / `loom_select_pipeline` / `loom_adjust_pipeline` / `loom_write_handoff` | 流水线状态机 + AI 流程选择 + 运行时调整 + handoff 写入 |
 | memory   | `loom_get_memory` / `loom_add_memory`                                                                                              | 结构化记忆读写                            |
 | session  | `loom_attach_spec`                                                                                                                 | 连接级 spec 绑定                          |
 

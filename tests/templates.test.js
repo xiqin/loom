@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import yaml from 'js-yaml';
 
 const ROOT = join(import.meta.dirname, '..');
 
@@ -25,6 +26,40 @@ describe('template schema', () => {
       const content = readFileSync(join(ROOT, 'templates', templateName), 'utf8');
       expect(content).toContain('.loom/rules/constitution.md');
       expect(content).not.toMatch(/\{\{[A-Z0-9_]+\}\}/);
+    }
+  });
+
+  it('requires verification artifacts for terminal low-risk pipelines', () => {
+    const workflow = yaml.load(readFileSync(join(ROOT, 'templates', 'workflow.yaml'), 'utf8'));
+
+    for (const pipelineName of ['hotfix', 'chore', 'quickfix']) {
+      const verification = workflow.pipelines[pipelineName].steps.find(step => step.id === 'verification');
+
+      expect(verification?.outputs, pipelineName).toContain('verify-report.md');
+      expect(verification?.outputs, pipelineName).toContain('handoffs/verification.json');
+    }
+  });
+
+  it('requires handoffs for PM prototype and QA non-gate stages', () => {
+    const workflow = yaml.load(readFileSync(join(ROOT, 'templates', 'workflow.yaml'), 'utf8'));
+    const expected = {
+      'pm-prototype': {
+        brainstorming: 'handoffs/brainstorming.json',
+        prototype: 'handoffs/prototype.json'
+      },
+      qa: {
+        'qa-analysis': 'handoffs/qa-analysis.json',
+        'qa-design': 'handoffs/qa-design.json',
+        'qa-execution': 'handoffs/qa-execution.json',
+        'qa-report': 'handoffs/qa-report.json'
+      }
+    };
+
+    for (const [pipelineName, stageOutputs] of Object.entries(expected)) {
+      for (const [stageId, output] of Object.entries(stageOutputs)) {
+        const step = workflow.pipelines[pipelineName].steps.find(s => s.id === stageId);
+        expect(step?.outputs, `${pipelineName}.${stageId}`).toContain(output);
+      }
     }
   });
 });

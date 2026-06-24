@@ -11,6 +11,7 @@
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
+import { resolvePipelineDir } from '../core/spec-dir.js';
 
 // ─── Task 声明解析 ──────────────────────────────────────────────────────────
 // 从 tasks/TN.md 的 YAML frontmatter 读取 owns / reads / depends_on
@@ -164,11 +165,20 @@ function buildBatches(tasks) {
 // ─── 主命令 ─────────────────────────────────────────────────────────────────
 
 export default async function tasksCommand(options) {
-  const specDir = options.specDir;
+  const cwd = options.cwd || process.cwd();
+  let specDir = options.specDir;
   const validateOnly = options.validate || false;
 
   if (!specDir) {
     console.error('\n  loom tasks: --spec-dir is required\n');
+    process.exitCode = 1;
+    return;
+  }
+
+  try {
+    specDir = resolvePipelineDir(cwd, specDir);
+  } catch (err) {
+    console.error(`\n  ✗ ${err.message}\n`);
     process.exitCode = 1;
     return;
   }
