@@ -107,17 +107,23 @@ async function handleRequest(msg) {
       const startTime = Date.now();
       try {
         const result = await executeToolCall(toolName, args, sessionStore, sessionId);
-        recordCall(toolName, Date.now() - startTime);
+        const text = JSON.stringify(result, null, 2);
+        recordCall(toolName, Date.now() - startTime, {
+          responseBytes: Buffer.byteLength(text, 'utf-8')
+        });
         if (toolName === 'loom_load_tool_group' && result?.ok && lazyToolsEnabled()) {
           notifyToolsListChanged();
         }
         return makeResponse(id, {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+          content: [{ type: 'text', text }]
         });
       } catch (error) {
-        recordCall(toolName, Date.now() - startTime);
+        const text = JSON.stringify({ error: error.message });
+        recordCall(toolName, Date.now() - startTime, {
+          responseBytes: Buffer.byteLength(text, 'utf-8')
+        });
         return makeResponse(id, {
-          content: [{ type: 'text', text: JSON.stringify({ error: error.message }) }],
+          content: [{ type: 'text', text }],
           isError: true
         });
       }

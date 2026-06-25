@@ -172,6 +172,38 @@ describe('OpenCodeAdapter', () => {
     expect(readFileSync(configPath + '.bak', 'utf-8')).toBe('{ bad json');
     const config = JSON.parse(readFileSync(configPath, 'utf-8'));
     expect(config.mcp.loom.command).toEqual(['loom', 'mcp-serve']);
+    expect(config.mcp.loom.environment).toEqual({ LOOM_LAZY_TOOLS: '1' });
+    expect(config.mcp.loom.env).toBeUndefined();
     expect(log.some(l => l.includes('解析失败'))).toBe(true);
+  });
+
+  it('_ensureMcpConfig migrates legacy env to environment', () => {
+    vi.spyOn(adapter, 'getUserDir').mockReturnValue(join(TEST_DIR, '.config', 'opencode'));
+    mkdirSync(join(TEST_DIR, '.config', 'opencode'), { recursive: true });
+    const configPath = join(TEST_DIR, '.config', 'opencode', 'opencode.json');
+    writeFileSync(configPath, JSON.stringify({
+      mcp: {
+        loom: {
+          type: 'local',
+          command: ['loom', 'mcp-serve'],
+          enabled: true,
+          env: {
+            LOOM_LAZY_TOOLS: '1',
+            LOOM_TELEMETRY: '1'
+          }
+        }
+      }
+    }));
+
+    const log = [];
+    adapter._ensureMcpConfig(log);
+
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+    expect(config.mcp.loom.environment).toEqual({
+      LOOM_LAZY_TOOLS: '1',
+      LOOM_TELEMETRY: '1'
+    });
+    expect(config.mcp.loom.env).toBeUndefined();
+    expect(log.some(l => l.includes('migrated loom env to environment'))).toBe(true);
   });
 });

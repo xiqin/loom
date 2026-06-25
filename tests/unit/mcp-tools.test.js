@@ -10,7 +10,7 @@ function tmp() { return mkdtempSync(join(tmpdir(), 'loom-mcp-')); }
 
 describe('MCP tool definitions', () => {
   it('exposes the documented tools incl. context + capabilities', () => {
-    expect(TOOL_DEFINITIONS).toHaveLength(16);
+    expect(TOOL_DEFINITIONS).toHaveLength(17);
     const names = TOOL_DEFINITIONS.map(t => t.name);
     expect(names).toContain('loom_attach_spec');
     expect(names).toContain('loom_get_context');
@@ -20,6 +20,7 @@ describe('MCP tool definitions', () => {
     expect(names).toContain('loom_select_pipeline');
     expect(names).toContain('loom_adjust_pipeline');
     expect(names).toContain('loom_write_handoff');
+    expect(names).toContain('loom_stage_checkpoint');
   });
 
   it('every tool carries a group tag for capability grouping', () => {
@@ -268,6 +269,62 @@ describe('happy path', () => {
     expect(Array.isArray(status.pipelines)).toBe(true);
   });
 
+  it('project status limits summary output by default', async () => {
+    const root = tmp();
+    mkdirSync(join(root, 'specs'), { recursive: true });
+    const store = new SessionStore();
+
+    for (const name of ['a', 'b', 'c']) {
+      const specDir = join(root, 'specs', name);
+      mkdirSync(specDir, { recursive: true });
+      writeFileSync(join(specDir, 'pipeline.state.json'), JSON.stringify({
+        spec_dir: specDir,
+        pipeline_type: 'feature',
+        current_stage: 'executing',
+        started_at: `2026-01-0${name.charCodeAt(0) - 96}T00:00:00.000Z`,
+        updated_at: `2026-01-0${name.charCodeAt(0) - 96}T00:00:00.000Z`,
+        stage_history: [],
+        metadata: {}
+      }), 'utf-8');
+    }
+
+    const status = await executeToolCall('loom_get_project_status', { project_root: root, limit: 2 }, store, 's1');
+    expect(status.detail).toBe('summary');
+    expect(status.total_pipelines).toBe(3);
+    expect(status.returned_pipelines).toBe(2);
+    expect(status.truncated).toBe(true);
+    expect(status.omitted_pipelines).toBe(1);
+    expect(status.pipelines[0].tasks).toBeUndefined();
+  });
+
+  it('project status respects limit in full detail mode', async () => {
+    const root = tmp();
+    mkdirSync(join(root, 'specs'), { recursive: true });
+    const store = new SessionStore();
+
+    for (const name of ['a', 'b', 'c']) {
+      const specDir = join(root, 'specs', name);
+      mkdirSync(specDir, { recursive: true });
+      writeFileSync(join(specDir, 'pipeline.state.json'), JSON.stringify({
+        spec_dir: specDir,
+        pipeline_type: 'feature',
+        current_stage: 'executing',
+        started_at: `2026-01-0${name.charCodeAt(0) - 96}T00:00:00.000Z`,
+        updated_at: `2026-01-0${name.charCodeAt(0) - 96}T00:00:00.000Z`,
+        stage_history: [],
+        metadata: {}
+      }), 'utf-8');
+    }
+
+    const status = await executeToolCall('loom_get_project_status', { project_root: root, detail: 'full', limit: 2 }, store, 's1');
+    expect(status.detail).toBe('full');
+    expect(status.total_pipelines).toBe(3);
+    expect(status.returned_pipelines).toBe(2);
+    expect(status.truncated).toBe(true);
+    expect(status.omitted_pipelines).toBe(1);
+    expect(status.pipelines[0].pipeline).toBeDefined();
+  });
+
   it('update_task_state writes within sandbox', async () => {
     const root = tmp();
     const specDir = join(root, 'specs', 'x');
@@ -301,6 +358,121 @@ describe('happy path', () => {
     const progress = readFileSync(join(specDir, 'progress.md'), 'utf-8');
     expect(progress).toContain('## Handoffs');
     expect(progress).toContain('计划完成');
+  });
+
+  it('stage_checkpoint writes handoff and returns compact context', async () => {
+    const root = tmp();
+    mkdirSync(join(root, '.loom'), { recursive: true });
+    writeFileSync(join(root, '.loom', 'workflow.yaml'), `
+defaults:
+  pipeline_type: feature
+pipelines:
+  feature:
+    steps:
+      - id: planning
+        skill: loom-writing-plans
+        next: executing
+        outputs: [plan.md, handoffs/planning.json]
+      - id: executing
+        skill: loom-subagent-driven-development
+        requires: [plan.md]
+        outputs: []
+`, 'utf-8');
+    const specDir = join(root, 'specs', 'checkpoint');
+    mkdirSync(specDir, { recursive: true });
+    writeFileSync(join(specDir, 'pipeline.state.json'), JSON.stringify({
+      spec_dir: specDir,
+      pipeline_type: 'feature',
+      current_stage: 'planning',
+      started_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      stage_history: [],
+      metadata: {}
+    }), 'utf-8');
+    writeFileSync(join(specDir, 'spec.md'), '# spec', 'utf-8');
+    writeFileSync(join(specDir, 'plan.md'), '# plan', 'utf-8');
+
+    const store = new SessionStore();
+    const r = await executeToolCall('loom_stage_checkpoint', {
+      spec_dir: 'specs/checkpoint',
+      project_root: root,
+      stage: 'planning',
+      summary: '计划完成',
+      artifacts: ['plan.md'],
+      advance: true
+    }, store, 's1');
+
+    expect(r.ok).toBe(true);
+    expect(r.path).toBe('handoffs/planning.json');
+    expect(r.handoff_summary).toMatchObject({ stage: 'planning', summary: '计划完成' });
+    expect(r.advance.ok).toBe(true);
+    expect(r.context.detail).toBe('summary');
+    expect(r.context.handoffs_summary.length).toBeLessThanOrEqual(5);
+    expect(r.next_required_action).toMatch(/compress closed-stage raw context/);
+  });
+
+  it('stage_checkpoint rejects checkpoints for non-current stage', async () => {
+    const root = tmp();
+    mkdirSync(join(root, '.loom'), { recursive: true });
+    writeFileSync(join(root, '.loom', 'workflow.yaml'), `
+defaults:
+  pipeline_type: feature
+pipelines:
+  feature:
+    steps:
+      - id: planning
+        skill: loom-writing-plans
+        next: executing
+        outputs: []
+      - id: executing
+        skill: loom-subagent-driven-development
+        outputs: []
+`, 'utf-8');
+    const specDir = join(root, 'specs', 'checkpoint-mismatch');
+    mkdirSync(specDir, { recursive: true });
+    writeFileSync(join(specDir, 'pipeline.state.json'), JSON.stringify({
+      spec_dir: specDir,
+      pipeline_type: 'feature',
+      current_stage: 'planning',
+      started_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      stage_history: [],
+      metadata: {}
+    }), 'utf-8');
+
+    const store = new SessionStore();
+    const r = await executeToolCall('loom_stage_checkpoint', {
+      spec_dir: 'specs/checkpoint-mismatch',
+      project_root: root,
+      stage: 'executing',
+      summary: '错误阶段',
+      advance: true
+    }, store, 's1');
+
+    expect(r.error).toMatch(/does not match current stage/);
+    expect(existsSync(join(specDir, 'handoffs', 'executing.json'))).toBe(false);
+  });
+});
+
+describe('loom_get_skill_context', () => {
+  it('returns essentials by default for a single skill', async () => {
+    const store = new SessionStore();
+    const r = await executeToolCall('loom_get_skill_context', { skill: 'brainstorming' }, store, 's1');
+
+    expect(r.level).toBe('L0.5');
+    expect(r.name).toBe('loom-brainstorming');
+    expect(r.sections.length).toBeGreaterThan(0);
+    expect(r.content).toBeUndefined();
+    expect(r.read_hints.full).toContain('full: true');
+  });
+
+  it('returns full skill only when full:true is passed', async () => {
+    const store = new SessionStore();
+    const r = await executeToolCall('loom_get_skill_context', { skill: 'brainstorming', full: true }, store, 's1');
+
+    expect(r.level).toBe('L1');
+    expect(r.content).toContain('#');
+    expect(r.tokens).toBeGreaterThan(0);
   });
 });
 

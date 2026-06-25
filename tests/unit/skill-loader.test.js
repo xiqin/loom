@@ -213,6 +213,29 @@ describe('SkillLoader', () => {
     });
   });
 
+  describe('getSkillEssentials (L0.5)', () => {
+    it('returns compact single-skill context without full content', () => {
+      const fs = createTestFS();
+      const loader = new SkillLoader('/skills', { fs });
+      const essentials = loader.getSkillEssentials('loom-brainstorming');
+      const full = loader.getFullSkill('loom-brainstorming');
+
+      expect(essentials).not.toBeNull();
+      expect(essentials.name).toBe('loom-brainstorming');
+      expect(essentials.sections).toContain('执行流程');
+      expect(essentials.content).toBeUndefined();
+      expect(essentials.full_tokens).toBe(full.tokens);
+      expect(essentials.tokens).toBeGreaterThan(0);
+      expect(essentials.read_hints.full).toContain('full: true');
+    });
+
+    it('returns null for unknown skill', () => {
+      const fs = createTestFS();
+      const loader = new SkillLoader('/skills', { fs });
+      expect(loader.getSkillEssentials('nonexistent')).toBeNull();
+    });
+  });
+
   describe('getSkillSection (L1 fine-grained)', () => {
     it('returns a single section content', () => {
       const fs = createTestFS();

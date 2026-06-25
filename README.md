@@ -73,6 +73,63 @@ loom doctor    # 诊断安装状态
 loom list      # 列出可用 skills 和 commands
 ```
 
+### MCP 性能开关
+
+loom 的 MCP server 支持通过环境变量控制工具暴露和运行统计。需要把变量配置到客户端启动 `loom mcp-serve` 的 MCP server 配置里，而不是只在普通 shell 会话里临时设置。
+
+| 变量 | 建议值 | 作用 |
+| ---- | ------ | ---- |
+| `LOOM_LAZY_TOOLS` | `1` | 启用 MCP 工具懒加载，默认只暴露基础工具，按需加载 pipeline/context/memory/session 工具组，减少工具定义带来的上下文开销。 |
+| `LOOM_TELEMETRY` | `1` | 开启 loom MCP 工具调用统计，记录调用次数、耗时、响应字节数和估算响应 token；可通过 `loom_telemetry` 工具查看，MCP server 退出时也会向 stderr 输出摘要。 |
+
+配置示例：
+
+```jsonc
+// Claude Code: mcpServers.loom.env
+{
+  "mcpServers": {
+    "loom": {
+      "command": "loom",
+      "args": ["mcp-serve"],
+      "env": {
+        "LOOM_LAZY_TOOLS": "1",
+        "LOOM_TELEMETRY": "1"
+      }
+    }
+  }
+}
+```
+
+```jsonc
+// OpenCode: mcp.loom.environment
+{
+  "mcp": {
+    "loom": {
+      "type": "local",
+      "command": ["loom", "mcp-serve"],
+      "enabled": true,
+      "environment": {
+        "LOOM_LAZY_TOOLS": "1",
+        "LOOM_TELEMETRY": "1"
+      }
+    }
+  }
+}
+```
+
+```toml
+# Codex: mcp_servers.loom.env
+[mcp_servers.loom]
+command = "loom"
+args = ["mcp-serve"]
+
+[mcp_servers.loom.env]
+LOOM_LAZY_TOOLS = "1"
+LOOM_TELEMETRY = "1"
+```
+
+修改 MCP 配置后需要重启对应客户端，运行中的 MCP server 不会自动继承新环境变量。
+
 ### 初始化项目上下文
 
 在 Codex/Claude/OpenCode 中直接触发 `loom-init-project` skill 即可；脚本由 skill 自动运行，不需要用户手动调用。

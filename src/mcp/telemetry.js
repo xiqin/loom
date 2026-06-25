@@ -9,7 +9,7 @@
 
 const ENABLED = process.env.LOOM_TELEMETRY === '1';
 
-/** @type {Map<string, { count: number, totalMs: number, lastCall: string }>} */
+/** @type {Map<string, { count: number, totalMs: number, totalBytes: number, lastBytes: number, totalTokens: number, lastTokens: number, lastCall: string }>} */
 const _stats = new Map();
 
 /** 会话开始时间 */
@@ -19,12 +19,27 @@ const _sessionStart = new Date();
  * 记录一次工具调用
  * @param {string} toolName
  * @param {number} durationMs
+ * @param {{ responseBytes?: number, responseTokens?: number }} [meta]
  */
-export function recordCall(toolName, durationMs) {
+export function recordCall(toolName, durationMs, meta = {}) {
   if (!ENABLED) return;
-  const entry = _stats.get(toolName) || { count: 0, totalMs: 0, lastCall: '' };
+  const entry = _stats.get(toolName) || {
+    count: 0,
+    totalMs: 0,
+    totalBytes: 0,
+    lastBytes: 0,
+    totalTokens: 0,
+    lastTokens: 0,
+    lastCall: ''
+  };
+  const bytes = Math.max(0, Math.round(meta.responseBytes || 0));
+  const tokens = Math.max(0, Math.round(meta.responseTokens || Math.ceil(bytes / 4)));
   entry.count += 1;
   entry.totalMs += durationMs;
+  entry.totalBytes += bytes;
+  entry.lastBytes = bytes;
+  entry.totalTokens += tokens;
+  entry.lastTokens = tokens;
   entry.lastCall = new Date().toISOString();
   _stats.set(toolName, entry);
 }
@@ -59,6 +74,10 @@ export function getSnapshot() {
     tools[name] = {
       calls: e.count,
       total_ms: Math.round(e.totalMs),
+      total_response_bytes: e.totalBytes,
+      last_response_bytes: e.lastBytes,
+      estimated_response_tokens: e.totalTokens,
+      last_response_tokens: e.lastTokens,
       last_call: e.lastCall
     };
   }

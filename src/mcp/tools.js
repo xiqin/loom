@@ -22,6 +22,48 @@ import { getSnapshot } from './telemetry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SKILLS_DIR = join(__dirname, '..', '..', 'skills');
+const DEFAULT_STATUS_LIMIT = 10;
+const DEFAULT_HANDOFF_LIMIT = 5;
+
+function positiveInt(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.floor(n);
+}
+
+function limitArray(items, limit) {
+  const max = positiveInt(limit, items.length);
+  return {
+    items: items.slice(0, max),
+    truncated: items.length > max,
+    omitted: Math.max(0, items.length - max)
+  };
+}
+
+function summarizePipelineContext(ctx, { handoffLimit = DEFAULT_HANDOFF_LIMIT } = {}) {
+  const handoffs = limitArray(ctx.handoffs_summary || [], handoffLimit);
+  return {
+    spec_dir: ctx.spec_dir,
+    pipeline_type: ctx.pipeline_type,
+    current_stage: ctx.current_stage,
+    current_skill: ctx.current_skill,
+    current_step: ctx.current_step,
+    is_gate: ctx.is_gate,
+    next_stage: ctx.next_stage,
+    next_step: ctx.next_step,
+    handoffs_summary: handoffs.items,
+    handoffs_truncated: handoffs.truncated,
+    handoffs_omitted: handoffs.omitted,
+    recommended_reads: ctx.recommended_reads,
+    compression_policy: ctx.compression_policy,
+    constraints: ctx.constraints,
+    forbidden_actions: ctx.forbidden_actions,
+    tasks_summary: ctx.tasks_summary,
+    started_at: ctx.started_at,
+    updated_at: ctx.updated_at,
+    detail: 'summary'
+  };
+}
 
 /**
  * 把 specDir 解析为绝对路径，并强制限制在 projectRoot 内。
@@ -83,7 +125,10 @@ export const TOOL_DEFINITIONS = [
     inputSchema: {
       type: 'object',
       properties: {
-        project_root: { type: 'string', description: 'Project root directory (optional if attached)' }
+        project_root: { type: 'string', description: 'Project root directory (optional if attached)' },
+        limit: { type: 'number', description: 'Max pipelines to return (default 10)' },
+        active_only: { type: 'boolean', description: 'Only return pipelines that are not in terminal stages' },
+        detail: { type: 'string', enum: ['summary', 'full'], description: 'summary/default returns compact pipeline rows; full includes task and handoff snapshots' }
       }
     }
   },
@@ -94,7 +139,9 @@ export const TOOL_DEFINITIONS = [
     inputSchema: {
       type: 'object',
       properties: {
-        spec_dir: { type: 'string', description: 'Path to spec directory (optional if attached)' }
+        spec_dir: { type: 'string', description: 'Path to spec directory (optional if attached)' },
+        detail: { type: 'string', enum: ['summary', 'full'], description: 'summary/default returns compact context; full returns all handoff summaries' },
+        handoff_limit: { type: 'number', description: 'Max handoff summaries in summary mode (default 5)' }
       }
     }
   },
@@ -164,6 +211,26 @@ export const TOOL_DEFINITIONS = [
         artifacts: { type: 'array', items: { type: 'string' }, description: 'Artifact paths to show in progress.md' },
         data: { type: 'object', description: 'Additional JSON fields to merge into the handoff' }
       }
+    }
+  },
+  {
+    name: 'loom_stage_checkpoint',
+    group: 'pipeline',
+    description: 'Compact stage checkpoint: write a stage handoff, refresh progress.md, optionally advance the pipeline, and return the next compact pipeline context in one call.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        spec_dir: { type: 'string', description: 'Path to spec directory (optional if attached)' },
+        stage: { type: 'string', description: 'Stage id, e.g. brainstorming/planning/executing/verification' },
+        status: { type: 'string', enum: HANDOFF_STATUSES, description: 'done | partial | blocked | failed', default: 'done' },
+        summary: { type: 'string', description: 'Short handoff summary' },
+        artifacts: { type: 'array', items: { type: 'string' }, description: 'Artifact paths to show in progress.md' },
+        data: { type: 'object', description: 'Additional JSON fields to merge into the handoff' },
+        advance: { type: 'boolean', description: 'When true, attempt to advance after writing the handoff' },
+        context_detail: { type: 'string', enum: ['summary', 'full'], description: 'summary/default returns compact context; full returns the engine context' },
+        handoff_limit: { type: 'number', description: 'Max handoff summaries in returned context (default 5)' }
+      },
+      required: ['stage']
     }
   },
   {
@@ -252,7 +319,8 @@ export const TOOL_DEFINITIONS = [
       type: 'object',
       properties: {
         skill: { type: 'string', description: 'Skill name (e.g. brainstorming, writing-plans). Omit for L0 summaries of all skills.' },
-        section: { type: 'string', description: 'Section title within a skill (e.g. 执行流程). Only valid when skill is specified.' }
+        section: { type: 'string', description: 'Section title within a skill (e.g. 执行流程). Only valid when skill is specified.' },
+        full: { type: 'boolean', description: 'Return the whole SKILL.md. Default false returns essentials only to save context.' }
       }
     }
   },
@@ -280,7 +348,7 @@ export const CAPABILITY_GROUPS = {
   pipeline: {
     title: '流水线（状态机）',
     when: '推进开发流程、查当前阶段该做什么、推进/审批/更新任务状态时。强调"状态感知"：先读 pipeline context 了解现状，再决定动作。',
-    tools: ['loom_get_project_status', 'loom_get_pipeline_context', 'loom_select_pipeline', 'loom_advance_pipeline', 'loom_approve_gate', 'loom_update_task_state', 'loom_write_handoff', 'loom_adjust_pipeline'],
+    tools: ['loom_get_project_status', 'loom_get_pipeline_context', 'loom_select_pipeline', 'loom_advance_pipeline', 'loom_approve_gate', 'loom_update_task_state', 'loom_write_handoff', 'loom_stage_checkpoint', 'loom_adjust_pipeline'],
   },
   memory: {
     title: '结构化记忆',
@@ -367,6 +435,10 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
     case 'loom_get_project_status': {
       const root = args.project_root || projectRoot;
       const allSpecs = scanAllSpecs(root, { fs: fsImpl });
+      const filteredSpecs = args.active_only
+        ? allSpecs.filter(s => s.pipeline?.current_stage !== 'synced' && s.pipeline?.current_stage !== 'done')
+        : allSpecs;
+      const limitedSpecs = limitArray(filteredSpecs, positiveInt(args.limit, DEFAULT_STATUS_LIMIT));
       // health checks
       const issues = [];
       const constPath = join(root, '.loom', 'rules', 'constitution.md');
@@ -380,15 +452,25 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
       }
       return {
         project_root: root,
-        active_pipelines: allSpecs.length,
-        pipelines: allSpecs.map(s => ({
-          spec_dir: s.spec_dir,
-          stage: s.pipeline?.current_stage,
-          pipeline_type: s.pipeline?.pipeline_type,
-          tasks_total: s.tasks.length,
-          tasks_done: s.tasks.filter(t => t.status === 'done').length,
-          updated_at: s.pipeline?.updated_at
-        })),
+        active_pipelines: filteredSpecs.length,
+        total_pipelines: allSpecs.length,
+        returned_pipelines: limitedSpecs.items.length,
+        truncated: limitedSpecs.truncated,
+        omitted_pipelines: limitedSpecs.omitted,
+        detail: args.detail === 'full' ? 'full' : 'summary',
+        pipelines: args.detail === 'full'
+          ? limitedSpecs.items
+          : limitedSpecs.items.map(s => ({
+            spec_dir: s.spec_dir,
+            stage: s.pipeline?.current_stage,
+            pipeline_type: s.pipeline?.pipeline_type,
+            tasks_total: s.tasks.length,
+            tasks_done: s.tasks.filter(t => t.status === 'done').length,
+            tasks_blocked: s.tasks.filter(t => t.status === 'blocked').length,
+            handoffs_total: s.handoffs.length,
+            updated_at: s.pipeline?.updated_at
+          })),
+        read_more_hint: limitedSpecs.truncated ? 'Pass a larger limit or detail:"full" only when needed.' : null,
         health_issues: issues
       };
     }
@@ -409,7 +491,8 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
         'Do not advance without producing required outputs',
         'Do not start the next stage before compressing closed-stage raw context',
       ];
-      return ctx;
+      if (args.detail === 'full') return { ...ctx, detail: 'full' };
+      return summarizePipelineContext(ctx, { handoffLimit: args.handoff_limit });
     }
 
     case 'loom_select_pipeline': {
@@ -486,6 +569,63 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
       }, fsImpl);
     }
 
+    case 'loom_stage_checkpoint': {
+      if (!specDir) return { error: 'No spec_dir' };
+      if (!args.stage) return { error: 'stage is required' };
+      const abs = safeResolveSpecDir(projectRoot, specDir);
+      return await withSpecLock(abs, () => {
+        const engine = new PipelineEngine(projectRoot, abs, { fs: fsImpl });
+        const initialCtx = engine.getStageContext();
+        if (!initialCtx) return { error: 'Pipeline not initialized' };
+        if (args.stage !== initialCtx.current_stage) {
+          return { error: `checkpoint stage "${args.stage}" does not match current stage "${initialCtx.current_stage}"` };
+        }
+
+        const store = new PipelineStateStore(abs, { fs: fsImpl });
+        const payload = {
+          ...(args.data || {}),
+          status: args.status || args.data?.status || 'done',
+          ...(args.summary ? { summary: args.summary } : {}),
+          ...(args.artifacts ? { artifacts: args.artifacts } : {})
+        };
+        store.writeStageHandoff(args.stage, payload);
+
+        const advance = args.advance ? engine.advance() : { ok: true, skipped: true };
+        const ctx = engine.getStageContext();
+        const currentStep = ctx ? engine.getSteps().find(s => s.id === ctx.current_stage) : null;
+        if (ctx) {
+          ctx.constraints = {
+            must_produce: currentStep?.outputs || [],
+            must_not_skip: currentStep?.skill ? [currentStep.skill] : [],
+            requires_files: currentStep?.requires || [],
+          };
+          ctx.forbidden_actions = [
+            'Do not skip the current stage skill',
+            'Do not advance without producing required outputs',
+            'Do not start the next stage before compressing closed-stage raw context',
+          ];
+        }
+
+        return {
+          ok: true,
+          path: `handoffs/${args.stage}.json`,
+          handoff_summary: {
+            stage: args.stage,
+            status: payload.status,
+            summary: payload.summary || null,
+            artifacts: payload.artifacts || []
+          },
+          advance,
+          context: ctx
+            ? (args.context_detail === 'full' ? { ...ctx, detail: 'full' } : summarizePipelineContext(ctx, { handoffLimit: args.handoff_limit }))
+            : null,
+          next_required_action: advance?.ok && !advance?.skipped
+            ? 'compress closed-stage raw context before starting the new stage'
+            : 'compress closed-stage raw context before advancing or starting the next stage'
+        };
+      }, fsImpl);
+    }
+
     case 'loom_adjust_pipeline': {
       if (!specDir) return { error: 'No spec_dir' };
       if (!args.new_remaining_steps?.length) return { error: 'new_remaining_steps is required and must not be empty' };
@@ -531,7 +671,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
           level: 'L0',
           total_skills: summaries.length,
           total_tokens: summaries.reduce((sum, s) => sum + s.tokens, 0),
-          hint: 'Call with skill name to get L1 full content, or skill + section for a single section.',
+          hint: 'Call with skill name to get essentials, skill + section for a single section, or full:true only when the whole skill is required.',
           skills: summaries,
         };
       }
@@ -549,7 +689,13 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
         return { level: 'L1', ...section };
       }
 
-      // 有 skill 无 section → L1 完整 skill
+      if (!args.full) {
+        const essentials = loader.getSkillEssentials(args.skill);
+        if (!essentials) return { error: `Skill not found: ${args.skill}. Call without args to list all skills.` };
+        return { level: 'L0.5', ...essentials };
+      }
+
+      // 显式 full:true → L1 完整 skill
       const full = loader.getFullSkill(args.skill);
       if (!full) return { error: `Skill not found: ${args.skill}. Call without args to list all skills.` };
       return { level: 'L1', ...full };

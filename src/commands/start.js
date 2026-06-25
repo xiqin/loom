@@ -200,7 +200,7 @@ function printPaste({ projectRoot, issues, activeSpecs, memorySummary, constitut
       const label = s.description || s.name;
       lines.push(`  · ${s.name} — ${label}`);
     }
-    lines.push('  获取完整内容: loom_get_skill_context(skill="技能名")');
+    lines.push('  读取方式: loom_get_skill_context(skill="技能名") 先取摘要；加 section 按节取；必要时 full:true 取全文。');
   }
 
   lines.push('');

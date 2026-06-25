@@ -126,6 +126,16 @@ export class OpenCodeAdapter extends BaseAdapter {
     if (!config.mcp) config.mcp = {};
 
     if (config.mcp.loom) {
+      if (config.mcp.loom.env) {
+        config.mcp.loom.environment = {
+          ...config.mcp.loom.env,
+          ...(config.mcp.loom.environment || {}),
+        };
+        delete config.mcp.loom.env;
+        mkdirSync(dirname(configPath), { recursive: true });
+        writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+        log.push('  mcp: migrated loom env to environment in opencode.json');
+      }
       log.push('  mcp: loom server already configured');
       return;
     }
@@ -134,7 +144,7 @@ export class OpenCodeAdapter extends BaseAdapter {
       type: 'local',
       command: ['loom', 'mcp-serve'],
       enabled: true,
-      env: { LOOM_LAZY_TOOLS: '1' },
+      environment: { LOOM_LAZY_TOOLS: '1' },
     };
 
     mkdirSync(dirname(configPath), { recursive: true });

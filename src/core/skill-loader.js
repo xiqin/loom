@@ -179,6 +179,34 @@ export class SkillLoader {
   }
 
   /**
+   * 获取单个 skill 的执行摘要，不返回完整正文。
+   * 用于 MCP 默认路径，避免一次取 skill 就把整篇 SKILL.md 注入上下文。
+   * @param {string} skillName
+   * @returns {{name, description, sections, triggers, tokens, full_tokens, read_hints}|null}
+   */
+  getSkillEssentials(skillName) {
+    const summary = this.getSummary(skillName);
+    if (!summary) return null;
+
+    const payload = {
+      name: summary.name,
+      description: summary.description,
+      sections: summary.sections,
+      triggers: summary.triggers,
+      full_tokens: summary.tokens,
+      read_hints: {
+        preferred: 'Call with section to read only the needed section.',
+        full: 'Pass full: true only when the whole skill is required.'
+      }
+    };
+
+    return {
+      ...payload,
+      tokens: estimateTokens(JSON.stringify(payload))
+    };
+  }
+
+  /**
    * 获取单个 skill 的 L1 完整内容。
    * @param {string} skillName  skill 名称
    * @returns {{name, description, content, tokens}|null}
