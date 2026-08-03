@@ -16,6 +16,7 @@ loom/
 │   │   ├── update.js       # loom update
 │   │   ├── doctor.js       # loom doctor
 │   │   ├── list.js         # loom list
+│   │   ├── issue.js        # loom issue import
 │   │   ├── run.js          # loom run（流水线执行引擎）
 │   │   ├── select.js      # loom select（AI 自主流程选择）
 │   │   ├── status.js       # loom status（流水线状态）
@@ -23,6 +24,10 @@ loom/
 │   │   ├── dashboard.js    # loom dashboard（团队 HTML 看板）
 │   │   ├── plugins.js      # loom plugins list / plan / marketplace-template / marketplace-sync（生态扩展）
 │   │   ├── tasks.js        # loom tasks（任务并行批次分析）
+│   │   ├── handoff.js      # loom handoff write
+│   │   ├── finalize.js     # loom finalize（完成报告生成）
+│   │   ├── pr.js           # loom pr evidence
+│   │   ├── policy.js       # loom policy check
 │   │   ├── index.js        # loom index（codegraph 委派；无 codegraph 时跳过）
 │   │   ├── start.js        # loom start（输出可粘贴的项目状态）
 │   │   ├── memory.js       # loom memory（结构化记忆）
@@ -45,6 +50,13 @@ loom/
 │   │   ├── context-index.js      — 上下文文件分节
 │   │   ├── compliance-tracker.js — Skill 质量度量
 │   │   ├── evidence-store.js     — compliance history 规范化证据视图、趋势指标
+│   │   ├── implementation-packets.js — 实现包生成与校验
+│   │   ├── fingerprints.js       — 产物指纹
+│   │   ├── evaluators.js         — 验证裁决解析
+│   │   ├── traceability.js       — traceability 账本读写
+│   │   ├── spec-dir.js           — spec 目录发现与解析
+│   │   ├── requirements.js       — requirements 账本读写
+│   │   ├── receipts.js           — 收据生成
 │   │   ├── lock.js               — 文件锁
 │   │   ├── installer.js          — 安装器
 │   │   ├── failure-diagnostics.js — 失败诊断
@@ -57,6 +69,10 @@ loom/
 │   ├── hooks.schema.json   # Hook 系统定义
 │   ├── pipeline.schema.json # 流水线状态机
 │   ├── review.schema.json  # 审查框架
+│   ├── requirements.schema.json # 需求账本
+│   ├── traceability.schema.json # 可追溯账本
+│   ├── receipt.schema.json  # 收据格式
+│   ├── finding.schema.json  # 审查发现格式
 │   ├── templates.schema.json # 模板定义
 │   ├── model-selection.schema.json # 模型选择策略
 │   └── shared-rules.json   # 共享规则定义
@@ -103,8 +119,9 @@ bin/loom.js → src/cli.js → src/commands/*.js
 | ---------- | -------------------------------------------------- |
 | 项目初始化 | `init-project`                                     |
 | 安装管理   | `install` / `update` / `uninstall`                 |
-| 诊断       | `doctor` / `list`                                  |
-| 执行引擎   | `run` / `select` / `status` / `evidence` / `dashboard` / `tasks` / `index` / `start` |
+| 诊断       | `doctor` / `list` / `start` / `policy`             |
+| 执行引擎   | `run` / `select` / `status` / `evidence` / `dashboard` / `tasks` / `index` / `handoff write` / `finalize` |
+| 协作集成   | `issue import` / `pr evidence`                     |
 | 生态扩展   | `plugins list` / `plugins plan` / `plugins marketplace-template` / `plugins marketplace-sync` |
 | 结构化记忆 | `memory add\|list\|export\|merge\|remove\|archive` |
 | MCP        | `mcp-serve`                                        |

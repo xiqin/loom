@@ -77,7 +77,7 @@ loom 框架支持多级自定义：
 .loom/skills/
   my-custom-skill/
     SKILL.md
-    REFERENCE/
+    references/
       custom-reference.md
 ```
 

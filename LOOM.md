@@ -26,14 +26,14 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 1. 安装 loom 框架（参见 `docs/installation.md`）
 2. 首次使用请运行 `/loom-init-project` 扫描项目并生成配置
 3. 使用 `/loom-brainstorm` 开始需求分析，生成 `specs/<date+feature>/spec.md`
-4. 使用 `/loom-write-plan` 拆解实现计划，生成 `plan.md`
-5. 使用 `/loom-execute-plan` 派发 subagent 执行编码
-6. 编码完成后依次触发对抗审查（code-review-request → review-gate → code-review-response）和 index-update 同步 codegraph 和结构化记忆
+4. 使用 `loom-writing-plans` 拆解实现计划，生成 `plan.md`
+5. 使用 `loom-subagent-driven-development` 派发 subagent 执行编码
+6. 编码完成后依次触发代码审查（requesting-code-review → receiving-code-review）和 index-update，同步 codegraph 与结构化记忆
 
 ## Skills 清单
 
 <!-- loom:generate:skills-catalog -->
-11 流水线 + 4 辅助 + 7 通用 + 1 测试 Skill，共 22 个
+10 流水线 + 4 辅助 + 7 通用 + 1 测试 Skill，共 22 个
 
 **核心流水线 Skills：**
 
@@ -94,7 +94,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 
 代码变更后同步更新：
 
-1.  — 新增/删除了模块、路由、控制器、服务
+1.  `docs/architecture.md` / `docs/project-overview.md` — 新增/删除了模块、路由、控制器、服务
 2.  `.loom/memory/MEMORY.md` — 踩坑、用户偏好、变更要点
 3.  `{{ENTRY_FILE}}` — 引入了新的约定或命令
 

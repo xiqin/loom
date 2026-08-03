@@ -155,13 +155,13 @@ description: loom 全部技能快速参考
 skills/
   <skill-name>/
     SKILL.md          # 必需：skill 主文件
-    REFERENCE/        # 可选：参考文件
+    references/       # 可选：参考文件
       *.md
 ```
 
 ## 结构化账本与收据 CLI
 
-除各 skill 外，`scripts/` 提供 5 个独立 CLI 用于主动生成 / 校验结构化产物：
+除各 skill 外，`scripts/` 提供 3 个独立 CLI 用于主动生成 / 校验结构化产物：
 
 | CLI | npm script | 用途 |
 | --- | --- | --- |
@@ -169,7 +169,7 @@ skills/
 | `scripts/traceability-json.mjs` | `traceability:generate` / `traceability:check` | 从 `requirements.json` + `tasks/` 生成 `traceability.json`；校验 REQ / behavior 到 task / test / evidence 闭环 |
 | `scripts/implementation-packets.mjs` | `packets:generate` / `packets:check` | 为单个 task 生成冻结的 `implementation-packets/T*.json`；校验 packet 是否 stale |
 
-4 个新 skill 各自带 `scripts/*.mjs`（详见各 skill 目录），可独立运行做只读分析。收据（`receipts/`）由 `src/core/receipts.js` 的 `buildReceipt` / `writeReceipt` 生成，绑定 `git_tree` / `git_commit` / `diff_sha256`。
+带 `scripts/*.mjs` 的 skill 可独立运行做只读分析或校验，详见各 skill 目录。收据（`receipts/`）由 `src/core/receipts.js` 的 `buildReceipt` / `writeReceipt` 生成，绑定 `git_tree` / `git_commit` / `diff_sha256`。
 
 > `config/*.schema.json` 仅作为文档与测试 fixture 保留，skill 运行时不依赖；校验逻辑硬编码在各 skill 的 `scripts/*.mjs` 与 `src/core/*.js` 中。
 

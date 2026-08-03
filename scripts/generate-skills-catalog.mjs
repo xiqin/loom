@@ -143,9 +143,8 @@ function generateFullCatalog() {
 }
 
 function generateSummaryCatalog() {
-  const { totalSteps } = loadPipelineSteps();
   let md = '';
-  md += `${totalSteps} 流水线 + ${AUX_SKILLS.length} 辅助 + ${GENERAL_SKILLS.length} 通用 + ${QA_SKILLS.length} 测试 Skill，共 ${PIPELINE_SKILLS.length + AUX_SKILLS.length + GENERAL_SKILLS.length + QA_SKILLS.length} 个\n\n`;
+  md += `${PIPELINE_SKILLS.length} 流水线 + ${AUX_SKILLS.length} 辅助 + ${GENERAL_SKILLS.length} 通用 + ${QA_SKILLS.length} 测试 Skill，共 ${PIPELINE_SKILLS.length + AUX_SKILLS.length + GENERAL_SKILLS.length + QA_SKILLS.length} 个\n\n`;
   md += `**核心流水线 Skills：**\n\n`;
   md += `| Skill                               | 输出                           | 说明                                               |\n`;
   md += `| ----------------------------------- | ------------------------------ | -------------------------------------------------- |\n`;

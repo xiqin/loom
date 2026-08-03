@@ -22,7 +22,7 @@ AI 工程化框架。把需求、规范、上下文、执行过程"织"成一套
 | OpenCode       | full     | `AGENTS.md`                       | ✅     | ✅    | ✅     | ✅       |
 
 - **full**：完整支持，适配器已实现
-- **Hooks**：当前完整 hook 运行时主要由 Claude Code 插件接入；OpenCode 适配器已注册插件和 MCP，但 `config/tools.schema.json` 中仍标记 `hooksSupport: false`，后续生命周期扩展见 `docs/evolution-roadmap.md`
+- **Hooks**：Claude Code 通过插件接入完整 hook 运行时；OpenCode 适配器已注册插件和 MCP，原生事件 hook 的运行时扩展仍以 `config/tools.schema.json` 的适配器契约为准。
 - **适配器契约**：工具能力、安装范围、配置面、loom-managed 产物和版本探测方式以 `config/tools.schema.json` 的 `contract` 为单一源，并生成到 `src/generated/tooling.js` 的 `ADAPTER_CONTRACTS`；`loom doctor` 会基于契约输出一致性和版本诊断
 
 ## 安装
@@ -261,10 +261,10 @@ npm run traceability:check -- --spec-dir specs/feat --required
 | 变更影响范围 | 本次变更的函数、接口、类型是否被其他模块引用（codegraph 可用时查 codegraph_impact/codegraph_callers，否则用源码搜索补充判断）、公开接口的参数签名是否变化（新增必填参数、删除字段、类型变更） |
 <!-- /loom:generate:review-summary -->
 
-## Skills（18 个）
+## Skills（22 个）
 
 <!-- loom:generate:skills-catalog -->
-11 流水线 + 4 辅助 + 7 通用 + 1 测试 Skill，共 22 个
+10 流水线 + 4 辅助 + 7 通用 + 1 测试 Skill，共 22 个
 
 **核心流水线 Skills：**
 

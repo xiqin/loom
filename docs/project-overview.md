@@ -1,7 +1,7 @@
 # Loom 项目架构文档与阅读指南
 
 > 本文档整合 `docs/architecture.md` 与 `docs/system-design.md`，并补充一份分层阅读路线，供新接触本仓库的人快速上手。
-> 版本基准：`package.json@2.4.0`（运行时 `Node.js >= 22`，ESM）。
+> 版本基准：`package.json@3.0.3`（运行时 `Node.js >= 22`，ESM）。
 
 ---
 
@@ -24,19 +24,19 @@ loom/
 ├── bin/loom.js              CLI 入口（shebang，转发到 src/cli.js）
 ├── src/
 │   ├── cli.js               commander 命令注册（动态 import 懒加载子命令）
-│   ├── commands/            21 个 CLI 子命令实现（一文件一命令）
-│   ├── core/                16 个核心模块（状态机、存储、锁、加载器…）
+│   ├── commands/            22 个 CLI 子命令实现（一文件一命令）
+│   ├── core/                22 个核心模块（状态机、存储、锁、加载器…）
 │   ├── adapters/            8 个工具适配器（base + 5 个后端 + cursor-converter + config-utils）
 │   ├── mcp/                 MCP server（server/tools/session-store/telemetry）
 │   └── generated/tooling.js 从 tools.schema.json 自动生成
-├── config/                  7 个 JSON Schema / 规则定义（驱动机器与生成）
-├── skills/                  18 个 Skill 目录（每个含 SKILL.md + 可选 references/assets/scripts）
+├── config/                  11 个 JSON Schema / 规则定义（驱动机器与生成）
+├── skills/                  22 个 Skill 目录（每个含 SKILL.md + 可选 references/assets/scripts）
 ├── commands/                （发布时用于落地的命令目录，当前仅 .gitkeep）
 ├── hooks/                   Hook 系统：hooks.json + run-hook.js + handlers/
 ├── templates/               项目初始化模板（constitution/memory/agents/product/subagent-context）
 ├── scripts/                 构建/生成脚本与公共 shell/ps1
 ├── tests/                   测试套件（unit/integration/e2e/adapters/commands/hooks/scripts/skills）
-├── docs/                     已有 10 篇文档（架构、系统设计、安装、技能参考…）
+├── docs/                    13 篇文档（架构、系统设计、安装、技能参考…）
 ├── .claude-plugin/, .claude/, .codegraph/  各工具的本地元数据/索引
 ├── plugin.mjs                插件入口（被 Claude Code / OpenCode 加载）
 ├── install.sh / install.ps1 / uninstall.*  一键安装/卸载脚本
@@ -75,7 +75,7 @@ loom/
 ┌───────▼───────────┐            ┌──────────▼──────────┐
 │   MCP Server 层    │            │      CLI 层          │
 │  server/tools/     │            │  cli.js(commander)  │
-│  session-store/    │            │  commands/*.js(15)   │
+│  session-store/    │            │  commands/*.js(22)   │
 │  telemetry         │            │                     │
 └───────┬───────────┘            └──────────┬──────────┘
         │                                    │
@@ -202,8 +202,9 @@ brainstorming → planning → approved(gate) → git-worktree → executing
 |------|------|
 | 项目初始化 | `init-project` |
 | 安装管理 | `install` / `update` / `uninstall` |
-| 诊断 | `doctor` / `list` / `start` |
-| 执行引擎 | `run` / `select` / `status` / `evidence` / `dashboard` / `tasks` / `index` / `handoff write` |
+| 诊断 | `doctor` / `list` / `start` / `policy` |
+| 执行引擎 | `run` / `select` / `status` / `evidence` / `dashboard` / `tasks` / `index` / `handoff write` / `finalize` |
+| 协作集成 | `issue import` / `pr evidence` |
 | 结构化记忆 | `memory add\|list\|export\|merge\|remove\|archive` |
 | 生态扩展 | `plugins list` / `plugins plan` / `plugins marketplace-template` / `plugins marketplace-sync` |
 | MCP | `mcp-serve` |
@@ -226,15 +227,15 @@ brainstorming → planning → approved(gate) → git-worktree → executing
 
 ---
 
-## 7. Skills 体系（18 个）
+## 7. Skills 体系（22 个）
 
 ```
-6 流水线 + 4 辅助 + 7 通用 + 1 QA = 18 个 skill
+10 流水线 + 4 辅助 + 7 通用 + 1 测试 = 22 个 skill
 ```
 
 | 类别 | Skill |
 |------|-------|
-| 流水线 | brainstorming · writing-plans · using-git-worktrees · subagent-driven-development · verification-before-completion · index-update |
+| 流水线 | brainstorming · detail-expansion · writing-plans · analyze-artifacts · using-git-worktrees · subagent-driven-development · converge · omission-hunter · verification-before-completion · index-update |
 | 辅助 | init-project · router · pipeline-selector · using-loom |
 | 通用 | test-driven-development · systematic-debugging · requesting-code-review · receiving-code-review · dispatching-parallel-agents · writing-skills · finishing-a-development-branch |
 | 测试 | qa |
