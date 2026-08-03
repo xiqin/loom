@@ -213,7 +213,7 @@ export default async function run(options) {
       const selector = new PipelineSelector(cwd, absSpecDir);
       const selection = await selector.select(request);
       const ids = selection.steps.map(s => s.id);
-      console.log(`\n  ✓ Selected via ${selection.source} (risk: ${selection.risk})`);
+      console.log(`\n  ✓ Selected via ${selection.source} (risk: ${selection.risk}, governance: ${selection.governance})`);
       console.log(`  Steps: ${ids.join(' → ')}`);
       console.log(`  Reason: ${selection.reasoning}`);
       const initResult = engine.initialize(null, { dynamicSteps: selection.steps });

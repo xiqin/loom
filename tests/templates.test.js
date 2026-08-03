@@ -135,18 +135,28 @@ describe('template schema', () => {
     expect(missing).toEqual([]);
   });
 
-  it('keeps detail skills declared in step_catalog with mandatory flag', () => {
+  it('keeps detail skills declared in step_catalog for structured governance', () => {
     const workflow = yaml.load(readFileSync(join(ROOT, 'templates', 'workflow.yaml'), 'utf8'));
     const catalog = workflow.step_catalog || {};
     const detailSkills = ['detail-expansion', 'analyze-artifacts', 'converge'];
     for (const id of detailSkills) {
       expect(catalog[id], `step_catalog should declare ${id}`).toBeDefined();
-      expect(catalog[id].mandatory, `step_catalog.${id} should be mandatory`).toBe(true);
+      expect(catalog[id].mandatory_for, `step_catalog.${id} should be mandatory for structured governance`)
+        .toContain('structured');
       expect(catalog[id].skill, `step_catalog.${id} should have skill`).toBe(`loom-${id.replace('-', '-')}`);
       expect(catalog[id].validators, `step_catalog.${id} should declare validators`).toBeDefined();
     }
     const convergeDesc = String(catalog.converge?.description || '');
     expect(convergeDesc, 'converge description should reference omission-hunter').toContain('omission-hunter');
+  });
+
+  it('documents the assessment-first selector architecture', () => {
+    const agents = readFileSync(join(ROOT, 'templates', 'agents.md'), 'utf8');
+    expect(agents).toContain('supplied assessment');
+    expect(agents).toContain('AI assessment');
+    expect(agents).toContain('确定性');
+    expect(agents).not.toContain('AI fallback');
+    expect(agents).not.toContain('从 `step_catalog` 选步骤');
   });
 
   it('documents structured requirement dimensions in the brainstorming template', () => {

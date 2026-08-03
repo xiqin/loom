@@ -23,7 +23,7 @@ export default async function select(options) {
   }
 
   const { path } = selector.writePipelinePlan(selection);
-  console.log(`\n  ✓ 选择完成（${selection.source}, 风险: ${selection.risk}）`);
+  console.log(`\n  ✓ 选择完成（${selection.source}, 风险: ${selection.risk}, 治理: ${selection.governance}）`);
   console.log(`  Steps: ${ids.join(' → ')}`);
   console.log(`  Plan:  ${path}`);
   console.log(`\n  确认方案：loom run --spec-dir ${options.specDir} --approve-pipeline\n`);

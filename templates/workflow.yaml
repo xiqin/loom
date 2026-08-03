@@ -447,7 +447,7 @@ step_catalog:
     validators: [detail-expansion-pass]
     description: "按 15 维度展开 behavior 强制清单，补齐 test_plan 与 applicability"
     skip_when: "无 spec/requirements.json（如纯配置类 quickfix/chore）"
-    mandatory: true
+    mandatory_for: [structured]
 
   planning:
     skill: loom-writing-plans
@@ -464,7 +464,7 @@ step_catalog:
     validators: [artifact-analysis-pass]
     description: "planning 后审批前跨产物一致性只读分析"
     skip_when: "无 spec/requirements.json 的轻量流程"
-    mandatory: true
+    mandatory_for: [structured]
 
   git-worktree:
     skill: loom-using-git-worktrees
@@ -490,7 +490,7 @@ step_catalog:
     validators: [convergence-pass]
     description: "executing 后 verification 前对照意图清单，missing/partial 回流 executing，内部调用 omission-hunter"
     skip_when: "无 spec/requirements.json 的轻量流程"
-    mandatory: true
+    mandatory_for: [structured]
 
   verification:
     skill: loom-verification-before-completion
@@ -540,7 +540,22 @@ selection_rules:
 
   # 规则短路：明确信号 → 直接返回固定 pipeline，0 token
   short_circuits:
+    - name: hotfix
+      governance: standard
+      match:
+        keywords_any: [生产紧急, 线上故障, P0, hotfix, 紧急修复, 线上报警]
+      steps: [approved, executing, verification]
+
+    - name: bugfix-no-brainstorm
+      governance: standard
+      match:
+        keywords_any: [bug, 修复, fix, 缺陷]
+        has_root_cause: true
+        file_scope_max: 5
+      steps: [planning, approved, executing, verification, code-review-request, review-gate, code-review-response, synced]
+
     - name: quickfix
+      governance: lightweight
       match:
         keywords_any: [typo, 错别字, 单文件, 小修复, 小改动, 文案]
         file_scope_max: 1
@@ -550,24 +565,13 @@ selection_rules:
       skip_mandatory: true
 
     - name: chore
+      governance: lightweight
       match:
         keywords_any: [依赖升级, npm update, npm install, 配置调整, bump version, 依赖更新, package.json]
       steps: [executing, verification]
       skip_closure: true
       skip_gate: true
       skip_mandatory: true
-
-    - name: hotfix
-      match:
-        keywords_any: [生产紧急, 线上故障, P0, hotfix, 紧急修复, 线上报警]
-      steps: [approved, executing, verification]
-
-    - name: bugfix-no-brainstorm
-      match:
-        keywords_any: [bug, 修复, fix, 缺陷]
-        has_root_cause: true
-        file_scope_max: 5
-      steps: [planning, approved, executing, verification, code-review-request, review-gate, code-review-response, synced]
 
   # 风险等级 → 推荐策略
   risk_profiles:

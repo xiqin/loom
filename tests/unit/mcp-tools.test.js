@@ -662,6 +662,16 @@ describe('loom_get_skill_context', () => {
 });
 
 describe('loom_select_pipeline tool', () => {
+  it('requires complete assessment facts in the tool schema', () => {
+    const tool = TOOL_DEFINITIONS.find(item => item.name === 'loom_select_pipeline');
+    const schema = tool.inputSchema.properties.assessment;
+    expect(schema.required).toEqual([
+      'runtimeBehavior', 'dataImpact', 'securityImpact', 'deploymentImpact',
+      'publicApiImpact', 'dependencyImpact', 'scope', 'changeKind', 'confidence', 'evidence'
+    ]);
+    expect(schema.properties.scope.required).toEqual(['fileCount', 'moduleCount', 'crossModule']);
+  });
+
   function setupProjectRoot() {
     const root = tmp();
     mkdirSync(join(root, '.loom'), { recursive: true });
@@ -685,17 +695,73 @@ describe('loom_select_pipeline tool', () => {
     expect(existsSync(statePath)).toBe(false);
   });
 
+  it('accepts assessment and returns code-derived risk, governance, and steps', async () => {
+    const root = setupProjectRoot();
+    const store = new SessionStore();
+    const r = await executeToolCall('loom_select_pipeline', {
+      request: '生成脱敏配置样例并更新 .gitignore',
+      project_root: root,
+      assessment: {
+        runtimeBehavior: 'none',
+        dataImpact: 'none',
+        securityImpact: 'none',
+        deploymentImpact: 'none',
+        publicApiImpact: 'none',
+        dependencyImpact: 'none',
+        scope: { fileCount: 5, moduleCount: 1, crossModule: 'no' },
+        changeKind: 'chore',
+        confidence: 'high',
+        evidence: ['不修改运行逻辑']
+      }
+    }, store, 's1');
+    expect(r).toMatchObject({
+      source: 'supplied-assessment',
+      risk: 'low',
+      governance: 'lightweight'
+    });
+    expect(r.steps.map(step => step.id)).toEqual(['executing', 'verification']);
+  });
+
+  it('does not let an incomplete assessment override request short circuits', async () => {
+    const root = setupProjectRoot();
+    const store = new SessionStore();
+    const r = await executeToolCall('loom_select_pipeline', {
+      request: '修复 README 里的 typo',
+      project_root: root,
+      assessment: {}
+    }, store, 's1');
+    expect(r.source).toBe('short-circuit:quickfix');
+  });
+
   it('initializes with dynamic_steps when initialize=true', async () => {
     const root = setupProjectRoot();
     const specDir = join(root, 'specs', 'feat');
     mkdirSync(specDir, { recursive: true });
     const store = new SessionStore();
     const r = await executeToolCall('loom_select_pipeline',
-      { request: '重构状态管理，跨模块改动', spec_dir: 'specs/feat', project_root: root, initialize: true },
+      {
+        request: '新增跨模块功能',
+        spec_dir: 'specs/feat',
+        project_root: root,
+        initialize: true,
+        assessment: {
+          runtimeBehavior: 'changed',
+          dataImpact: 'none',
+          securityImpact: 'none',
+          deploymentImpact: 'none',
+          publicApiImpact: 'none',
+          dependencyImpact: 'none',
+          scope: { fileCount: 5, moduleCount: 2, crossModule: 'yes' },
+          changeKind: 'feature',
+          confidence: 'high',
+          evidence: ['跨模块新增功能']
+        }
+      },
       store, 's1');
     expect(r.initialized).toBe(true);
     expect(r.state.dynamic_steps).toBeDefined();
     expect(r.state.dynamic_steps.length).toBeGreaterThan(0);
+    expect(r.state.dynamic_steps.map(step => step.id)).toContain('converge');
   });
 
   it('errors on missing request', async () => {

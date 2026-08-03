@@ -257,8 +257,13 @@ function checkReviewFeedbackApproval(specDir, currentStep, fs) {
 
 function checkApprovalFreshness(state, specDir, projectRoot, fs) {
   const stale = [];
+  const latestApprovals = new Map();
   for (const entry of state?.stage_history || []) {
     if (!entry.approval_fingerprints) continue;
+    latestApprovals.set(entry.stage, entry);
+  }
+
+  for (const entry of latestApprovals.values()) {
     const changes = compareFingerprints(entry.approval_fingerprints, { specDir, projectRoot, fs });
     if (changes.length > 0) stale.push({ stage: entry.stage, changes });
   }

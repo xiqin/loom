@@ -1,10 +1,7 @@
 /**
- * pipeline-selector.js — AI 自主流程选择
+ * pipeline-selector.js — 结构化事实驱动的流程选择
  *
- * 三段决策：
- *   1. 规则短路：明确关键词信号 → 固定 pipeline，0 token
- *   2. AI fallback：信号模糊 → 调 AI（可选注入 aiClient）
- *   3. 规则兜底：AI 未注入或失败 → 按风险等级生成基础流程
+ * AI 或调用方只提供工程事实；风险、治理级别和步骤由代码策略决定。
  *
  * 输出经 _validateAndFix 校验：依赖闭包、护栏、gate。
  * 返回步骤对象数组，与 pipeline-engine.getSteps() 返回结构兼容。
@@ -20,6 +17,20 @@ const RISK_KEYWORDS = {
   medium: ['多文件', '新功能', 'feature', '依赖', 'integration', '集成'],
   low: ['typo', '错别字', '单文件', '配置', '文档', '小修复']
 };
+
+const IMPACT_VALUES = {
+  runtimeBehavior: ['none', 'changed', 'unknown'],
+  dataImpact: ['none', 'changed', 'migration', 'destructive', 'unknown'],
+  securityImpact: ['none', 'changed', 'unknown'],
+  deploymentImpact: ['none', 'changed', 'unknown'],
+  publicApiImpact: ['none', 'changed', 'unknown'],
+  dependencyImpact: ['none', 'changed', 'unknown']
+};
+
+const CHANGE_KINDS = ['feature', 'bugfix', 'refactor', 'chore', 'hotfix', 'unknown'];
+const CONFIDENCE_VALUES = ['high', 'medium', 'low'];
+const CROSS_MODULE_VALUES = ['yes', 'no', 'unknown'];
+const IMPACT_FIELDS = Object.keys(IMPACT_VALUES);
 
 const ROOT_CAUSE_RE = /根因|root\s*cause|已定位|定位到|根因明确/i;
 
@@ -77,12 +88,30 @@ export class PipelineSelector {
    * @param {string} userRequest
    * @returns {Promise<{ steps: object[], source: string, reasoning: string, risk: string, signals: object }>}
    */
-  async select(userRequest) {
+  async select(userRequest, suppliedAssessment = null) {
     const signals = this._collectSignals(userRequest);
+
+    if (this._isCompleteAssessment(suppliedAssessment)) {
+      return this._selectionFromAssessment(suppliedAssessment, signals, 'supplied-assessment');
+    }
+
+    if (this.aiClient) {
+      try {
+        const aiAssessment = await this._aiAssess(userRequest, signals);
+        if (this._isCompleteAssessment(aiAssessment)) {
+          return this._selectionFromAssessment(aiAssessment, signals, 'ai-assessment');
+        }
+      } catch {
+        // AI 失败后继续走兼容短路和保守兜底。
+      }
+    }
 
     const sc = this._matchShortCircuit(signals);
     if (sc) {
-      const steps = this._validateAndFix(sc.steps, signals, {
+      const risk = sc.name === 'hotfix' ? 'high' : this._assessLegacyRisk(signals);
+      const governance = sc.governance || (sc.name === 'hotfix' ? 'standard' : 'lightweight');
+      const policySignals = { ...signals, risk, governance, profile: sc.name };
+      const steps = this._validateAndFix(sc.steps, policySignals, {
         skipClosure: sc.skip_closure === true,
         skipGate: sc.skip_gate === true,
         skipMandatory: sc.skip_mandatory === true
@@ -91,37 +120,52 @@ export class PipelineSelector {
         steps,
         source: `short-circuit:${sc.name}`,
         reasoning: `命中关键词规则: ${sc.name}`,
-        risk: this._assessRisk(signals),
-        signals
+        risk,
+        governance,
+        assessment: null,
+        signals: policySignals
       };
     }
 
-    if (this.aiClient) {
-      try {
-        const aiPlan = await this._aiSelect(userRequest, signals);
-        if (aiPlan?.steps?.length) {
-          const steps = this._validateAndFix(aiPlan.steps, signals);
-          return {
-            steps,
-            source: 'ai',
-            reasoning: aiPlan.reasoning || 'AI 选择',
-            risk: this._assessRisk(signals),
-            signals
-          };
-        }
-      } catch {
-        // AI 失败 → 走兜底
-      }
-    }
-
     const fb = this._ruleBasedFallback(signals);
-    const steps = this._validateAndFix(fb.steps, signals);
+    const policySignals = { ...signals, risk: fb.risk, governance: fb.governance };
+    const steps = this._validateAndFix(fb.steps, policySignals);
     return {
       steps,
       source: `fallback:${fb.name}`,
       reasoning: fb.reasoning,
       risk: fb.risk,
-      signals
+      governance: fb.governance,
+      assessment: this._normalizeAssessment(null),
+      signals: policySignals
+    };
+  }
+
+  _selectionFromAssessment(input, signals, source) {
+    const assessment = this._normalizeAssessment(input);
+    const risk = this._assessRiskFromAssessment(assessment);
+    const hotfix = assessment.changeKind === 'hotfix' || this._matchShortCircuit(signals)?.name === 'hotfix';
+    const governance = hotfix && risk !== 'high'
+      ? 'standard'
+      : this._assessGovernance(assessment, risk);
+    const hotfixProfile = hotfix && governance !== 'structured';
+    const policySignals = { ...signals, risk, governance, profile: hotfixProfile ? 'hotfix' : governance };
+    const selectedIds = hotfixProfile
+      ? ['approved', 'executing', 'verification']
+      : this._selectByPolicy(governance, policySignals);
+    const steps = this._validateAndFix(selectedIds, policySignals, {
+      skipClosure: governance === 'lightweight',
+      skipGate: governance === 'lightweight',
+      skipMandatory: governance === 'lightweight'
+    });
+    return {
+      steps,
+      source,
+      reasoning: this._buildPolicyReasoning(assessment, risk, governance),
+      risk,
+      governance,
+      assessment,
+      signals: policySignals
     };
   }
 
@@ -133,7 +177,7 @@ export class PipelineSelector {
       rawText: userRequest || '',
       keywords: this._extractKeywords(text),
       fileScope: this._estimateFileScope(text),
-      moduleCount: 0,
+      moduleCount: null,
       hasTestsImpact: /test|测试/.test(text),
       hasSpecExists: this._specExists(),
       hasSpecAndReqs: this._specAndReqsExist(),
@@ -160,7 +204,7 @@ export class PipelineSelector {
     if (/单文件|single\s*file|typo|错别字/.test(text)) return 1;
     if (/跨模块|跨服务|architecture|架构/.test(text)) return 10;
     if (/多文件|多模块|multi/.test(text)) return 5;
-    return 3;
+    return null;
   }
 
   _specExists() {
@@ -210,8 +254,10 @@ export class PipelineSelector {
       );
       if (!hit) return false;
     }
-    if (match.file_scope_max != null && signals.fileScope > match.file_scope_max) {
-      return false;
+    if (match.file_scope_max != null) {
+      if (!Number.isInteger(signals.fileScope) || signals.fileScope > match.file_scope_max) {
+        return false;
+      }
     }
     if (match.has_root_cause != null && signals.hasRootCause !== match.has_root_cause) {
       return false;
@@ -219,117 +265,140 @@ export class PipelineSelector {
     return true;
   }
 
-  // ── 风险评估 ─────────────────────────────────────────────
+  // ── Assessment、风险与治理 ───────────────────────────────
 
-  _assessRisk(signals) {
+  _normalizeAssessment(input) {
+    const value = input && typeof input === 'object' ? input : {};
+    const normalized = {};
+    for (const field of IMPACT_FIELDS) {
+      normalized[field] = IMPACT_VALUES[field].includes(value[field]) ? value[field] : 'unknown';
+    }
+    const scope = value.scope && typeof value.scope === 'object' ? value.scope : {};
+    normalized.scope = {
+      fileCount: this._normalizeCount(scope.fileCount),
+      moduleCount: this._normalizeCount(scope.moduleCount),
+      crossModule: CROSS_MODULE_VALUES.includes(scope.crossModule) ? scope.crossModule : 'unknown'
+    };
+    normalized.changeKind = CHANGE_KINDS.includes(value.changeKind) ? value.changeKind : 'unknown';
+    normalized.confidence = CONFIDENCE_VALUES.includes(value.confidence) ? value.confidence : 'low';
+    normalized.evidence = Array.isArray(value.evidence)
+      ? value.evidence.filter(item => typeof item === 'string' && item.trim()).map(item => item.trim())
+      : [];
+    return normalized;
+  }
+
+  _normalizeCount(value) {
+    return Number.isInteger(value) && value >= 0 ? value : null;
+  }
+
+  _isCompleteAssessment(input) {
+    if (!this._hasImpactAssessment(input)) return false;
+    if (!input.scope || typeof input.scope !== 'object') return false;
+    const validCount = value => value === null || (Number.isInteger(value) && value >= 0);
+    if (!validCount(input.scope.fileCount) || !validCount(input.scope.moduleCount)) return false;
+    if (!CROSS_MODULE_VALUES.includes(input.scope.crossModule)) return false;
+    if (!CHANGE_KINDS.includes(input.changeKind)) return false;
+    if (!CONFIDENCE_VALUES.includes(input.confidence)) return false;
+    return Array.isArray(input.evidence) && input.evidence.some(item => typeof item === 'string' && item.trim());
+  }
+
+  _hasImpactAssessment(input) {
+    if (!input || typeof input !== 'object') return false;
+    return IMPACT_FIELDS.every(field => IMPACT_VALUES[field].includes(input[field]));
+  }
+
+  _assessRiskFromAssessment(assessment) {
+    if (['migration', 'destructive'].includes(assessment.dataImpact) || assessment.securityImpact === 'changed') {
+      return 'high';
+    }
+    if (IMPACT_FIELDS.some(field => assessment[field] === 'unknown')) return 'medium';
+    if (assessment.runtimeBehavior === 'changed' ||
+        assessment.dataImpact === 'changed' ||
+        assessment.deploymentImpact === 'changed' ||
+        assessment.publicApiImpact === 'changed' ||
+        assessment.dependencyImpact === 'changed') {
+      return 'medium';
+    }
+    return 'low';
+  }
+
+  _assessGovernance(assessment, risk = this._assessRiskFromAssessment(assessment)) {
+    if (risk === 'high' ||
+        assessment.publicApiImpact === 'changed' ||
+        ['feature', 'refactor'].includes(assessment.changeKind) ||
+        assessment.scope.crossModule === 'yes') {
+      return 'structured';
+    }
+    if (assessment.changeKind === 'hotfix') return 'standard';
+    if (risk === 'low' &&
+        assessment.changeKind === 'chore' &&
+        assessment.confidence === 'high' &&
+        assessment.evidence.length > 0 &&
+        Number.isInteger(assessment.scope.fileCount) &&
+        Number.isInteger(assessment.scope.moduleCount) &&
+        assessment.scope.crossModule === 'no') {
+      return 'lightweight';
+    }
+    return 'standard';
+  }
+
+  _assessLegacyRisk(signals) {
     const keywords = signals?.keywords || [];
     if (keywords.some(k => RISK_KEYWORDS.high.includes(k))) return 'high';
     if (signals?.fileScope >= 5) return 'high';
     if (keywords.some(k => RISK_KEYWORDS.medium.includes(k))) return 'medium';
-    if (signals?.fileScope >= 2) return 'medium';
-    return 'low';
+    if (keywords.some(k => RISK_KEYWORDS.low.includes(k))) return 'low';
+    return 'medium';
   }
 
   // ── 规则兜底 ─────────────────────────────────────────────
 
   _ruleBasedFallback(signals) {
-    const risk = this._assessRisk(signals);
-    const triggers = signals.optionalTriggers || {};
-
-    if (risk === 'low') {
-      return {
-        name: 'low-risk',
-        steps: ['executing', 'verification'],
-        reasoning: '低风险改动，直接执行 + 最小验证',
-        risk
-      };
-    }
-
-    if (risk === 'medium') {
-      const steps = this._buildMediumFallback(triggers, signals);
-      return {
-        name: 'medium-risk',
-        steps,
-        reasoning: '中等风险，需规划 + 审批 + 验证 + 对抗审查 + 同步' +
-          this._optionalReasoning(triggers),
-        risk
-      };
-    }
-
-    const steps = this._buildHighFallback(signals, triggers);
+    const legacyRisk = this._assessLegacyRisk(signals);
+    const risk = legacyRisk === 'high' ? 'high' : 'medium';
+    const governance = risk === 'high' ? 'structured' : 'standard';
     return {
-      name: 'high-risk',
-      steps,
-      reasoning: '高风险，完整流程 + 隔离分支 + 对抗审查' +
-        this._optionalReasoning(triggers),
-      risk
+      name: `${risk}-risk`,
+      steps: this._selectByPolicy(governance, signals),
+      reasoning: `未获得完整 assessment，按兼容信号保守选择 ${risk} 风险、${governance} 治理`,
+      risk,
+      governance
     };
   }
 
-  _buildMediumFallback(triggers, signals) {
-    const steps = ['planning'];
-    // mandatory 步骤：有 spec.md + requirements.json 时无条件追加（不再靠 triggers）
-    if (signals?.hasSpecAndReqs) {
-      steps.splice(steps.indexOf('planning'), 0, 'detail-expansion');
-      steps.push('analyze-artifacts');
-    } else if (triggers['analyze-artifacts']) {
-      steps.push('analyze-artifacts');
+  _selectByPolicy(governance, signals) {
+    if (governance === 'lightweight') return ['executing', 'verification'];
+    if (governance === 'standard') {
+      return ['planning', 'approved', 'executing', 'verification', 'code-review-request', 'review-gate', 'code-review-response', 'synced'];
     }
-    steps.push('approved', 'executing');
-    // converge：有 spec/requirements.json 时 mandatory，否则按 triggers
-    if (signals?.hasSpecAndReqs || triggers['converge']) {
-      steps.push('converge');
-    }
-    steps.push('verification');
-    steps.push('code-review-request', 'review-gate', 'code-review-response', 'synced');
-    return steps;
-  }
-
-  _buildHighFallback(signals, triggers) {
     const steps = [];
-    if (!signals.hasSpecExists) {
-      steps.push('brainstorming');
-    }
-    // detail-expansion：有 spec.md + requirements.json 时 mandatory
-    if (signals.hasSpecAndReqs || triggers['detail-expansion']) {
-      steps.push('detail-expansion');
-    }
-    steps.push('planning');
-    // analyze-artifacts：有 spec/requirements.json 时 mandatory，否则按 triggers
-    if (signals.hasSpecAndReqs || triggers['analyze-artifacts']) {
-      steps.push('analyze-artifacts');
-    }
-    steps.push('approved');
-    if (!signals.inWorktree) steps.push('git-worktree');
-    steps.push('executing');
-    // converge：有 spec/requirements.json 时 mandatory，否则按 triggers
-    if (signals.hasSpecAndReqs || triggers['converge']) {
-      steps.push('converge');
-    }
-    steps.push('verification', 'code-review-request', 'review-gate', 'code-review-response', 'synced');
+    if (!signals?.hasSpecAndReqs) steps.push('brainstorming');
+    steps.push('detail-expansion', 'planning', 'analyze-artifacts', 'approved');
+    if (!signals?.inWorktree) steps.push('git-worktree');
+    steps.push('executing', 'converge', 'verification', 'code-review-request', 'review-gate', 'code-review-response', 'synced');
     return steps;
   }
 
-  _optionalReasoning(triggers) {
-    const hit = Object.entries(triggers).filter(([, v]) => v).map(([k]) => k);
-    if (!hit.length) return '';
-    return `；按信号追加 optional: ${hit.join(', ')}`;
+  _buildPolicyReasoning(assessment, risk, governance) {
+    const impacts = IMPACT_FIELDS.filter(field => assessment[field] !== 'none')
+      .map(field => `${field}=${assessment[field]}`);
+    const scope = assessment.scope.crossModule === 'yes' ? ['crossModule=yes'] : [];
+    const facts = [...impacts, ...scope, `changeKind=${assessment.changeKind}`];
+    return `确定性策略判定为 ${risk} 风险、${governance} 治理；依据: ${facts.join(', ')}`;
   }
 
-  // ── AI fallback（可选注入 aiClient）─────────────────────
+  // ── AI assessment（可选注入 aiClient）───────────────────
 
-  async _aiSelect(userRequest, signals) {
+  async _aiAssess(userRequest, signals) {
     if (!this.aiClient) return null;
-    const catalog = this.workflow?.step_catalog || {};
-    const rules = this.workflow?.selection_rules || {};
-    const prompt = this._buildAIPrompt(userRequest, signals, catalog, rules);
+    const prompt = this._buildAIPrompt(userRequest, signals);
     const response = await this.aiClient.complete(prompt);
     return this._parseAIResponse(response);
   }
 
-  _buildAIPrompt(userRequest, signals, catalog, rules) {
+  _buildAIPrompt(userRequest, signals) {
     return [
-      'You are a pipeline selector. Pick steps from the catalog for the user request.',
+      'Extract engineering facts for a pipeline policy. Do not choose risk, governance, or steps.',
       '',
       'User request:',
       userRequest,
@@ -337,13 +406,9 @@ export class PipelineSelector {
       'Signals:',
       JSON.stringify(signals, null, 2),
       '',
-      'Step catalog:',
-      JSON.stringify(catalog, null, 2),
-      '',
-      'Selection rules:',
-      JSON.stringify(rules, null, 2),
-      '',
-      'Output JSON: { "steps": ["stepId", ...], "reasoning": "..." }'
+      'Output only JSON with runtimeBehavior, dataImpact, securityImpact, deploymentImpact,',
+      'publicApiImpact, dependencyImpact, scope { fileCount, moduleCount, crossModule },',
+      'changeKind, confidence, and evidence. Use "unknown" when the request does not prove a fact.'
     ].join('\n');
   }
 
@@ -394,7 +459,24 @@ export class PipelineSelector {
       if (m) ids.push(m[1]);
     }
 
-    return this._validateAndFix(ids, this._collectSignals(''));
+    const declaredGovernance = content.match(/^\s*-\s*治理级别:\s*(lightweight|standard|structured)\s*$/mi)?.[1];
+    if (!declaredGovernance) {
+      const signals = { ...this._collectSignals(''), governance: 'legacy', profile: 'legacy' };
+      return this._validateAndFix(ids, signals, {
+        skipClosure: true,
+        skipGate: true,
+        skipMandatory: true
+      });
+    }
+
+    const governance = declaredGovernance;
+    const profile = content.match(/^\s*-\s*策略配置:\s*([a-z][a-z0-9-]*)\s*$/mi)?.[1] || governance;
+    const signals = { ...this._collectSignals(''), governance, profile };
+    return this._validateAndFix(ids, signals, {
+      skipClosure: governance === 'lightweight',
+      skipGate: governance === 'lightweight',
+      skipMandatory: governance === 'lightweight'
+    });
   }
 
   _extractSection(content, heading) {
@@ -405,6 +487,7 @@ export class PipelineSelector {
 
   _renderPipelinePlan(selection) {
     const s = selection.signals || {};
+    const assessment = selection.assessment || {};
     const lines = [];
     lines.push('# Pipeline Plan');
     lines.push('');
@@ -415,11 +498,18 @@ export class PipelineSelector {
     lines.push('');
     lines.push(s.rawText || '(未提供)');
     lines.push('');
-    lines.push('## AI 分析');
+    lines.push('## 选择分析');
     lines.push('');
     lines.push(`- 风险等级: ${selection.risk}`);
+    lines.push(`- 治理级别: ${selection.governance || 'unknown'}`);
+    lines.push(`- 策略配置: ${s.profile || selection.governance || 'unknown'}`);
+    lines.push(`- Assessment 来源: ${selection.source}`);
     lines.push(`- 关键词: ${(s.keywords || []).join(', ') || '(无)'}`);
-    lines.push(`- 影响文件: ${s.fileScope ?? 'unknown'}`);
+    lines.push(`- 影响文件: ${assessment.scope?.fileCount ?? s.fileScope ?? 'unknown'}`);
+    lines.push(`- 影响模块: ${assessment.scope?.moduleCount ?? s.moduleCount ?? 'unknown'}`);
+    lines.push(`- 跨模块: ${assessment.scope?.crossModule || 'unknown'}`);
+    lines.push(`- 变更类型: ${assessment.changeKind || 'unknown'}`);
+    lines.push(`- 证据: ${assessment.evidence?.join('；') || '(无)'}`);
     lines.push(`- 已有 spec.md: ${s.hasSpecExists ? '是' : '否'}`);
     lines.push(`- 已有 spec.md + requirements.json: ${s.hasSpecAndReqs ? '是' : '否'}`);
     lines.push(`- 已在 worktree: ${s.inWorktree ? '是' : '否'}`);
@@ -491,20 +581,42 @@ export class PipelineSelector {
       }
     }
 
-    return ids.map(id => this._stepFromCatalog(id, catalog, { lightweight: skipClosure }));
+    return ids.map(id => this._stepFromCatalog(id, catalog, {
+      governance: signals?.governance || (skipClosure ? 'lightweight' : 'structured'),
+      profile: signals?.profile
+    }));
   }
 
-  _stepFromCatalog(id, catalog = this.workflow?.step_catalog || {}, { lightweight = false } = {}) {
+  _stepFromCatalog(id, catalog = this.workflow?.step_catalog || {}, { governance = 'structured', profile = governance } = {}) {
     const def = catalog[id] || {};
-    const requires = lightweight && id === 'executing'
+    const lightweight = governance === 'lightweight';
+    const standard = governance === 'standard';
+    const hotfix = profile === 'hotfix';
+    const requires = hotfix && id === 'executing'
+      ? []
+      : lightweight && id === 'executing'
       ? []
       : lightweight && id === 'verification'
         ? ['test-report.md']
+        : standard && id === 'planning'
+          ? []
+          : standard && id === 'executing'
+            ? ['plan.md', 'tasks/']
+            : standard && id === 'verification'
+              ? ['test-report.md']
         : def.requires || [];
-    const outputs = lightweight && id === 'executing'
+    const outputs = hotfix && id === 'executing'
+      ? ['test-report.md', 'handoffs/executing.json']
+      : standard && id === 'planning'
+        ? ['plan.md', 'tasks/', 'handoffs/planning.json']
+      : standard && id === 'executing'
+        ? ['test-report.md', 'handoffs/executing.json']
+      : lightweight && id === 'executing'
       ? ['handoffs/executing.json']
       : def.outputs || [];
-    const validators = lightweight && id === 'executing'
+    const validators = standard && id === 'planning'
+      ? []
+      : lightweight && id === 'executing'
       ? []
       : def.validators || [];
     const gateVerdict = lightweight && id === 'executing'
@@ -524,6 +636,7 @@ export class PipelineSelector {
       evidence_required: evidenceRequired,
       approval_requires: def.approval_requires || [],
       mandatory: def.mandatory === true,
+      mandatory_for: def.mandatory_for || [],
       optional: def.optional === true,
       description: def.description || ''
     };
@@ -531,11 +644,10 @@ export class PipelineSelector {
 
   _ensureMandatorySteps(ids, signals, catalog) {
     const result = [...ids];
-    const hasStructuredSpec = signals?.hasSpecAndReqs === true;
+    const governance = signals?.governance;
     for (const [id, def] of Object.entries(catalog || {})) {
-      if (def?.mandatory !== true || result.includes(id)) continue;
-      const needsStructuredSpec = (def.requires || []).includes('spec.md') && (def.requires || []).includes('requirements.json');
-      if (needsStructuredSpec && !hasStructuredSpec) continue;
+      const mandatory = def?.mandatory === true || (def?.mandatory_for || []).includes(governance);
+      if (!mandatory || result.includes(id)) continue;
       result.push(id);
     }
     return result;
@@ -551,7 +663,10 @@ export class PipelineSelector {
       changed = false;
       iterations++;
       for (const id of [...result]) {
-        const def = catalog[id];
+        const def = this._stepFromCatalog(id, catalog, {
+          governance: signals?.governance || 'structured',
+          profile: signals?.profile
+        });
         if (!def?.requires) continue;
         for (const req of def.requires) {
           if (this._fileExists(req)) continue;
@@ -579,10 +694,7 @@ export class PipelineSelector {
   }
 
   _ensureGate(ids, signals) {
-    const risk = this._assessRisk(signals);
     if (ids.includes('approved')) return ids;
-    const rules = this.workflow?.selection_rules || {};
-    if (risk === 'low' && rules.never_skip_gates !== true) return ids;
     if (!ids.includes('planning')) return ids;
 
     const result = [];

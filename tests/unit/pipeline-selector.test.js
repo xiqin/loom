@@ -18,385 +18,455 @@ function setupSpecDir() {
   return mkdtempSync(join(tmpdir(), 'loom-sel-spec-'));
 }
 
+function assessment(overrides = {}) {
+  return {
+    runtimeBehavior: 'none',
+    dataImpact: 'none',
+    securityImpact: 'none',
+    deploymentImpact: 'none',
+    publicApiImpact: 'none',
+    dependencyImpact: 'none',
+    scope: { fileCount: 1, moduleCount: 1, crossModule: 'no' },
+    changeKind: 'chore',
+    confidence: 'high',
+    evidence: ['已确认影响范围'],
+    ...overrides
+  };
+}
+
 describe('PipelineSelector', () => {
   let projectRoot;
+
   beforeEach(() => {
     projectRoot = setupProject();
   });
 
-  // ── 规则短路 ────────────────────────────────────────────
-
-  describe('short-circuit', () => {
-    it('keeps quickfix lightweight without dependency closure or gate guards', async () => {
+  describe('assessment normalization', () => {
+    it('normalizes missing and invalid values without treating them as none', () => {
       const sel = new PipelineSelector(projectRoot);
-      const result = await sel.select('修复 README 里的 typo');
-      expect(result.source).toBe('short-circuit:quickfix');
-      const ids = result.steps.map(s => s.id);
-      expect(ids).toEqual(['executing', 'verification']);
-      const executing = result.steps.find(s => s.id === 'executing');
-      const verification = result.steps.find(s => s.id === 'verification');
-      expect(executing.requires).toEqual([]);
-      expect(executing.outputs).toEqual(['handoffs/executing.json']);
-      expect(executing.validators).toEqual([]);
-      expect(executing.gate_verdict).toBeUndefined();
-      expect(executing.evidence_required).toBe(false);
-      expect(verification.requires).toEqual(['test-report.md']);
+      expect(sel._normalizeAssessment({
+        runtimeBehavior: 'invalid',
+        scope: { fileCount: -1, moduleCount: 1.5, crossModule: 'maybe' },
+        evidence: 'not-an-array'
+      })).toEqual({
+        runtimeBehavior: 'unknown',
+        dataImpact: 'unknown',
+        securityImpact: 'unknown',
+        deploymentImpact: 'unknown',
+        publicApiImpact: 'unknown',
+        dependencyImpact: 'unknown',
+        scope: { fileCount: null, moduleCount: null, crossModule: 'unknown' },
+        changeKind: 'unknown',
+        confidence: 'low',
+        evidence: []
+      });
     });
 
-    it('hits chore for dependency upgrade', async () => {
+    it('keeps non-negative integer scope and trims evidence', () => {
       const sel = new PipelineSelector(projectRoot);
-      const result = await sel.select('bump react 到 18，依赖升级');
-      expect(result.source).toBe('short-circuit:chore');
-      const ids = result.steps.map(s => s.id);
-      expect(ids).toEqual(['executing', 'verification']);
-    });
-
-    it('hits hotfix for production emergency', async () => {
-      const sel = new PipelineSelector(projectRoot);
-      const result = await sel.select('生产紧急 P0 故障');
-      expect(result.source).toBe('short-circuit:hotfix');
-      const ids = result.steps.map(s => s.id);
-      expect(ids).toContain('approved');
-      expect(ids).toContain('executing');
-      expect(ids).toContain('verification');
-    });
-
-    it('hits bugfix-no-brainstorm when root cause known and structured spec artifacts exist', async () => {
-      const specDir = setupSpecDir();
-      writeFileSync(join(specDir, 'spec.md'), '# Existing spec');
-      writeFileSync(join(specDir, 'requirements.json'), '{"requirements":[]}');
-      const sel = new PipelineSelector(projectRoot, specDir);
-      const result = await sel.select('已定位 bug 根因，修复 src/auth.js');
-      expect(result.source).toBe('short-circuit:bugfix-no-brainstorm');
-      const ids = result.steps.map(s => s.id);
-      expect(ids).not.toContain('brainstorming');
+      const normalized = sel._normalizeAssessment(assessment({
+        scope: { fileCount: 0, moduleCount: 2, crossModule: 'yes' },
+        evidence: ['  fact  ', '', 3]
+      }));
+      expect(normalized.scope).toEqual({ fileCount: 0, moduleCount: 2, crossModule: 'yes' });
+      expect(normalized.evidence).toEqual(['fact']);
     });
   });
 
-  // ── 规则兜底 ────────────────────────────────────────────
+  describe('risk policy', () => {
+    const cases = [
+      ['all none', assessment(), 'low'],
+      ['runtime changed', assessment({ runtimeBehavior: 'changed' }), 'medium'],
+      ['deployment changed', assessment({ deploymentImpact: 'changed' }), 'medium'],
+      ['public API changed', assessment({ publicApiImpact: 'changed' }), 'medium'],
+      ['data migration', assessment({ dataImpact: 'migration' }), 'high'],
+      ['destructive data', assessment({ dataImpact: 'destructive' }), 'high'],
+      ['security changed', assessment({ securityImpact: 'changed' }), 'high'],
+      ['unknown impact', assessment({ dependencyImpact: 'unknown' }), 'medium']
+    ];
 
-  describe('fallback (no AI)', () => {
-    it('high risk → full pipeline with brainstorming + git-worktree', async () => {
+    it.each(cases)('%s -> %s risk', (_name, input, expected) => {
       const sel = new PipelineSelector(projectRoot);
-      const result = await sel.select('重构状态管理，跨模块改动');
-      expect(result.source).toMatch(/^fallback:/);
-      expect(result.risk).toBe('high');
-      const ids = result.steps.map(s => s.id);
-      expect(ids).toContain('brainstorming');
-      expect(ids).toContain('planning');
-      expect(ids).toContain('approved');
-      expect(ids).toContain('executing');
-      expect(ids).toContain('verification');
-      expect(ids).toContain('synced');
+      expect(sel._assessRiskFromAssessment(sel._normalizeAssessment(input))).toBe(expected);
+    });
+  });
+
+  describe('governance policy', () => {
+    const cases = [
+      ['low chore', assessment(), 'lightweight'],
+      ['medium bugfix', assessment({ runtimeBehavior: 'changed', changeKind: 'bugfix' }), 'standard'],
+      ['hotfix governance floor', assessment({ changeKind: 'hotfix' }), 'standard'],
+      ['public API change', assessment({ publicApiImpact: 'changed', changeKind: 'bugfix' }), 'structured'],
+      ['feature', assessment({ changeKind: 'feature' }), 'structured'],
+      ['refactor', assessment({ changeKind: 'refactor' }), 'structured'],
+      ['cross module', assessment({ scope: { fileCount: 2, moduleCount: 2, crossModule: 'yes' } }), 'structured'],
+      ['high risk', assessment({ securityImpact: 'changed' }), 'structured']
+    ];
+
+    it.each(cases)('%s -> %s governance', (_name, input, expected) => {
+      const sel = new PipelineSelector(projectRoot);
+      const normalized = sel._normalizeAssessment(input);
+      expect(sel._assessGovernance(normalized)).toBe(expected);
+    });
+  });
+
+  describe('assessment-based selection', () => {
+    it('selects lightweight for confirmed no-impact config samples without filename rules', async () => {
+      const sel = new PipelineSelector(projectRoot);
+      const result = await sel.select(
+        '生成脱敏配置样例并更新 .gitignore',
+        assessment({ scope: { fileCount: 5, moduleCount: 1, crossModule: 'no' } })
+      );
+      expect(result).toMatchObject({
+        source: 'supplied-assessment',
+        risk: 'low',
+        governance: 'lightweight'
+      });
+      expect(result.steps.map(step => step.id)).toEqual(['executing', 'verification']);
     });
 
-    it('medium risk → planning + approved + executing + verification + code-review + synced', async () => {
-      const specDir = setupSpecDir();
-      writeFileSync(join(specDir, 'spec.md'), '# Spec');
-      writeFileSync(join(specDir, 'requirements.json'), '{"requirements":[]}');
-      const sel = new PipelineSelector(projectRoot, specDir);
-      const result = await sel.select('加个新功能 feature');
+    it('selects the standard planning and review chain for a normal behavior-changing bugfix', async () => {
+      const sel = new PipelineSelector(projectRoot);
+      const result = await sel.select('修复普通 bug', assessment({
+        runtimeBehavior: 'changed',
+        changeKind: 'bugfix'
+      }));
       expect(result.risk).toBe('medium');
-      const ids = result.steps.map(s => s.id);
-      expect(ids).toEqual(['detail-expansion', 'planning', 'analyze-artifacts', 'approved', 'executing', 'converge', 'verification', 'code-review-request', 'review-gate', 'code-review-response', 'synced']);
+      expect(result.governance).toBe('standard');
+      expect(result.steps.map(step => step.id)).toEqual([
+        'planning', 'approved', 'executing', 'verification',
+        'code-review-request', 'review-gate', 'code-review-response', 'synced'
+      ]);
+      expect(result.steps.find(step => step.id === 'executing').requires).toEqual(['plan.md', 'tasks/']);
+      expect(result.steps.find(step => step.id === 'verification').requires).toEqual(['test-report.md']);
     });
 
-    it('skips brainstorming when spec.md and requirements.json exist', async () => {
+    it('selects all structured quality stages before any artifacts exist', async () => {
+      const sel = new PipelineSelector(projectRoot);
+      const result = await sel.select('新增用户功能', assessment({
+        runtimeBehavior: 'changed',
+        changeKind: 'feature',
+        scope: { fileCount: null, moduleCount: null, crossModule: 'unknown' }
+      }));
+      const ids = result.steps.map(step => step.id);
+      expect(result.governance).toBe('structured');
+      expect(ids).toEqual([
+        'brainstorming', 'detail-expansion', 'planning', 'analyze-artifacts',
+        'approved', 'git-worktree', 'executing', 'converge', 'verification',
+        'code-review-request', 'review-gate', 'code-review-response', 'synced'
+      ]);
+    });
+
+    it('reuses an existing structured spec but retains all future quality stages', async () => {
       const specDir = setupSpecDir();
       writeFileSync(join(specDir, 'spec.md'), '# Spec');
       writeFileSync(join(specDir, 'requirements.json'), '{"requirements":[]}');
       const sel = new PipelineSelector(projectRoot, specDir);
-      const result = await sel.select('重构架构');
-      const ids = result.steps.map(s => s.id);
+      const result = await sel.select('重构模块', assessment({ changeKind: 'refactor' }));
+      const ids = result.steps.map(step => step.id);
       expect(ids).not.toContain('brainstorming');
-    });
-
-    it('high risk + cross-module signal → appends analyze-artifacts + converge (optional, not counted in max_steps)', async () => {
-      const sel = new PipelineSelector(projectRoot);
-      const result = await sel.select('重构状态管理，跨模块改动');
-      expect(result.source).toMatch(/^fallback:/);
-      expect(result.risk).toBe('high');
-      const ids = result.steps.map(s => s.id);
-      // analyze-artifacts 由"重构/跨模块"触发；converge 由"跨模块"触发
+      expect(ids).toContain('detail-expansion');
       expect(ids).toContain('analyze-artifacts');
       expect(ids).toContain('converge');
-      // optional 位置正确：analyze-artifacts 在 planning 之后 approved 之前
-      expect(ids.indexOf('analyze-artifacts')).toBeGreaterThan(ids.indexOf('planning'));
-      expect(ids.indexOf('analyze-artifacts')).toBeLessThan(ids.indexOf('approved'));
-      // converge 在 executing 之后 verification 之前
-      expect(ids.indexOf('converge')).toBeGreaterThan(ids.indexOf('executing'));
-      expect(ids.indexOf('converge')).toBeLessThan(ids.indexOf('verification'));
     });
 
-    it('high risk + permission/security signal → appends detail-expansion after brainstorming', async () => {
+    it('does not allow unknown impact to become lightweight', async () => {
       const sel = new PipelineSelector(projectRoot);
-      const result = await sel.select('重构权限校验和并发安全模块，跨模块改动');
-      expect(result.risk).toBe('high');
-      const ids = result.steps.map(s => s.id);
-      expect(ids).toContain('brainstorming');
-      expect(ids).toContain('detail-expansion');
-      // detail-expansion 紧随 brainstorming 之后、planning 之前
-      expect(ids.indexOf('detail-expansion')).toBeGreaterThan(ids.indexOf('brainstorming'));
-      expect(ids.indexOf('detail-expansion')).toBeLessThan(ids.indexOf('planning'));
+      const result = await sel.select('范围不明确', { changeKind: 'chore' });
+      expect(result.risk).toBe('medium');
+      expect(result.governance).toBe('standard');
     });
 
-    it('medium risk without optional triggers → no optional steps (backward compat)', async () => {
-      const specDir = setupSpecDir();
-      writeFileSync(join(specDir, 'spec.md'), '# Spec');
-      writeFileSync(join(specDir, 'requirements.json'), '{"requirements":[]}');
-      const sel = new PipelineSelector(projectRoot, specDir);
-      const result = await sel.select('加个新功能 feature');
-      expect(result.risk).toBe('medium');
-      const ids = result.steps.map(s => s.id);
-      // 有 spec.md + requirements.json 时三步 mandatory，始终追加
-      expect(ids).toEqual(['detail-expansion', 'planning', 'analyze-artifacts', 'approved', 'executing', 'converge', 'verification', 'code-review-request', 'review-gate', 'code-review-response', 'synced']);
+    it('uses the complete structured chain for a high-risk hotfix assessment', async () => {
+      const sel = new PipelineSelector(projectRoot);
+      const result = await sel.select('生产紧急安全修复', assessment({
+        securityImpact: 'changed',
+        changeKind: 'hotfix'
+      }));
+
+      expect(result.governance).toBe('structured');
+      expect(result.signals.profile).toBe('structured');
+      expect(result.steps.map(step => step.id)).toEqual([
+        'brainstorming', 'detail-expansion', 'planning', 'analyze-artifacts',
+        'approved', 'git-worktree', 'executing', 'converge', 'verification',
+        'code-review-request', 'review-gate', 'code-review-response', 'synced'
+      ]);
     });
   });
 
-  // ── 校验与修正 ───────────────────────────────────────────
-
-  describe('validateAndFix', () => {
-    it('fills missing must_include (verification)', () => {
+  describe('compatibility paths', () => {
+    it('keeps quickfix and chore keyword short-circuits lightweight', async () => {
       const sel = new PipelineSelector(projectRoot);
-      const steps = sel._validateAndFix(['executing'], { fileScope: 3, hasSpecExists: true });
-      const ids = steps.map(s => s.id);
-      expect(ids).toContain('executing');
-      expect(ids).toContain('verification');
+      const quickfix = await sel.select('修复 README 里的 typo');
+      const chore = await sel.select('依赖升级 npm update');
+      expect(quickfix.source).toBe('short-circuit:quickfix');
+      expect(chore.source).toBe('short-circuit:chore');
+      expect(quickfix.steps.map(step => step.id)).toEqual(['executing', 'verification']);
+      expect(chore.steps.map(step => step.id)).toEqual(['executing', 'verification']);
     });
 
-    it('fills dependency closure (executing needs plan.md → planning, spec.md → brainstorming)', () => {
-      const specDir = setupSpecDir();
-      const sel = new PipelineSelector(projectRoot, specDir);
-      const steps = sel._validateAndFix(['executing', 'verification'], {
-        fileScope: 3,
-        hasSpecExists: false
+    it('uses conservative medium/standard fallback when no assessment is available', async () => {
+      const sel = new PipelineSelector(projectRoot);
+      const result = await sel.select('处理一个没有明确影响说明的任务');
+      expect(result).toMatchObject({
+        source: 'fallback:medium-risk',
+        risk: 'medium',
+        governance: 'standard'
       });
-      const ids = steps.map(s => s.id);
-      expect(ids).toContain('planning');
-      expect(ids).toContain('brainstorming');
     });
 
-    it('skips producer if file already exists', () => {
-      const specDir = setupSpecDir();
-      writeFileSync(join(specDir, 'spec.md'), '# Spec');
-      writeFileSync(join(specDir, 'requirements.json'), '{"requirements":[]}');
-      writeFileSync(join(specDir, 'plan.md'), '# Plan');
-      writeFileSync(join(specDir, 'traceability.json'), '{"requirements":{}}');
-      mkdirSync(join(specDir, 'tasks'), { recursive: true });
-      const sel = new PipelineSelector(projectRoot, specDir);
-      const steps = sel._validateAndFix(['executing', 'verification'], {
-        fileScope: 3,
-        hasSpecExists: true
+    it('does not infer lightweight governance from low-risk words without assessment facts', async () => {
+      const sel = new PipelineSelector(projectRoot);
+      const result = await sel.select('更新文档说明');
+      expect(result).toMatchObject({
+        source: 'fallback:medium-risk',
+        risk: 'medium',
+        governance: 'standard'
       });
-      const ids = steps.map(s => s.id);
-      expect(ids).not.toContain('brainstorming');
-      expect(ids).not.toContain('planning');
     });
 
-    it('inserts approved gate between planning and executing for medium risk', () => {
+    it('does not match a file-limited quickfix when file scope is unknown', async () => {
       const sel = new PipelineSelector(projectRoot);
-      const steps = sel._validateAndFix(['planning', 'executing', 'verification'], {
-        fileScope: 3,
-        hasSpecExists: true
-      });
-      const ids = steps.map(s => s.id);
-      const approvedIdx = ids.indexOf('approved');
-      const planningIdx = ids.indexOf('planning');
-      const executingIdx = ids.indexOf('executing');
-      expect(approvedIdx).toBeGreaterThan(planningIdx);
-      expect(approvedIdx).toBeLessThan(executingIdx);
+      const result = await sel.select('修改登录文案并调整鉴权逻辑');
+      expect(result.source).not.toBe('short-circuit:quickfix');
+      expect(result.governance).not.toBe('lightweight');
     });
 
-    it('honors never_skip_gates even for low risk dependency closure', () => {
+    it('uses standard step contracts for a root-cause-known bugfix short circuit', async () => {
       const sel = new PipelineSelector(projectRoot);
-      const steps = sel._validateAndFix(['executing', 'verification'], {
-        fileScope: 1,
-        hasSpecExists: true
-      });
-      const ids = steps.map(s => s.id);
-      expect(ids).toContain('approved');
-    });
-
-    it('throws when max_steps exceeded', () => {
-      const sel = new PipelineSelector(projectRoot);
-      expect(() => sel._validateAndFix(
-        ['brainstorming', 'detail-expansion', 'planning', 'analyze-artifacts', 'approved', 'git-worktree',
-         'executing', 'converge', 'verification',
-         'code-review-request', 'review-gate', 'code-review-response',
-         'synced', 'extra1'],
-        { fileScope: 3 }
-      )).toThrow(/max_steps/);
-    });
-
-    it('marks approved step with human-approval gate', () => {
-      const sel = new PipelineSelector(projectRoot);
-      const steps = sel._validateAndFix(['planning', 'executing'], {
-        fileScope: 3,
-        hasSpecExists: true
-      });
-      const approved = steps.find(s => s.id === 'approved');
-      expect(approved).toBeDefined();
-      expect(approved.gate).toBe('human-approval');
-    });
-
-    it('marks review-gate step with human-approval gate from catalog', () => {
-      const sel = new PipelineSelector(projectRoot);
-      const steps = sel._validateAndFix(
-        ['executing', 'verification', 'code-review-request', 'review-gate', 'code-review-response'],
-        { fileScope: 3, hasSpecExists: true }
-      );
-      const reviewGate = steps.find(s => s.id === 'review-gate');
-      expect(reviewGate).toBeDefined();
-      expect(reviewGate.gate).toBe('human-approval');
-      expect(reviewGate.approval_requires).toEqual(['review-feedback.md']);
-    });
-
-    it('preserves validators and evidence requirements in dynamic steps', () => {
-      const sel = new PipelineSelector(projectRoot);
-      const steps = sel._validateAndFix(
-        ['detail-expansion', 'planning', 'analyze-artifacts', 'approved', 'executing', 'converge', 'verification', 'code-review-request', 'review-gate', 'code-review-response'],
-        { fileScope: 3, hasSpecExists: true, hasSpecAndReqs: true }
-      );
-      expect(steps.find(s => s.id === 'detail-expansion').validators).toContain('detail-expansion-pass');
-      expect(steps.find(s => s.id === 'analyze-artifacts').validators).toContain('artifact-analysis-pass');
-      expect(steps.find(s => s.id === 'converge').validators).toContain('convergence-pass');
-      expect(steps.find(s => s.id === 'verification')).toMatchObject({
-        gate_verdict: 'verify-report.md',
+      const result = await sel.select('已定位根因，修复单文件 bug');
+      expect(result.source).toBe('short-circuit:bugfix-no-brainstorm');
+      expect(result.governance).toBe('standard');
+      expect(result.steps.map(step => step.id)).not.toContain('brainstorming');
+      expect(result.steps.find(step => step.id === 'executing')).toMatchObject({
+        requires: ['plan.md', 'tasks/'],
+        gate_verdict: 'test-report.md',
         evidence_required: true
       });
-      expect(steps.find(s => s.id === 'review-gate').approval_requires).toEqual(['review-feedback.md']);
     });
 
-    it('adds mandatory structured-spec gates even when AI omits them', () => {
-      const specDir = setupSpecDir();
-      writeFileSync(join(specDir, 'spec.md'), '# Spec');
-      writeFileSync(join(specDir, 'requirements.json'), '{"requirements":[]}');
-      const sel = new PipelineSelector(projectRoot, specDir);
-      const steps = sel._validateAndFix(['planning', 'approved', 'executing', 'verification'], {
-        fileScope: 3,
-        hasSpecExists: true,
-        hasSpecAndReqs: true
+    it('keeps an approval gate for hotfix assessments', async () => {
+      const sel = new PipelineSelector(projectRoot);
+      const result = await sel.select('生产紧急 P0 故障', assessment({ changeKind: 'hotfix' }));
+      expect(result.governance).toBe('standard');
+      expect(result.steps.map(step => step.id)).toEqual(['approved', 'executing', 'verification']);
+      expect(result.steps.find(step => step.id === 'executing').requires).toEqual([]);
+    });
+
+    it('gives hotfix precedence over overlapping quickfix and chore signals', async () => {
+      const sel = new PipelineSelector(projectRoot);
+      const quickfixOverlap = await sel.select('生产紧急 P0，修复单文件 typo');
+      const choreOverlap = await sel.select('生产紧急线上故障，需要依赖升级');
+
+      for (const result of [quickfixOverlap, choreOverlap]) {
+        expect(result.source).toBe('short-circuit:hotfix');
+        expect(result.risk).toBe('high');
+        expect(result.steps.map(step => step.id)).toEqual(['approved', 'executing', 'verification']);
+      }
+    });
+
+    it('ignores a partial supplied assessment and preserves request short circuits', async () => {
+      const sel = new PipelineSelector(projectRoot);
+      const partial = {
+        runtimeBehavior: 'none',
+        dataImpact: 'none',
+        securityImpact: 'none',
+        deploymentImpact: 'none',
+        publicApiImpact: 'none',
+        dependencyImpact: 'none'
+      };
+      const result = await sel.select('生产紧急 P0 故障', partial);
+
+      expect(result.source).toBe('short-circuit:hotfix');
+      expect(result.steps.map(step => step.id)).toEqual(['approved', 'executing', 'verification']);
+    });
+
+    it('uses structured fallback for explicit refactor signals', async () => {
+      const sel = new PipelineSelector(projectRoot);
+      const result = await sel.select('重构状态管理，跨模块改动');
+      expect(result.risk).toBe('high');
+      expect(result.governance).toBe('structured');
+      expect(result.steps.map(step => step.id)).toContain('converge');
+    });
+  });
+
+  describe('AI assessment', () => {
+    it('derives policy steps from AI facts and ignores AI risk and steps', async () => {
+      const fakeClient = {
+        complete: async () => JSON.stringify({
+          ...assessment({ runtimeBehavior: 'changed', changeKind: 'bugfix' }),
+          risk: 'low',
+          steps: ['executing']
+        })
+      };
+      const sel = new PipelineSelector(projectRoot, null, { aiClient: fakeClient });
+      const result = await sel.select('复杂需求需要 AI 提取事实');
+      expect(result.source).toBe('ai-assessment');
+      expect(result.risk).toBe('medium');
+      expect(result.governance).toBe('standard');
+      expect(result.steps.map(step => step.id)).toContain('planning');
+      expect(result.steps.map(step => step.id)).toContain('verification');
+    });
+
+    it('prompts AI to return facts rather than final decisions', async () => {
+      let prompt = '';
+      const fakeClient = {
+        complete: async value => {
+          prompt = value;
+          return JSON.stringify(assessment());
+        }
+      };
+      const sel = new PipelineSelector(projectRoot, null, { aiClient: fakeClient });
+      await sel.select('判断需求');
+      expect(prompt).toContain('Do not choose risk, governance, or steps');
+      expect(prompt).toContain('runtimeBehavior');
+    });
+
+    it('falls back when AI JSON is invalid or lacks required impact facts', async () => {
+      const invalid = new PipelineSelector(projectRoot, null, {
+        aiClient: { complete: async () => 'not json' }
       });
-      const ids = steps.map(s => s.id);
+      const incomplete = new PipelineSelector(projectRoot, null, {
+        aiClient: { complete: async () => JSON.stringify({ changeKind: 'chore' }) }
+      });
+      expect((await invalid.select('模糊任务')).source).toMatch(/^fallback:/);
+      expect((await incomplete.select('模糊任务')).source).toMatch(/^fallback:/);
+    });
+
+    it('does not allow incomplete or low-confidence AI facts to select lightweight governance', async () => {
+      const incompleteScope = new PipelineSelector(projectRoot, null, {
+        aiClient: { complete: async () => JSON.stringify({
+          runtimeBehavior: 'none',
+          dataImpact: 'none',
+          securityImpact: 'none',
+          deploymentImpact: 'none',
+          publicApiImpact: 'none',
+          dependencyImpact: 'none',
+          changeKind: 'chore',
+          confidence: 'high',
+          evidence: ['影响范围未提供']
+        }) }
+      });
+      const lowConfidence = new PipelineSelector(projectRoot, null, {
+        aiClient: { complete: async () => JSON.stringify(assessment({ confidence: 'low' })) }
+      });
+
+      expect((await incompleteScope.select('维护配置')).source).toMatch(/^fallback:/);
+      expect((await lowConfidence.select('维护配置')).governance).not.toBe('lightweight');
+    });
+  });
+
+  describe('catalog guards and plan rendering', () => {
+    it('adds structured mandatory stages by governance, not existing files', () => {
+      const sel = new PipelineSelector(projectRoot);
+      const steps = sel._validateAndFix(['planning', 'approved', 'executing', 'verification'], {
+        governance: 'structured',
+        inWorktree: true
+      });
+      const ids = steps.map(step => step.id);
       expect(ids).toContain('detail-expansion');
       expect(ids).toContain('analyze-artifacts');
       expect(ids).toContain('converge');
     });
 
-    it('revalidates edited pipeline-plan.md before approving dynamic steps', () => {
-      const specDir = setupSpecDir();
-      writeFileSync(join(specDir, 'spec.md'), '# Spec');
-      writeFileSync(join(specDir, 'requirements.json'), '{"requirements":[]}');
-      const sel = new PipelineSelector(projectRoot, specDir);
-      writeFileSync(join(specDir, 'pipeline-plan.md'), [
-        '# Pipeline Plan',
-        '',
-        '## 选择步骤',
-        '',
-        '1. **planning** — edited',
-        '2. **executing** — edited',
-        '3. **verification** — edited',
-        ''
-      ].join('\n'));
-
-      const ids = sel.readPipelinePlan().map(s => s.id);
-      expect(ids).toContain('detail-expansion');
-      expect(ids).toContain('analyze-artifacts');
-      expect(ids).toContain('approved');
-      expect(ids).toContain('converge');
-    });
-
-    it('sorts steps in canonical order', () => {
+    it('does not add structured quality stages to standard governance', () => {
       const sel = new PipelineSelector(projectRoot);
       const steps = sel._validateAndFix(
-        ['verification', 'executing', 'planning'],
-        { fileScope: 3, hasSpecExists: true }
+        ['planning', 'approved', 'executing', 'verification'],
+        { governance: 'standard' }
       );
-      const ids = steps.map(s => s.id);
-      expect(ids.indexOf('planning')).toBeLessThan(ids.indexOf('executing'));
-      expect(ids.indexOf('executing')).toBeLessThan(ids.indexOf('verification'));
-    });
-  });
-
-  // ── AI fallback ──────────────────────────────────────────
-
-  describe('AI fallback', () => {
-    it('uses AI result when aiClient provided', async () => {
-      const fakeClient = {
-        complete: async () => JSON.stringify({
-          steps: ['planning', 'executing', 'verification'],
-          reasoning: 'AI analyzed the request'
-        })
-      };
-      const sel = new PipelineSelector(projectRoot, null, { aiClient: fakeClient });
-      const result = await sel.select('复杂需求需要 AI 判断');
-      expect(result.source).toBe('ai');
-      expect(result.reasoning).toBe('AI analyzed the request');
+      const ids = steps.map(step => step.id);
+      expect(ids).not.toContain('detail-expansion');
+      expect(ids).not.toContain('analyze-artifacts');
+      expect(ids).not.toContain('converge');
     });
 
-    it('adds mandatory structured-spec steps to AI result', async () => {
-      const specDir = setupSpecDir();
-      writeFileSync(join(specDir, 'spec.md'), '# Spec');
-      writeFileSync(join(specDir, 'requirements.json'), '{"requirements":[]}');
-      const fakeClient = {
-        complete: async () => JSON.stringify({
-          steps: ['planning', 'approved', 'executing', 'verification'],
-          reasoning: 'AI omitted gates'
-        })
-      };
-      const sel = new PipelineSelector(projectRoot, specDir, { aiClient: fakeClient });
-      const result = await sel.select('复杂需求需要 AI 判断');
-      const ids = result.steps.map(s => s.id);
-      expect(ids).toContain('detail-expansion');
-      expect(ids).toContain('analyze-artifacts');
-      expect(ids).toContain('converge');
-    });
-
-    it('falls back when AI throws', async () => {
-      const fakeClient = {
-        complete: async () => { throw new Error('AI down'); }
-      };
-      const sel = new PipelineSelector(projectRoot, null, { aiClient: fakeClient });
-      const result = await sel.select('复杂需求需要 AI 判断');
-      expect(result.source).toMatch(/^fallback:/);
-    });
-
-    it('falls back when AI returns empty', async () => {
-      const fakeClient = {
-        complete: async () => 'not json'
-      };
-      const sel = new PipelineSelector(projectRoot, null, { aiClient: fakeClient });
-      const result = await sel.select('复杂需求需要 AI 判断');
-      expect(result.source).toMatch(/^fallback:/);
-    });
-  });
-
-  // ── 信号收集 ─────────────────────────────────────────────
-
-  describe('signal collection', () => {
-    it('extracts risk keywords', () => {
+    it('uses the no-spec bugfix contract for standard planning and execution', async () => {
       const sel = new PipelineSelector(projectRoot);
-      const signals = sel._collectSignals('重构状态管理');
-      expect(signals.keywords).toContain('重构');
+      const result = await sel.select('修复普通 bug', assessment({
+        runtimeBehavior: 'changed',
+        changeKind: 'bugfix'
+      }));
+      const planning = result.steps.find(step => step.id === 'planning');
+      const executing = result.steps.find(step => step.id === 'executing');
+
+      expect(planning).toMatchObject({
+        requires: [],
+        outputs: ['plan.md', 'tasks/', 'handoffs/planning.json'],
+        validators: []
+      });
+      expect(executing).toMatchObject({
+        requires: ['plan.md', 'tasks/'],
+        outputs: ['test-report.md', 'handoffs/executing.json']
+      });
     });
 
-    it('detects root cause mention', () => {
+    it('preserves validators and human gates in structured dynamic steps', async () => {
       const sel = new PipelineSelector(projectRoot);
-      const signals = sel._collectSignals('已定位根因');
-      expect(signals.hasRootCause).toBe(true);
+      const result = await sel.select('新增功能', assessment({ changeKind: 'feature' }));
+      expect(result.steps.find(step => step.id === 'detail-expansion').validators).toContain('detail-expansion-pass');
+      expect(result.steps.find(step => step.id === 'analyze-artifacts').validators).toContain('artifact-analysis-pass');
+      expect(result.steps.find(step => step.id === 'converge').validators).toContain('convergence-pass');
+      expect(result.steps.find(step => step.id === 'review-gate').approval_requires).toEqual(['review-feedback.md']);
     });
 
-    it('detects spec.md existence', () => {
+    it('renders governance, assessment source and evidence in pipeline-plan.md', async () => {
       const specDir = setupSpecDir();
-      writeFileSync(join(specDir, 'spec.md'), '# Spec');
       const sel = new PipelineSelector(projectRoot, specDir);
-      const signals = sel._collectSignals('any request');
-      expect(signals.hasSpecExists).toBe(true);
+      const result = await sel.select('维护样例', assessment({ evidence: ['不修改运行逻辑'] }));
+      const { content } = sel.writePipelinePlan(result);
+      expect(content).toContain('治理级别: lightweight');
+      expect(content).toContain('Assessment 来源: supplied-assessment');
+      expect(content).toContain('不修改运行逻辑');
     });
 
-    it('does not treat a normal git checkout as an extra worktree', () => {
-      const sel = new PipelineSelector(process.cwd());
-      expect(sel._isInWorktree()).toBe(false);
+    it('round-trips lightweight governance without changing approved steps or contracts', async () => {
+      const specDir = setupSpecDir();
+      const sel = new PipelineSelector(projectRoot, specDir);
+      const selected = await sel.select('维护样例', assessment());
+      sel.writePipelinePlan(selected);
+
+      const restored = sel.readPipelinePlan();
+      expect(restored).toEqual(selected.steps);
+    });
+
+    it('round-trips the exact hotfix profile without adding planning dependencies', async () => {
+      const specDir = setupSpecDir();
+      const sel = new PipelineSelector(projectRoot, specDir);
+      const selected = await sel.select('生产紧急 P0 故障', assessment({ changeKind: 'hotfix' }));
+      sel.writePipelinePlan(selected);
+
+      const restored = sel.readPipelinePlan();
+      expect(restored.map(step => step.id)).toEqual(['approved', 'executing', 'verification']);
+      expect(restored.find(step => step.id === 'executing').requires).toEqual([]);
+    });
+
+    it('revalidates an edited plan using its declared governance', () => {
+      const specDir = setupSpecDir();
+      const sel = new PipelineSelector(projectRoot, specDir);
+      writeFileSync(join(specDir, 'pipeline-plan.md'), [
+        '# Pipeline Plan', '', '## 选择分析', '',
+        '- 治理级别: standard', '', '## 选择步骤', '',
+        '1. **planning** — edited',
+        '2. **executing** — edited',
+        '3. **verification** — edited', ''
+      ].join('\n'));
+      const ids = sel.readPipelinePlan().map(step => step.id);
+      expect(ids).toContain('approved');
+      expect(ids).toContain('executing');
+      expect(ids).toContain('verification');
+    });
+
+    it('preserves steps when reading a legacy plan without governance metadata', () => {
+      const specDir = setupSpecDir();
+      const sel = new PipelineSelector(projectRoot, specDir);
+      writeFileSync(join(specDir, 'pipeline-plan.md'), [
+        '# Pipeline Plan', '', '## 选择步骤', '',
+        '1. **executing** — legacy',
+        '2. **verification** — legacy', ''
+      ].join('\n'));
+
+      expect(sel.readPipelinePlan().map(step => step.id)).toEqual(['executing', 'verification']);
     });
   });
 });

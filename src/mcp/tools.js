@@ -173,6 +173,34 @@ export const TOOL_DEFINITIONS = [
       properties: {
         request: { type: 'string', description: '用户原始需求描述' },
         spec_dir: { type: 'string', description: 'Path to spec directory (optional if attached)' },
+        assessment: {
+          type: 'object',
+          description: '调用方提取的结构化工程事实。选择器只接受事实，risk、governance 和 steps 由代码计算。',
+          properties: {
+            runtimeBehavior: { type: 'string', enum: ['none', 'changed', 'unknown'] },
+            dataImpact: { type: 'string', enum: ['none', 'changed', 'migration', 'destructive', 'unknown'] },
+            securityImpact: { type: 'string', enum: ['none', 'changed', 'unknown'] },
+            deploymentImpact: { type: 'string', enum: ['none', 'changed', 'unknown'] },
+            publicApiImpact: { type: 'string', enum: ['none', 'changed', 'unknown'] },
+            dependencyImpact: { type: 'string', enum: ['none', 'changed', 'unknown'] },
+            scope: {
+              type: 'object',
+              properties: {
+                fileCount: { type: ['integer', 'null'], minimum: 0 },
+                moduleCount: { type: ['integer', 'null'], minimum: 0 },
+                crossModule: { type: 'string', enum: ['yes', 'no', 'unknown'] }
+              },
+              required: ['fileCount', 'moduleCount', 'crossModule']
+            },
+            changeKind: { type: 'string', enum: ['feature', 'bugfix', 'refactor', 'chore', 'hotfix', 'unknown'] },
+            confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+            evidence: { type: 'array', items: { type: 'string' } }
+          },
+          required: [
+            'runtimeBehavior', 'dataImpact', 'securityImpact', 'deploymentImpact',
+            'publicApiImpact', 'dependencyImpact', 'scope', 'changeKind', 'confidence', 'evidence'
+          ]
+        },
         initialize: { type: 'boolean', description: 'false/default: 仅返回建议，不写状态。true: 仅限用户已明确确认所展示流水线后使用，把选中的 steps 写入 pipeline.state.json (dynamic_steps) 并初始化流水线。' }
       },
       required: ['request']
@@ -917,7 +945,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
       if (!args.request) return { error: 'request is required' };
       const absSpec = specDir ? safeResolveSpecDir(projectRoot, specDir) : null;
       const selector = new PipelineSelector(projectRoot, absSpec, { fs: fsImpl });
-      const result = await selector.select(args.request);
+      const result = await selector.select(args.request, args.assessment);
 
       if (!args.initialize) return result;
 

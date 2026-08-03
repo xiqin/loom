@@ -43,7 +43,7 @@
 
 ### 结构化质量门与内部审查 skill
 
-下列 skill 通过 `step_catalog` 暴露。feature/refactor 主线会强制执行 detail-expansion、analyze-artifacts、converge；智能选择模式中，只要已有 `spec.md` + `requirements.json`，这三步也按 mandatory 语义自动补齐。quickfix/chore 短路显式跳过结构化闭包，避免轻量流程被阻断：
+下列 skill 通过 `step_catalog` 暴露。feature/refactor 等 structured 主线会按治理级别强制执行 detail-expansion、analyze-artifacts、converge；standard 和 lightweight 流程不会仅因当前已有文件就被升级。quickfix/chore 短路显式跳过结构化闭包，避免轻量流程被阻断：
 
 - `loom-detail-expansion`：brainstorming 后、planning 前，按 15 固定维度把 `requirements.json` 中的 REQ 展开为可独立验证的 Behavior Obligation。涉及输入、权限、写操作、状态变化、并发、外部依赖、安全、性能、可观测性等需求必须追加。
 - `loom-analyze-artifacts`：planning 后、approved 前，只读跨产物一致性分析（重复/歧义/欠规格/behavior 缺失/task 未映射/traceability 缺失/依赖环/owns 冲突/非功能要求遗漏）。输出 `artifact-analysis.json`，blocker 阻断 approved gate。
@@ -58,13 +58,14 @@
 
 ### 第一步：智能选择（优先）
 
-调 MCP 工具 `loom_select_pipeline`（或 CLI `loom select --spec-dir <dir> --request "<需求>"`），传入用户需求描述。选择器三段决策：
+调 MCP 工具 `loom_select_pipeline`（或 CLI `loom select --spec-dir <dir> --request "<需求>"`），传入用户需求描述。选择器按以下优先级决策：
 
-1. **规则短路**：关键词命中（typo/小修复/hotfix/依赖升级/根因明确的 bug）→ 0 token 直接返回固定步骤
-2. **AI fallback**：信号模糊时调 AI（若注入 aiClient）从 `step_catalog` 选步骤
-3. **规则兜底**：无 AI 或 AI 失败时按风险等级生成基础流程
+1. **supplied assessment**：调用方提供结构化工程事实时优先采用。
+2. **AI assessment**：若注入 aiClient，由 AI 只提取影响、范围、变更类型、置信度和证据，不直接选择 risk、governance 或 steps。
+3. **兼容规则短路**：没有有效 assessment 时，hotfix、quickfix、chore 和根因明确的 bug 可命中固定策略；hotfix 优先级最高。
+4. **保守规则兜底**：无法获得完整事实时，除明确高风险信号外至少使用 medium 风险、standard 治理。
 
-选择器自动校验护栏：`must_include`（executing + verification）、`mandatory`（已有 spec.md + requirements.json 时补齐 detail-expansion/analyze-artifacts/converge）、`dependency_closure`（选 step 自动带 producer）、`never_skip_gates`（planning 后必插 approved，轻量短路除外）、`max_steps: 13`。
+代码根据 assessment 确定性计算 risk、governance 和 steps，并校验 `must_include`、按治理级别生效的 `mandatory_for`、`dependency_closure`、人工 gate 与 `max_steps: 13`。关键影响未知时不得进入 lightweight；structured 新任务即使当前没有 spec/plan 文件，也必须包含 detail-expansion、analyze-artifacts 和 converge。
 
 结果必须先明确告知用户，并等待用户明确确认后才能初始化或执行。至少包含：
 
