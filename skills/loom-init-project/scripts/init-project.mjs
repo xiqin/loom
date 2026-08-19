@@ -320,7 +320,7 @@ function buildVariables(facts) {
     ARCH_PRINCIPLE: '遵循现有架构边界',
     ARCH_DESC: '新增代码放在既有分层中，不为单次需求创建额外架构层。',
     DI_PRINCIPLE: '依赖显式传递',
-    DI_DESC: '优先复用项目现有依赖注入方式，避免隐藏全局状态。',
+    DI_DESC: '依赖通过参数显式传递，避免隐藏全局状态。默认不为测试建立接口层或抽象边界；仅在三类边界注入依赖替换（外部网络/计费 API、不可回滚副作用、不可控非确定性），且用内联 fake 对象、不建实现类。',
     CONFIG_PRINCIPLE: '配置集中管理',
     CONFIG_DESC: '新增配置必须进入项目既有配置系统，并提供安全默认值。',
     ERROR_PRINCIPLE: '错误可诊断',

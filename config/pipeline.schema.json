@@ -276,9 +276,9 @@
           "action": "created/modified"
         },
         {
-          "path": "单元测试文件",
+          "path": "行为验证测试文件",
           "action": "created/modified",
-          "note": "implementer 编写，持久化到项目标准测试目录"
+          "note": "implementer 编写，行为级/集成测试优先、真实依赖，持久化到项目标准测试目录"
         },
         {
           "path": "集成测试文件",
