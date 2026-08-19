@@ -11,23 +11,22 @@
  *   }]
  */
 
-import { NodeFileSystem } from './fs-interface.js';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
 
 function now() { return new Date().toISOString(); }
 
 export class ComplianceTracker {
-  constructor(projectRoot, { fs } = {}) {
+  constructor(projectRoot) {
     this.root = projectRoot;
     this.dir = join(projectRoot, '.loom', 'compliance');
     this.historyPath = join(this.dir, 'history.json');
-    this.fs = fs || new NodeFileSystem();
   }
 
   // ── 记录 ────────────────────────────────────────────────────────────────
 
   record(specDir, stage, skill, passed, violations = []) {
-    this.fs.mkdirSync(this.dir, { recursive: true });
+    mkdirSync(this.dir, { recursive: true });
     const history = this._load();
     history.push({
       spec_dir: specDir,
@@ -39,7 +38,7 @@ export class ComplianceTracker {
     });
     // 保留最近 500 条
     if (history.length > 500) history.splice(0, history.length - 500);
-    this.fs.writeFileSync(this.historyPath, JSON.stringify(history, null, 2) + '\n', 'utf-8');
+    writeFileSync(this.historyPath, JSON.stringify(history, null, 2) + '\n', 'utf-8');
   }
 
   /**
@@ -47,9 +46,9 @@ export class ComplianceTracker {
    */
   recordFromVerifyReport(specDir) {
     const reportPath = join(specDir, 'verify-report.md');
-    if (!this.fs.existsSync(reportPath)) return;
+    if (!existsSync(reportPath)) return;
 
-    const content = this.fs.readFileSync(reportPath, 'utf-8');
+    const content = readFileSync(reportPath, 'utf-8');
     const violations = [];
 
     // 提取 FAIL / BLOCKER 行
@@ -67,10 +66,10 @@ export class ComplianceTracker {
    */
   importFromPipeline(specDir) {
     const statePath = join(specDir, 'pipeline.state.json');
-    if (!this.fs.existsSync(statePath)) return;
+    if (!existsSync(statePath)) return;
 
     try {
-      const state = JSON.parse(this.fs.readFileSync(statePath, 'utf-8'));
+      const state = JSON.parse(readFileSync(statePath, 'utf-8'));
       for (const h of state.stage_history || []) {
         // 已记录的跳过（按 timestamp 去重）
         const history = this._load();
@@ -131,8 +130,8 @@ export class ComplianceTracker {
   // ── 内部 ────────────────────────────────────────────────────────────────
 
   _load() {
-    if (!this.fs.existsSync(this.historyPath)) return [];
-    try { return JSON.parse(this.fs.readFileSync(this.historyPath, 'utf-8')); }
+    if (!existsSync(this.historyPath)) return [];
+    try { return JSON.parse(readFileSync(this.historyPath, 'utf-8')); }
     catch { return []; }
   }
 

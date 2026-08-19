@@ -10,7 +10,7 @@
  * 复用 context-index.js 的 section 解析模式（按 ## 切节，fence-aware）。
  */
 
-import { NodeFileSystem } from './fs-interface.js';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { estimateTokens } from './context-index.js';
 
@@ -128,12 +128,9 @@ function extractTriggers(text) {
 export class SkillLoader {
   /**
    * @param {string} skillsDir  skills/ 目录的绝对路径
-   * @param {object} options
-   * @param {object} [options.fs]  文件系统抽象
    */
-  constructor(skillsDir, { fs } = {}) {
+  constructor(skillsDir) {
     this.skillsDir = skillsDir;
-    this.fs = fs || new NodeFileSystem();
   }
 
   /**
@@ -142,15 +139,15 @@ export class SkillLoader {
    */
   listSummaries() {
     const results = [];
-    if (!this.fs.existsSync(this.skillsDir)) return results;
+    if (!existsSync(this.skillsDir)) return results;
 
-    const entries = this.fs.readdirSync(this.skillsDir, { withFileTypes: true });
+    const entries = readdirSync(this.skillsDir, { withFileTypes: true });
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
       const skillPath = join(this.skillsDir, entry.name, 'SKILL.md');
-      if (!this.fs.existsSync(skillPath)) continue;
+      if (!existsSync(skillPath)) continue;
 
-      const content = this.fs.readFileSync(skillPath, 'utf-8');
+      const content = readFileSync(skillPath, 'utf-8');
       const fm = parseFrontmatter(content);
       const sections = extractSectionTitles(content);
       const triggers = extractTriggers(content);
@@ -216,9 +213,9 @@ export class SkillLoader {
     if (!skillDir) return null;
 
     const skillPath = join(skillDir, 'SKILL.md');
-    if (!this.fs.existsSync(skillPath)) return null;
+    if (!existsSync(skillPath)) return null;
 
-    const content = this.fs.readFileSync(skillPath, 'utf-8');
+    const content = readFileSync(skillPath, 'utf-8');
     const fm = parseFrontmatter(content);
 
     return {
@@ -240,9 +237,9 @@ export class SkillLoader {
     if (!skillDir) return null;
 
     const skillPath = join(skillDir, 'SKILL.md');
-    if (!this.fs.existsSync(skillPath)) return null;
+    if (!existsSync(skillPath)) return null;
 
-    const content = this.fs.readFileSync(skillPath, 'utf-8');
+    const content = readFileSync(skillPath, 'utf-8');
     const section = this._extractSection(content, sectionTitle);
     if (!section) return null;
 
@@ -278,18 +275,18 @@ export class SkillLoader {
   _resolveSkillDir(skillName) {
     // 直接匹配目录名
     const direct = join(this.skillsDir, skillName);
-    if (this.fs.existsSync(direct)) return direct;
+    if (existsSync(direct)) return direct;
     // 尝试加 loom- 前缀
     const prefixed = join(this.skillsDir, `loom-${skillName}`);
-    if (this.fs.existsSync(prefixed)) return prefixed;
+    if (existsSync(prefixed)) return prefixed;
     // 遍历所有 skill 目录，匹配 frontmatter name
-    if (!this.fs.existsSync(this.skillsDir)) return null;
-    const entries = this.fs.readdirSync(this.skillsDir, { withFileTypes: true });
+    if (!existsSync(this.skillsDir)) return null;
+    const entries = readdirSync(this.skillsDir, { withFileTypes: true });
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
       const skillPath = join(this.skillsDir, entry.name, 'SKILL.md');
-      if (!this.fs.existsSync(skillPath)) continue;
-      const content = this.fs.readFileSync(skillPath, 'utf-8');
+      if (!existsSync(skillPath)) continue;
+      const content = readFileSync(skillPath, 'utf-8');
       const fm = parseFrontmatter(content);
       if (fm.name === skillName || fm.name === `loom-${skillName}`) {
         return join(this.skillsDir, entry.name);

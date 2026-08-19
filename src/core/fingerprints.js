@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 
 function sha256(content) {
@@ -11,20 +12,20 @@ function isInside(base, candidate) {
 }
 
 /** Hash a file or directory deterministically without loading it into model context. */
-export function fingerprintPath(path, fs) {
-  if (!fs.existsSync(path)) return null;
-  const stats = fs.statSync(path);
-  if (stats.isFile()) return sha256(fs.readFileSync(path));
+export function fingerprintPath(path) {
+  if (!existsSync(path)) return null;
+  const stats = statSync(path);
+  if (stats.isFile()) return sha256(readFileSync(path));
 
   const rows = [];
   const walk = (dir, prefix = '') => {
-    const entries = fs.readdirSync(dir, { withFileTypes: true })
+    const entries = readdirSync(dir, { withFileTypes: true })
       .sort((a, b) => a.name.localeCompare(b.name));
     for (const entry of entries) {
       const child = resolve(dir, entry.name);
       const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
       if (entry.isDirectory()) walk(child, rel);
-      else rows.push(`${rel}\0${sha256(fs.readFileSync(child))}`);
+      else rows.push(`${rel}\0${sha256(readFileSync(child))}`);
     }
   };
   walk(path);
@@ -43,12 +44,12 @@ export function resolveTrackedPath(specDir, projectRoot, declaredPath) {
   return isInside(base, candidate) ? candidate : null;
 }
 
-export function fingerprintDeclaredPaths(paths, { specDir, projectRoot, fs }) {
+export function fingerprintDeclaredPaths(paths, { specDir, projectRoot }) {
   const result = {};
   for (const declared of [...new Set(paths || [])].sort()) {
     const path = resolveTrackedPath(specDir, projectRoot, declared);
     if (!path) continue;
-    const digest = fingerprintPath(path, fs);
+    const digest = fingerprintPath(path);
     if (digest) result[declared] = digest;
   }
   return result;
@@ -58,14 +59,14 @@ export function compareFingerprints(expected, options) {
   const stale = [];
   for (const [declared, digest] of Object.entries(expected || {})) {
     const path = resolveTrackedPath(options.specDir, options.projectRoot, declared);
-    const actual = path ? fingerprintPath(path, options.fs) : null;
+    const actual = path ? fingerprintPath(path) : null;
     if (!actual) stale.push({ path: declared, reason: 'missing' });
     else if (actual !== digest) stale.push({ path: declared, reason: 'changed' });
   }
   return stale;
 }
 
-export function sha256File(path, fs) {
-  if (!fs.existsSync(path) || !fs.statSync(path).isFile()) return null;
-  return sha256(fs.readFileSync(path));
+export function sha256File(path) {
+  if (!existsSync(path) || !statSync(path).isFile()) return null;
+  return sha256(readFileSync(path));
 }

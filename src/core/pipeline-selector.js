@@ -10,7 +10,7 @@
 import { join, resolve } from 'node:path';
 import { execSync } from 'node:child_process';
 import yaml from 'js-yaml';
-import { NodeFileSystem } from './fs-interface.js';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const RISK_KEYWORDS = {
   high: ['重构', '架构', '跨模块', '跨服务', 'refactor', 'architecture', 'cross-module'],
@@ -62,20 +62,19 @@ const OPTIONAL_SIGNALS = {
 };
 
 export class PipelineSelector {
-  constructor(projectRoot, specDir = null, { fs, aiClient } = {}) {
+  constructor(projectRoot, specDir = null, { aiClient } = {}) {
     this.projectRoot = resolve(projectRoot);
     this.specDir = specDir ? resolve(specDir) : null;
-    this.fs = fs || new NodeFileSystem();
     this.aiClient = aiClient || null;
     this.workflow = this._loadWorkflow();
   }
 
   _loadWorkflow() {
     const wfPath = join(this.projectRoot, '.loom', 'workflow.yaml');
-    if (!this.fs.existsSync(wfPath)) return null;
+    if (!existsSync(wfPath)) return null;
     try {
       return yaml.load(
-        this.fs.readFileSync(wfPath, 'utf-8'),
+        readFileSync(wfPath, 'utf-8'),
         { schema: yaml.DEFAULT_SAFE_SCHEMA }
       );
     } catch {
@@ -209,13 +208,13 @@ export class PipelineSelector {
 
   _specExists() {
     if (!this.specDir) return false;
-    return this.fs.existsSync(join(this.specDir, 'spec.md'));
+    return existsSync(join(this.specDir, 'spec.md'));
   }
 
   _specAndReqsExist() {
     if (!this.specDir) return false;
-    return this.fs.existsSync(join(this.specDir, 'spec.md')) &&
-           this.fs.existsSync(join(this.specDir, 'requirements.json'));
+    return existsSync(join(this.specDir, 'spec.md')) &&
+           existsSync(join(this.specDir, 'requirements.json'));
   }
 
   _isInWorktree() {
@@ -433,8 +432,8 @@ export class PipelineSelector {
     if (!this.specDir) throw new Error('specDir is required to write pipeline-plan.md');
     const content = this._renderPipelinePlan(selection);
     const path = join(this.specDir, 'pipeline-plan.md');
-    this.fs.mkdirSync(this.specDir, { recursive: true });
-    this.fs.writeFileSync(path, content, 'utf-8');
+    mkdirSync(this.specDir, { recursive: true });
+    writeFileSync(path, content, 'utf-8');
     return { path, content };
   }
 
@@ -445,8 +444,8 @@ export class PipelineSelector {
   readPipelinePlan() {
     if (!this.specDir) return null;
     const path = join(this.specDir, 'pipeline-plan.md');
-    if (!this.fs.existsSync(path)) return null;
-    const content = this.fs.readFileSync(path, 'utf-8');
+    if (!existsSync(path)) return null;
+    const content = readFileSync(path, 'utf-8');
 
     const stepsSection = this._extractSection(content, '选择步骤');
     if (!stepsSection) return null;
@@ -683,7 +682,7 @@ export class PipelineSelector {
 
   _fileExists(filename) {
     if (!this.specDir) return false;
-    return this.fs.existsSync(join(this.specDir, filename));
+    return existsSync(join(this.specDir, filename));
   }
 
   _findProducer(filename, catalog) {

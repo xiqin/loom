@@ -13,7 +13,7 @@
 
 import { join, resolve } from 'node:path';
 import yaml from 'js-yaml';
-import { NodeFileSystem } from './fs-interface.js';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { PipelineStateStore } from './state-store.js';
 import { SpecLock } from './lock.js';
 import { ComplianceTracker } from './compliance-tracker.js';
@@ -131,10 +131,10 @@ function taskIdFromFilename(filename) {
   return filename.replace(/\.md$/i, '');
 }
 
-function listTaskIds(specDir, fs) {
+function listTaskIds(specDir) {
   const tasksDir = join(specDir, 'tasks');
-  if (!fs.existsSync(tasksDir)) return [];
-  return fs.readdirSync(tasksDir)
+  if (!existsSync(tasksDir)) return [];
+  return readdirSync(tasksDir)
     .filter(f => /^T\d+\.md$/i.test(f))
     .map(taskIdFromFilename)
     .sort((a, b) => Number(a.replace(/\D/g, '')) - Number(b.replace(/\D/g, '')));
@@ -162,18 +162,18 @@ function parseTaskRequirementIds(content) {
     .filter(Boolean);
 }
 
-function checkRequirementTaskClosure(specDir, fs) {
+function checkRequirementTaskClosure(specDir) {
   const specPath = join(specDir, 'spec.md');
-  if (!fs.existsSync(specPath)) return { ok: true };
+  if (!existsSync(specPath)) return { ok: true };
 
-  const requirementIds = extractRequirementIds(fs.readFileSync(specPath, 'utf-8'));
+  const requirementIds = extractRequirementIds(readFileSync(specPath, 'utf-8'));
   if (requirementIds.length === 0) return { ok: true };
 
   const tasksDir = join(specDir, 'tasks');
   const mapped = new Set();
-  if (fs.existsSync(tasksDir)) {
-    for (const taskId of listTaskIds(specDir, fs)) {
-      const content = fs.readFileSync(join(tasksDir, `${taskId}.md`), 'utf-8');
+  if (existsSync(tasksDir)) {
+    for (const taskId of listTaskIds(specDir)) {
+      const content = readFileSync(join(tasksDir, `${taskId}.md`), 'utf-8');
       for (const id of parseTaskRequirementIds(content)) mapped.add(id);
     }
   }
@@ -182,8 +182,8 @@ function checkRequirementTaskClosure(specDir, fs) {
   return { ok: unmapped.length === 0, unmapped };
 }
 
-function checkTaskStateClosure(specDir, store, fs) {
-  const expected = listTaskIds(specDir, fs);
+function checkTaskStateClosure(specDir, store) {
+  const expected = listTaskIds(specDir);
   if (expected.length === 0) return { ok: true };
 
   const states = store.readAllTasks();
@@ -207,7 +207,7 @@ function checkTaskStateClosure(specDir, store, fs) {
   };
 }
 
-function approvalArtifactPaths(currentStep, nextStep, specDir, fs) {
+function approvalArtifactPaths(currentStep, nextStep, specDir) {
   const candidates = [
     ...(currentStep?.requires || []),
     ...(currentStep?.approval_requires || []),
@@ -224,13 +224,13 @@ function approvalArtifactPaths(currentStep, nextStep, specDir, fs) {
   ];
   return [...new Set(candidates)]
     .filter(path => !APPROVAL_FINGERPRINT_EXCLUDES.has(path.replace(/\/$/, '')))
-    .filter(path => fs.existsSync(join(specDir, path.replace(/\/$/, ''))));
+    .filter(path => existsSync(join(specDir, path.replace(/\/$/, ''))));
 }
 
-function checkApprovalRequirements(specDir, currentStep, fs) {
+function checkApprovalRequirements(specDir, currentStep) {
   const approvalRequires = currentStep?.approval_requires || [];
   if (approvalRequires.length === 0) return { ok: true };
-  return checkStageOutputs(specDir, approvalRequires, fs);
+  return checkStageOutputs(specDir, approvalRequires);
 }
 
 function parseVerdict(content) {
@@ -238,12 +238,12 @@ function parseVerdict(content) {
   return match ? match[1].trim().toUpperCase() : null;
 }
 
-function checkReviewFeedbackApproval(specDir, currentStep, fs) {
+function checkReviewFeedbackApproval(specDir, currentStep) {
   if (!currentStep?.approval_requires?.includes('review-feedback.md')) return { ok: true };
   const feedbackPath = join(specDir, 'review-feedback.md');
-  if (!fs.existsSync(feedbackPath)) return { ok: true };
+  if (!existsSync(feedbackPath)) return { ok: true };
 
-  const content = fs.readFileSync(feedbackPath, 'utf8');
+  const content = readFileSync(feedbackPath, 'utf8');
   const verdict = parseVerdict(content);
   const blockers = content.match(/\b(BLOCKER|FAIL|FAILED|CHANGES_REQUESTED|CHANGE_REQUESTED|REQUEST_CHANGES|REJECTED)\b/gi) || [];
   if (verdict === 'PASS' && blockers.length === 0) return { ok: true };
@@ -255,7 +255,7 @@ function checkReviewFeedbackApproval(specDir, currentStep, fs) {
   return { ok: false, verdict, blockers: [...new Set(blockers.map(b => b.toUpperCase()))], reasons };
 }
 
-function checkApprovalFreshness(state, specDir, projectRoot, fs) {
+function checkApprovalFreshness(state, specDir, projectRoot) {
   const stale = [];
   const latestApprovals = new Map();
   for (const entry of state?.stage_history || []) {
@@ -264,7 +264,7 @@ function checkApprovalFreshness(state, specDir, projectRoot, fs) {
   }
 
   for (const entry of latestApprovals.values()) {
-    const changes = compareFingerprints(entry.approval_fingerprints, { specDir, projectRoot, fs });
+    const changes = compareFingerprints(entry.approval_fingerprints, { specDir, projectRoot });
     if (changes.length > 0) stale.push({ stage: entry.stage, changes });
   }
   return { ok: stale.length === 0, stale };
@@ -282,9 +282,9 @@ const ADVANCE_VALIDATORS = {
       hint: 'planning 阶段必须通过 traceability.json 的确定性校验，确保每个 REQ 和 behavior 都已映射到 task；tests/evidence 可在 executing 阶段补齐。'
     };
   },
-  'task-state-closure': ({ specDir, store, fs, stage }) => {
+  'task-state-closure': ({ specDir, store, stage }) => {
     if (stage !== 'executing') return { ok: true };
-    const taskCheck = checkTaskStateClosure(specDir, store, fs);
+    const taskCheck = checkTaskStateClosure(specDir, store);
     if (taskCheck.ok) return { ok: true };
     const details = [];
     if (taskCheck.missing?.length) details.push(`missing task states: ${taskCheck.missing.join(', ')}`);
@@ -296,9 +296,9 @@ const ADVANCE_VALIDATORS = {
       hint: '每个 tasks/Tn.md 必须有对应 task-states/Tn.state.json，且 status 必须为 done；多余 task state 也需要清理或补齐 task 文件。'
     };
   },
-  'requirement-task-closure': ({ specDir, fs, stage }) => {
+  'requirement-task-closure': ({ specDir, stage }) => {
     if (stage !== 'executing') return { ok: true };
-    const closure = checkRequirementTaskClosure(specDir, fs);
+    const closure = checkRequirementTaskClosure(specDir);
     if (closure.ok) return { ok: true };
     return {
       ok: false,
@@ -399,13 +399,13 @@ function normalizePipelines(parsed) {
   }
 }
 
-export function loadWorkflow(projectRoot, fs = new NodeFileSystem(), { requirePipelines = true } = {}) {
+export function loadWorkflow(projectRoot, { requirePipelines = true } = {}) {
   const wfPath = join(projectRoot, '.loom', 'workflow.yaml');
-  if (!fs.existsSync(wfPath)) return null;
+  if (!existsSync(wfPath)) return null;
 
   let parsed;
   try {
-    parsed = yaml.load(fs.readFileSync(wfPath, 'utf-8'), { schema: yaml.DEFAULT_SAFE_SCHEMA });
+    parsed = yaml.load(readFileSync(wfPath, 'utf-8'), { schema: yaml.DEFAULT_SAFE_SCHEMA });
   } catch (err) {
     const detail = err.mark ? ` (line ${err.mark.line + 1})` : '';
     throw new Error(`YAML syntax error in ${wfPath}${detail}: ${err.reason || err.message}`);
@@ -461,13 +461,12 @@ export class PipelineEngine {
    * @param {string} projectRoot  项目根目录
    * @param {string} specDir      specs/<date+feature> 的绝对路径
    */
-  constructor(projectRoot, specDir, { fs, requirePipelines = true } = {}) {
+  constructor(projectRoot, specDir, { requirePipelines = true } = {}) {
     this.projectRoot = resolve(projectRoot);
     this.specDir = resolve(specDir);
-    this.fs = fs || new NodeFileSystem();
-    this.store = new PipelineStateStore(this.specDir, { fs: this.fs, projectRoot: this.projectRoot });
-    this.lock = new SpecLock(this.specDir, { fs: this.fs });
-    this.workflow = loadWorkflow(this.projectRoot, this.fs, { requirePipelines });
+    this.store = new PipelineStateStore(this.specDir, { projectRoot: this.projectRoot });
+    this.lock = new SpecLock(this.specDir);
+    this.workflow = loadWorkflow(this.projectRoot, { requirePipelines });
   }
 
   // ── 状态查询（无副作用）───────────────────────────────────────────────────
@@ -481,7 +480,7 @@ export class PipelineEngine {
   currentStage() {
     const state = this.store.read();
     if (state) return state.current_stage;
-    return inferStageFromArtifacts(this.specDir, this.fs);
+    return inferStageFromArtifacts(this.specDir);
   }
 
   /** 获取流水线步骤定义 */
@@ -570,7 +569,7 @@ export class PipelineEngine {
       return { ok: false, error: 'Pipeline is in failed state. Use: loom run --recover <stage>', hint: '执行 loom run --spec-dir <spec目录> --recover <阶段名> 从失败恢复' };
     }
 
-    const approvalFreshness = checkApprovalFreshness(state, this.specDir, this.projectRoot, this.fs);
+    const approvalFreshness = checkApprovalFreshness(state, this.specDir, this.projectRoot);
     if (!approvalFreshness.ok) {
       const details = approvalFreshness.stale
         .map(a => `${a.stage}: ${a.changes.map(c => `${c.path} ${c.reason}`).join(', ')}`)
@@ -594,7 +593,7 @@ export class PipelineEngine {
     // 从 step 定义读当前阶段产物
     const steps = this.getSteps();
     const currentStep = steps.find(s => s.id === current);
-    const outputCheck = checkStageOutputs(this.specDir, currentStep?.outputs ?? [], this.fs);
+    const outputCheck = checkStageOutputs(this.specDir, currentStep?.outputs ?? []);
     if (!outputCheck.ok) {
       const reasons = [];
       if (outputCheck.missing.length > 0) reasons.push(`missing: ${outputCheck.missing.join(', ')}`);
@@ -604,7 +603,7 @@ export class PipelineEngine {
 
     // 声明式 verdict 门禁（gate_verdict 在当前 step 声明）
     if (currentStep?.gate_verdict) {
-      if (!isReportPassing(this.specDir, currentStep.gate_verdict, this.fs, { requireEvidence: currentStep.evidence_required === true })) {
+      if (!isReportPassing(this.specDir, currentStep.gate_verdict, { requireEvidence: currentStep.evidence_required === true })) {
         return { ok: false, error: `${currentStep.gate_verdict} lacks a valid PASS verdict or evidence receipt.`, hint: `确认报告为 PASS；若本阶段要求证据，还需提供 evidence-command / exit-code / file / sha256，且日志哈希必须匹配。` };
       }
     }
@@ -614,8 +613,7 @@ export class PipelineEngine {
       step: currentStep,
       specDir: this.specDir,
       projectRoot: this.projectRoot,
-      store: this.store,
-      fs: this.fs
+      store: this.store
     });
     if (!validatorCheck.ok) {
       if (validatorCheck.retry_target) {
@@ -674,7 +672,7 @@ export class PipelineEngine {
     }
 
     // 检查下一阶段的前置条件（requires 在 next step 声明）
-    const preCheck = checkPreconditions(this.specDir, next.requires ?? [], this.fs);
+    const preCheck = checkPreconditions(this.specDir, next.requires ?? []);
     if (!preCheck.ok) {
       return { ok: false, error: `Preconditions for "${next.id}" not met: ${preCheck.missing.join(', ')}`, hint: `先完成前置条件中缺少的产物: ${preCheck.missing.join(', ')}` };
     }
@@ -705,14 +703,14 @@ export class PipelineEngine {
 
     const steps = this.getSteps();
     const currentStep = steps.find(s => s.id === state.current_stage);
-    const approvalCheck = checkApprovalRequirements(this.specDir, currentStep, this.fs);
+    const approvalCheck = checkApprovalRequirements(this.specDir, currentStep);
     if (!approvalCheck.ok) {
       const reasons = [];
       if (approvalCheck.missing.length > 0) reasons.push(`missing: ${approvalCheck.missing.join(', ')}`);
       if (approvalCheck.withPlaceholders.length > 0) reasons.push(`placeholders in: ${approvalCheck.withPlaceholders.join(', ')}`);
       return { ok: false, error: `Approval requirements for "${state.current_stage}" not met: ${reasons.join('; ')}`, hint: `通过该人工 gate 前必须补齐 approval_requires 产物且无占位符。缺失: ${approvalCheck.missing.join(', ')}，有占位符: ${approvalCheck.withPlaceholders.join(', ')}` };
     }
-    const reviewFeedbackCheck = checkReviewFeedbackApproval(this.specDir, currentStep, this.fs);
+    const reviewFeedbackCheck = checkReviewFeedbackApproval(this.specDir, currentStep);
     if (!reviewFeedbackCheck.ok) {
       return {
         ok: false,
@@ -720,11 +718,10 @@ export class PipelineEngine {
         hint: 'review-feedback.md 必须包含 verdict: PASS，且不能包含 BLOCKER、FAIL、CHANGES_REQUESTED 等阻断标记。'
       };
     }
-    const approvalArtifacts = approvalArtifactPaths(currentStep, next, this.specDir, this.fs);
+    const approvalArtifacts = approvalArtifactPaths(currentStep, next, this.specDir);
     const approvalFingerprints = fingerprintDeclaredPaths(approvalArtifacts, {
       specDir: this.specDir,
-      projectRoot: this.projectRoot,
-      fs: this.fs
+      projectRoot: this.projectRoot
     });
 
     this.store.transition(next.id, {
@@ -836,7 +833,7 @@ export class PipelineEngine {
 
   _readVersion() {
     try {
-      const pkg = JSON.parse(this.fs.readFileSync(join(this.projectRoot, 'package.json'), 'utf-8'));
+      const pkg = JSON.parse(readFileSync(join(this.projectRoot, 'package.json'), 'utf-8'));
       return pkg.version || '2.0.0';
     } catch { return '2.0.0'; }
   }
@@ -862,7 +859,7 @@ export class PipelineEngine {
 
   _recordCompliance(stage, passed = true, reason = '') {
     try {
-      const tracker = new ComplianceTracker(this.projectRoot, { fs: this.fs });
+      const tracker = new ComplianceTracker(this.projectRoot);
       if (passed) {
         tracker.recordFromVerifyReport(this.specDir);
       } else {

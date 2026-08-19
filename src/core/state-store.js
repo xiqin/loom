@@ -7,7 +7,7 @@
  *   - progress.md          → 由 state-store 汇总生成，不由 AI 直接写
  */
 
-import { NodeFileSystem } from './fs-interface.js';
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { escapeMarkdown } from './markdown.js';
 import { dirname, join, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
@@ -37,10 +37,10 @@ function isMutableLedgerArtifact(path) {
  * - 文件不存在 → 返回 fallback（正常的"未初始化"）
  * - 文件存在但解析失败 → 抛错（损坏状态绝不能被静默当成不存在，否则会被覆盖丢失）
  */
-function readJSON(path, fallback = null, fs) {
-  if (!fs.existsSync(path)) return fallback;
+function readJSON(path, fallback = null) {
+  if (!existsSync(path)) return fallback;
   let raw;
-  try { raw = fs.readFileSync(path, 'utf-8'); }
+  try { raw = readFileSync(path, 'utf-8'); }
   catch { return fallback; }
   try { return JSON.parse(raw); }
   catch (err) {
@@ -49,8 +49,8 @@ function readJSON(path, fallback = null, fs) {
 }
 
 /** 读 JSON，损坏时跳过并告警（用于批量读取 task 列表，单个坏文件不应中断全部）*/
-function readJSONLenient(path, fs) {
-  try { return JSON.parse(fs.readFileSync(path, 'utf-8')); }
+function readJSONLenient(path) {
+  try { return JSON.parse(readFileSync(path, 'utf-8')); }
   catch (err) {
     process.stderr.write(`[loom] skipping unreadable state file ${path}: ${err.message}\n`);
     return null;
@@ -58,14 +58,14 @@ function readJSONLenient(path, fs) {
 }
 
 /** 原子写：写临时文件后 rename，避免进程中途崩导致半写 JSON */
-function writeJSON(path, data, fs) {
+function writeJSON(path, data) {
   const tmp = `${path}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   const payload = JSON.stringify(data, null, 2) + '\n';
   try {
-    fs.writeFileSync(tmp, payload, 'utf-8');
-    fs.renameSync(tmp, path); // rename 在同一文件系统上是原子的
+    writeFileSync(tmp, payload, 'utf-8');
+    renameSync(tmp, path); // rename 在同一文件系统上是原子的
   } catch (err) {
-    try { fs.rmSync(tmp, { force: true }); } catch {}
+    try { rmSync(tmp, { force: true }); } catch {}
     throw err;
   }
 }
@@ -96,26 +96,25 @@ export class PipelineStateStore {
   /**
    * @param {string} specDir  绝对或相对路径，e.g. "specs/2026-05-27+user-auth"
    */
-  constructor(specDir, { fs, projectRoot } = {}) {
+  constructor(specDir, { projectRoot } = {}) {
     this.specDir = specDir;
     this.projectRoot = resolve(projectRoot || dirname(dirname(specDir)));
     this.statePath = join(specDir, 'pipeline.state.json');
     this.taskStatesDir = join(specDir, 'task-states');
     this.handoffsDir = join(specDir, 'handoffs');
-    this.fs = fs || new NodeFileSystem();
   }
 
   // ── 流水线状态 ────────────────────────────────────────────────────────────
 
   /** 读取流水线状态，不存在返回 null */
   read() {
-    return readJSON(this.statePath, null, this.fs);
+    return readJSON(this.statePath, null);
   }
 
   /** 初始化（首次创建）*/
   init(pipelineType = 'feature', loomVersion = '2.0.0', firstStage = 'brainstorming', dynamicSteps = null) {
-    if (this.fs.existsSync(this.statePath)) return this.read();
-    this.fs.mkdirSync(this.specDir, { recursive: true });
+    if (existsSync(this.statePath)) return this.read();
+    mkdirSync(this.specDir, { recursive: true });
     const state = {
       spec_dir: this.specDir,
       pipeline_type: pipelineType,
@@ -127,7 +126,7 @@ export class PipelineStateStore {
       metadata: {},
       ...(dynamicSteps ? { dynamic_steps: dynamicSteps } : {})
     };
-    writeJSON(this.statePath, state, this.fs);
+    writeJSON(this.statePath, state);
     this._rebuildProgress();
     return state;
   }
@@ -138,7 +137,7 @@ export class PipelineStateStore {
     if (!state) return null;
     state.dynamic_steps = steps;
     state.updated_at = now();
-    writeJSON(this.statePath, state, this.fs);
+    writeJSON(this.statePath, state);
     return state;
   }
 
@@ -151,7 +150,7 @@ export class PipelineStateStore {
       else state.metadata[key] = value;
     }
     state.updated_at = now();
-    writeJSON(this.statePath, state, this.fs);
+    writeJSON(this.statePath, state);
     this._rebuildProgress();
     return state;
   }
@@ -181,7 +180,7 @@ export class PipelineStateStore {
     state.updated_at = now();
     if (meta.data) Object.assign(state.metadata, meta.data);
 
-    writeJSON(this.statePath, state, this.fs);
+    writeJSON(this.statePath, state);
     this._rebuildProgress();
     return state;
   }
@@ -207,7 +206,7 @@ export class PipelineStateStore {
       state.metadata.completed_stage = state.current_stage;
       state.metadata.completed_at = completedAt;
       state.updated_at = completedAt;
-      writeJSON(this.statePath, state, this.fs);
+      writeJSON(this.statePath, state);
       this._rebuildProgress();
     }
 
@@ -231,7 +230,7 @@ export class PipelineStateStore {
     state.updated_at = now();
     state.failure_reason = reason;
 
-    writeJSON(this.statePath, state, this.fs);
+    writeJSON(this.statePath, state);
     this._rebuildProgress();
   }
 
@@ -240,9 +239,9 @@ export class PipelineStateStore {
   /** 初始化单个 task 状态 */
   initTask(taskId, agentSessionId = null) {
     assertValidTaskId(taskId);
-    this.fs.mkdirSync(this.taskStatesDir, { recursive: true });
+    mkdirSync(this.taskStatesDir, { recursive: true });
     const path = join(this.taskStatesDir, `${taskId}.state.json`);
-    if (this.fs.existsSync(path)) return readJSON(path, null, this.fs);
+    if (existsSync(path)) return readJSON(path, null);
 
     const state = {
       task_id: taskId,
@@ -255,7 +254,7 @@ export class PipelineStateStore {
       last_reviewer_result: null,
       blocker: null
     };
-    writeJSON(path, state, this.fs);
+    writeJSON(path, state);
     return state;
   }
 
@@ -263,21 +262,21 @@ export class PipelineStateStore {
   updateTask(taskId, patch) {
     assertValidTaskId(taskId);
     assertValidTaskStatus(patch?.status);
-    this.fs.mkdirSync(this.taskStatesDir, { recursive: true });
+    mkdirSync(this.taskStatesDir, { recursive: true });
     const path = join(this.taskStatesDir, `${taskId}.state.json`);
-    const state = readJSON(path, null, this.fs) || this.initTask(taskId);
+    const state = readJSON(path, null) || this.initTask(taskId);
     Object.assign(state, patch, { updated_at: now() });
-    writeJSON(path, state, this.fs);
+    writeJSON(path, state);
     this._rebuildProgress();
     return state;
   }
 
   /** 读取所有 task 状态 */
   readAllTasks() {
-    if (!this.fs.existsSync(this.taskStatesDir)) return [];
-    return this.fs.readdirSync(this.taskStatesDir)
+    if (!existsSync(this.taskStatesDir)) return [];
+    return readdirSync(this.taskStatesDir)
       .filter(f => f.endsWith('.state.json'))
-      .map(f => readJSONLenient(join(this.taskStatesDir, f), this.fs))
+      .map(f => readJSONLenient(join(this.taskStatesDir, f)))
       .filter(Boolean)
       .sort((a, b) => {
         const na = parseInt(a.task_id?.replace(/\D/g, '') || '0');
@@ -290,7 +289,7 @@ export class PipelineStateStore {
   readTask(taskId) {
     assertValidTaskId(taskId);
     const path = join(this.taskStatesDir, `${taskId}.state.json`);
-    return readJSON(path, null, this.fs);
+    return readJSON(path, null);
   }
 
   // ── Handoff ────────────────────────────────────────────────────────────────
@@ -298,7 +297,7 @@ export class PipelineStateStore {
   writeHandoff(taskId, handoff) {
     assertValidTaskId(taskId);
     assertValidHandoffStatus(handoff?.status);
-    this.fs.mkdirSync(this.handoffsDir, { recursive: true });
+    mkdirSync(this.handoffsDir, { recursive: true });
     const basisPaths = ['spec.md', 'plan.md'];
     if (/^T\d+$/i.test(taskId)) basisPaths.push(`tasks/${taskId}.md`);
     else if (taskId === 'planning' || taskId === 'executing') basisPaths.push('tasks/');
@@ -307,7 +306,7 @@ export class PipelineStateStore {
       ? handoff.artifacts.filter(path => !/^(?:handoffs|task-states)\/|^(?:progress\.md|pipeline\.state\.json)$/.test(path))
         .filter(path => !isMutableLedgerArtifact(path))
       : [];
-    const fingerprintOptions = { specDir: this.specDir, projectRoot: this.projectRoot, fs: this.fs };
+    const fingerprintOptions = { specDir: this.specDir, projectRoot: this.projectRoot };
 
     writeJSON(join(this.handoffsDir, `${taskId}.json`), {
       ...handoff,
@@ -315,7 +314,7 @@ export class PipelineStateStore {
       basis_fingerprints: fingerprintDeclaredPaths(basisPaths, fingerprintOptions),
       artifact_fingerprints: fingerprintDeclaredPaths(artifacts, fingerprintOptions),
       written_at: now()
-    }, this.fs);
+    });
     this._rebuildProgress();
   }
 
@@ -325,14 +324,14 @@ export class PipelineStateStore {
 
   readHandoff(taskId) {
     assertValidTaskId(taskId);
-    return readJSON(join(this.handoffsDir, `${taskId}.json`), null, this.fs);
+    return readJSON(join(this.handoffsDir, `${taskId}.json`), null);
   }
 
   readAllHandoffs() {
-    if (!this.fs.existsSync(this.handoffsDir)) return [];
-    return this.fs.readdirSync(this.handoffsDir)
+    if (!existsSync(this.handoffsDir)) return [];
+    return readdirSync(this.handoffsDir)
       .filter(f => f.endsWith('.json'))
-      .map(f => readJSONLenient(join(this.handoffsDir, f), this.fs))
+      .map(f => readJSONLenient(join(this.handoffsDir, f)))
       .filter(Boolean)
       .sort((a, b) => {
         const at = a.written_at || '';
@@ -344,7 +343,7 @@ export class PipelineStateStore {
 
   /** Return compact stale facts; hashes stay on disk and are not injected into prompts. */
   findStaleHandoffs() {
-    const options = { specDir: this.specDir, projectRoot: this.projectRoot, fs: this.fs };
+    const options = { specDir: this.specDir, projectRoot: this.projectRoot };
     const stale = [];
     for (const handoff of this.readAllHandoffs()) {
       const changes = [
@@ -367,17 +366,17 @@ export class PipelineStateStore {
     const progressPath = join(this.specDir, 'progress.md');
 
     // 尝试增量追加：如果已有 progress.md 且 pipeline 阶段未变，只更新变动部分
-    if (this.fs.existsSync(progressPath)) {
-      const existing = this.fs.readFileSync(progressPath, 'utf-8');
+    if (existsSync(progressPath)) {
+      const existing = readFileSync(progressPath, 'utf-8');
       const incremental = this._tryIncrementalUpdate(existing, pipeline, tasks, handoffs);
       if (incremental) {
-        this.fs.writeFileSync(progressPath, incremental, 'utf-8');
+        writeFileSync(progressPath, incremental, 'utf-8');
         return;
       }
     }
 
     // 首次生成或结构变化时全量重建
-    this.fs.writeFileSync(progressPath, this._buildFullProgress(pipeline, tasks, handoffs), 'utf-8');
+    writeFileSync(progressPath, this._buildFullProgress(pipeline, tasks, handoffs), 'utf-8');
   }
 
   /**
@@ -584,14 +583,14 @@ export class PipelineStateStore {
 
 // ── 全局扫描（用于 loom status --all）────────────────────────────────────
 
-export function scanAllSpecs(projectRoot, { fs = new NodeFileSystem() } = {}) {
+export function scanAllSpecs(projectRoot) {
   const specsDir = join(projectRoot, 'specs');
-  if (!fs.existsSync(specsDir)) return [];
-  return fs.readdirSync(specsDir, { withFileTypes: true })
+  if (!existsSync(specsDir)) return [];
+  return readdirSync(specsDir, { withFileTypes: true })
     .filter(e => e.isDirectory())
     .map(e => {
       const specDir = join(specsDir, e.name);
-      const store = new PipelineStateStore(specDir, { fs });
+      const store = new PipelineStateStore(specDir);
       try { return store.snapshot(); }
       catch (err) {
         // 单个 spec 损坏不应中断全局扫描

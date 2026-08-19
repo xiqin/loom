@@ -6,18 +6,17 @@
  * 额外提供依赖等待、死锁/活锁检测。
  */
 
-import { NodeFileSystem } from './fs-interface.js';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 
 const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
 
 export class TaskLock {
-  constructor(specDir, { fs } = {}) {
+  constructor(specDir) {
     this.specDir = specDir;
-    this.fs = fs || new NodeFileSystem();
     this.lockDir = join(specDir, '.loom-tasks');
-    this.fs.mkdirSync(this.lockDir, { recursive: true });
+    mkdirSync(this.lockDir, { recursive: true });
     this.activeLocks = new Map(); // taskId -> { token, lockFile }
   }
 
@@ -40,7 +39,7 @@ export class TaskLock {
 
     let fd;
     try {
-      fd = this.fs.openSync(lockFile, 'wx');
+      fd = openSync(lockFile, 'wx');
     } catch (err) {
       if (err.code !== 'EEXIST') throw err;
 
@@ -67,8 +66,8 @@ export class TaskLock {
       return this._retryAcquire(taskId, lockFile, token, now, payload);
     }
 
-    this.fs.writeFileSync(fd, payload, 'utf-8');
-    this.fs.closeSync(fd);
+    writeFileSync(fd, payload, 'utf-8');
+    closeSync(fd);
     this.activeLocks.set(taskId, { token, lockFile });
     return { acquired: true, taskId };
   }
@@ -103,7 +102,7 @@ export class TaskLock {
     while (Date.now() - startTime < timeoutMs) {
       const allDone = taskIds.every(id => {
         const lockFile = join(this.lockDir, `${id}.lock`);
-        return !this.fs.existsSync(lockFile);
+        return !existsSync(lockFile);
       });
       if (allDone) return { success: true };
       await new Promise(r => setTimeout(r, pollInterval));
@@ -201,28 +200,28 @@ export class TaskLock {
   _retryAcquire(taskId, lockFile, token, now, payload) {
     let fd;
     try {
-      fd = this.fs.openSync(lockFile, 'wx');
+      fd = openSync(lockFile, 'wx');
     } catch (err) {
       if (err.code !== 'EEXIST') throw err;
       const holder = this._readLock(lockFile);
       return { acquired: false, taskId, holder: { pid: holder?.pid, startedAt: holder?.startedAt } };
     }
-    this.fs.writeFileSync(fd, payload, 'utf-8');
-    this.fs.closeSync(fd);
+    writeFileSync(fd, payload, 'utf-8');
+    closeSync(fd);
     this.activeLocks.set(taskId, { token, lockFile });
     return { acquired: true, taskId };
   }
 
   _readLock(lockFile) {
     try {
-      return JSON.parse(this.fs.readFileSync(lockFile, 'utf-8'));
+      return JSON.parse(readFileSync(lockFile, 'utf-8'));
     } catch {
       return null;
     }
   }
 
   _removeLockFile(lockFile) {
-    try { this.fs.rmSync(lockFile, { force: true }); } catch {}
+    try { rmSync(lockFile, { force: true }); } catch {}
   }
 
   _isAlive(pid) {

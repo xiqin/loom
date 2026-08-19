@@ -108,7 +108,7 @@ describe('loadWorkflow / parser', () => {
 
   it('allows workflow without pipelines when only dynamic steps are required', () => {
     const root = setupProject('defaults:\n  pipeline_type: feature\nstep_catalog:\n  executing:\n    outputs: [test-report.md]\nselection_rules:\n  must_include: [executing]\n');
-    const wf = loadWorkflow(root, undefined, { requirePipelines: false });
+    const wf = loadWorkflow(root, { requirePipelines: false });
     expect(wf.pipelines).toEqual({});
     expect(wf.step_catalog.executing.outputs).toEqual(['test-report.md']);
   });

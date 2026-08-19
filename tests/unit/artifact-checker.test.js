@@ -37,9 +37,9 @@ describe('evidence receipts', () => {
     write(dir, 'test-report.md', report);
 
     expect(validateReportEvidence(dir, report).ok).toBe(true);
-    expect(isReportPassing(dir, 'test-report.md', undefined, { requireEvidence: true })).toBe(true);
+    expect(isReportPassing(dir, 'test-report.md', { requireEvidence: true })).toBe(true);
     write(dir, 'evidence/test.log', 'changed');
-    expect(isReportPassing(dir, 'test-report.md', undefined, { requireEvidence: true })).toBe(false);
+    expect(isReportPassing(dir, 'test-report.md', { requireEvidence: true })).toBe(false);
   });
 });
 

@@ -1,14 +1,13 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { NodeFileSystem } from './fs-interface.js';
 import { resolveTrackedPath, sha256File } from './fingerprints.js';
 
 const RISK_ORDER = { low: 0, medium: 1, high: 2 };
 const HOOK_PREFIX = 'hook:';
 
 export class EvidenceStore {
-  constructor(projectRoot, { fs } = {}) {
+  constructor(projectRoot) {
     this.root = projectRoot;
-    this.fs = fs || new NodeFileSystem();
     this.historyPath = join(projectRoot, '.loom', 'compliance', 'history.json');
     this.evidenceDir = join(projectRoot, '.loom', 'evidence');
     this.defaultExportPath = join(this.evidenceDir, 'evidence.json');
@@ -19,7 +18,6 @@ export class EvidenceStore {
     let evidence = this._loadHistory().map((record, index) => normalizeComplianceRecord(record, index, {
       ...options,
       projectRoot: this.root,
-      fs: this.fs,
     }));
 
     if (options.type) evidence = evidence.filter(e => e.type === options.type);
@@ -66,8 +64,8 @@ export class EvidenceStore {
     const format = String(options.format || 'json').toLowerCase();
     const payload = this.render({ ...options, format });
 
-    this.fs.mkdirSync(dirname(path), { recursive: true });
-    this.fs.writeFileSync(path, payload, 'utf-8');
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, payload, 'utf-8');
     return { path, bytes: Buffer.byteLength(payload, 'utf-8') };
   }
 
@@ -75,8 +73,8 @@ export class EvidenceStore {
     const path = options.path || this.defaultTrendsPath;
     const payload = JSON.stringify(this.trends(options), null, 2) + '\n';
 
-    this.fs.mkdirSync(dirname(path), { recursive: true });
-    this.fs.writeFileSync(path, payload, 'utf-8');
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, payload, 'utf-8');
     return { path, bytes: Buffer.byteLength(payload, 'utf-8') };
   }
 
@@ -92,9 +90,9 @@ export class EvidenceStore {
   }
 
   _loadHistory() {
-    if (!this.fs.existsSync(this.historyPath)) return [];
+    if (!existsSync(this.historyPath)) return [];
     try {
-      const data = JSON.parse(this.fs.readFileSync(this.historyPath, 'utf-8'));
+      const data = JSON.parse(readFileSync(this.historyPath, 'utf-8'));
       return Array.isArray(data) ? data : [];
     } catch {
       return [];
@@ -219,7 +217,6 @@ function extractMetrics(record, type) {
 
 function hashArtifacts(artifacts, record, options) {
   const projectRoot = options.projectRoot;
-  const fs = options.fs || new NodeFileSystem();
   if (!projectRoot) return {};
 
   const specRoot = record.spec_dir ? resolve(projectRoot, record.spec_dir) : projectRoot;
@@ -227,7 +224,7 @@ function hashArtifacts(artifacts, record, options) {
   for (const artifact of artifacts) {
     if (typeof artifact !== 'string' || artifact.trim() === '') continue;
     const path = resolveTrackedPath(specRoot, projectRoot, artifact);
-    const digest = path ? sha256File(path, fs) : null;
+    const digest = path ? sha256File(path) : null;
     if (digest) hashes[artifact] = digest;
   }
   return hashes;

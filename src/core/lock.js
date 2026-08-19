@@ -7,7 +7,7 @@
  * 避免 PID 被系统复用后误删他人锁文件。
  */
 
-import { NodeFileSystem } from './fs-interface.js';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 
@@ -27,15 +27,14 @@ function installExitHandlers() {
 }
 
 export class SpecLock {
-  constructor(specDir, { fs } = {}) {
+  constructor(specDir) {
     this.lockPath = join(specDir, '.loom-run.lock');
     this.token = null; // 持锁时的本进程 token
-    this.fs = fs || new NodeFileSystem();
   }
 
   /** 尝试加锁。返回 { acquired: bool, pid?: number, startedAt?: string } */
   acquire() {
-    this.fs.mkdirSync(dirname(this.lockPath), { recursive: true });
+    mkdirSync(dirname(this.lockPath), { recursive: true });
     const token = randomBytes(8).toString('hex');
     const startedAt = new Date().toISOString();
     const payload = `${process.pid}\n${startedAt}\n${token}`;
@@ -43,7 +42,7 @@ export class SpecLock {
     let fd;
     try {
       // O_EXCL：文件已存在则抛 EEXIST，原子建锁
-      fd = this.fs.openSync(this.lockPath, 'wx');
+      fd = openSync(this.lockPath, 'wx');
     } catch (err) {
       if (err.code !== 'EEXIST') throw err;
       // 锁文件已存在 → 检查持有者是否存活
@@ -54,7 +53,7 @@ export class SpecLock {
       // 持有者已死 → 残留锁，清理后重试一次
       this._removeLock();
       try {
-        fd = this.fs.openSync(this.lockPath, 'wx');
+        fd = openSync(this.lockPath, 'wx');
       } catch (err2) {
         if (err2.code !== 'EEXIST') throw err2;
         // 竞争中被别的进程抢先
@@ -63,8 +62,8 @@ export class SpecLock {
       }
     }
 
-    this.fs.writeFileSync(fd, payload, 'utf-8');
-    this.fs.closeSync(fd);
+    writeFileSync(fd, payload, 'utf-8');
+    closeSync(fd);
     this.token = token;
     activeLocks.add(this);
     installExitHandlers();
@@ -96,7 +95,7 @@ export class SpecLock {
 
   /** 是否被某个存活进程持有 */
   isLocked() {
-    if (!this.fs.existsSync(this.lockPath)) return false;
+    if (!existsSync(this.lockPath)) return false;
     const holder = this._readLock();
     if (!holder.pid) return false;
     if (this._isAlive(holder.pid)) return true;
@@ -109,7 +108,7 @@ export class SpecLock {
 
   _readLock() {
     try {
-      const content = this.fs.readFileSync(this.lockPath, 'utf-8').trim();
+      const content = readFileSync(this.lockPath, 'utf-8').trim();
       const [pidStr, startedAt, token] = content.split('\n');
       const pid = parseInt(pidStr);
       return {
@@ -138,7 +137,7 @@ export class SpecLock {
       const holder = this._readLock();
       if (holder.token && holder.token !== this.token) return; // 不是我的锁
     }
-    try { this.fs.rmSync(this.lockPath, { force: true }); } catch {}
+    try { rmSync(this.lockPath, { force: true }); } catch {}
     this.token = null;
     activeLocks.delete(this);
   }

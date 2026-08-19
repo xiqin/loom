@@ -24,7 +24,7 @@ export default async function finalizeCommand(options = {}) {
 
   let workflow = null;
   try {
-    workflow = loadWorkflow(cwd, undefined, { requirePipelines: false });
+    workflow = loadWorkflow(cwd, { requirePipelines: false });
   } catch (err) {
     console.error(`\n  ✗ ${err.message}\n`);
     process.exitCode = 1;

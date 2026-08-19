@@ -5,7 +5,7 @@
  * 支持安全验证：恢复前检查前置产物和占位符。
  */
 
-import { NodeFileSystem } from './fs-interface.js';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { hasPlaceholder } from './artifact-checker.js';
 
@@ -103,9 +103,8 @@ const STAGE_OUTPUTS = {
 };
 
 export class FailureDiagnostics {
-  constructor(specDir, { fs } = {}) {
+  constructor(specDir) {
     this.specDir = specDir;
-    this.fs = fs || new NodeFileSystem();
   }
 
   /**
@@ -176,7 +175,7 @@ export class FailureDiagnostics {
     // 检查前置产物
     const prereqs = STAGE_PREREQUISITES[nextStage] || [];
     for (const prereq of prereqs) {
-      if (!this.fs.existsSync(join(this.specDir, prereq))) {
+      if (!existsSync(join(this.specDir, prereq))) {
         blockers.push(`前置产物缺失: ${prereq}`);
       }
     }
@@ -185,8 +184,8 @@ export class FailureDiagnostics {
     const outputs = STAGE_OUTPUTS[nextStage] || [];
     for (const output of outputs) {
       const path = join(this.specDir, output);
-      if (this.fs.existsSync(path)) {
-        const content = this.fs.readFileSync(path, 'utf-8');
+      if (existsSync(path)) {
+        const content = readFileSync(path, 'utf-8');
         if (hasPlaceholder(content)) {
           warnings.push(`${output} 包含未完成标记`);
         }

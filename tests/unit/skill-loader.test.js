@@ -1,13 +1,30 @@
-import { describe, it, expect } from 'vitest';
-import { InMemoryFileSystem } from '../../src/core/fs-interface.js';
-import { SkillLoader } from '../../src/core/skill-loader.js';
+import { describe, it, expect, afterEach } from 'vitest';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { SkillLoader } from '../../src/core/skill-loader.js';
 
-function createTestFS() {
-  const fs = new InMemoryFileSystem();
+const dirs = [];
+function tmp() {
+  const d = mkdtempSync(join(tmpdir(), 'loom-skills-'));
+  dirs.push(d);
+  return d;
+}
+afterEach(() => {
+  while (dirs.length) rmSync(dirs.pop(), { recursive: true, force: true });
+});
+
+function writeSkill(dir, skillName, content) {
+  const p = join(dir, skillName);
+  mkdirSync(p, { recursive: true });
+  writeFileSync(join(p, 'SKILL.md'), content, 'utf-8');
+}
+
+function createTestDir() {
+  const dir = tmp();
 
   // skill 1: 完整结构
-  fs.seed('/skills/loom-brainstorming/SKILL.md', `---
+  writeSkill(dir, 'loom-brainstorming', `---
 name: loom-brainstorming
 description: >
   Explore 2-3 implementation options with trade-offs.
@@ -42,7 +59,7 @@ spec.md 保存、自审完成。
 `);
 
   // skill 2: 仅 description 字段
-  fs.seed('/skills/loom-writing-plans/SKILL.md', `---
+  writeSkill(dir, 'loom-writing-plans', `---
 name: loom-writing-plans
 description: >
   Break a confirmed spec into ordered task files.
@@ -65,7 +82,7 @@ description: >
 `);
 
   // skill 3: 有代码块内 ## 标题（fence-aware 测试）
-  fs.seed('/skills/loom-test-skill/SKILL.md', `---
+  writeSkill(dir, 'loom-test-skill', `---
 name: loom-test-skill
 description: Test skill with fenced code blocks.
 ---
@@ -88,14 +105,14 @@ description: Test skill with fenced code blocks.
 - 约束 1。
 `);
 
-  return fs;
+  return dir;
 }
 
 describe('SkillLoader', () => {
   describe('listSummaries (L0)', () => {
     it('returns summaries for all skills', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       const summaries = loader.listSummaries();
 
       expect(summaries).toHaveLength(3);
@@ -105,24 +122,24 @@ describe('SkillLoader', () => {
     });
 
     it('includes description field from frontmatter', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       const brainstorming = loader.listSummaries().find(s => s.name === 'loom-brainstorming');
 
       expect(brainstorming.description).toContain('Explore 2-3 implementation options');
     });
 
     it('falls back to empty string when description is absent', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       const writingPlans = loader.listSummaries().find(s => s.name === 'loom-writing-plans');
 
       expect(writingPlans.description.length).toBeGreaterThan(0);
     });
 
     it('extracts section titles (fence-aware)', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       const testSkill = loader.listSummaries().find(s => s.name === 'loom-test-skill');
 
       // "这个不应该被当作 section 标题" 不应出现在 sections 中
@@ -133,8 +150,8 @@ describe('SkillLoader', () => {
     });
 
     it('extracts trigger conditions', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       const brainstorming = loader.listSummaries().find(s => s.name === 'loom-brainstorming');
 
       expect(brainstorming.triggers.length).toBeGreaterThanOrEqual(1);
@@ -142,8 +159,8 @@ describe('SkillLoader', () => {
     });
 
     it('estimates tokens for each skill', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       const summaries = loader.listSummaries();
 
       for (const s of summaries) {
@@ -152,16 +169,15 @@ describe('SkillLoader', () => {
     });
 
     it('returns empty array when skills dir does not exist', () => {
-      const fs = new InMemoryFileSystem();
-      const loader = new SkillLoader('/nonexistent', { fs });
+      const loader = new SkillLoader(join(tmp(), 'nonexistent'));
       expect(loader.listSummaries()).toEqual([]);
     });
   });
 
   describe('getSummary', () => {
     it('finds skill by exact name', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       const summary = loader.getSummary('loom-brainstorming');
 
       expect(summary).not.toBeNull();
@@ -169,8 +185,8 @@ describe('SkillLoader', () => {
     });
 
     it('finds skill by short name (without loom- prefix)', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       const summary = loader.getSummary('brainstorming');
 
       expect(summary).not.toBeNull();
@@ -178,16 +194,16 @@ describe('SkillLoader', () => {
     });
 
     it('returns null for unknown skill', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       expect(loader.getSummary('nonexistent')).toBeNull();
     });
   });
 
   describe('getFullSkill (L1)', () => {
     it('returns full skill content', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       const full = loader.getFullSkill('loom-brainstorming');
 
       expect(full).not.toBeNull();
@@ -198,8 +214,8 @@ describe('SkillLoader', () => {
     });
 
     it('finds skill by short name', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       const full = loader.getFullSkill('writing-plans');
 
       expect(full).not.toBeNull();
@@ -207,16 +223,16 @@ describe('SkillLoader', () => {
     });
 
     it('returns null for unknown skill', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       expect(loader.getFullSkill('nonexistent')).toBeNull();
     });
   });
 
   describe('getSkillEssentials (L0.5)', () => {
     it('returns compact single-skill context without full content', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       const essentials = loader.getSkillEssentials('loom-brainstorming');
       const full = loader.getFullSkill('loom-brainstorming');
 
@@ -230,16 +246,16 @@ describe('SkillLoader', () => {
     });
 
     it('returns null for unknown skill', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       expect(loader.getSkillEssentials('nonexistent')).toBeNull();
     });
   });
 
   describe('getSkillSection (L1 fine-grained)', () => {
     it('returns a single section content', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       const section = loader.getSkillSection('loom-brainstorming', '约束');
 
       expect(section).not.toBeNull();
@@ -248,16 +264,16 @@ describe('SkillLoader', () => {
     });
 
     it('returns null for non-existent section', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       const section = loader.getSkillSection('loom-brainstorming', '不存在的节');
 
       expect(section).toBeNull();
     });
 
     it('fuzzy matches section titles', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       // 包含匹配
       const section = loader.getSkillSection('loom-brainstorming', '完成');
 
@@ -268,8 +284,8 @@ describe('SkillLoader', () => {
 
   describe('formatL0', () => {
     it('produces AI-friendly text output', () => {
-      const fs = createTestFS();
-      const loader = new SkillLoader('/skills', { fs });
+      const dir = createTestDir();
+      const loader = new SkillLoader(dir);
       const text = loader.formatL0();
 
       expect(text).toContain('## loom-brainstorming');

@@ -9,7 +9,6 @@
 import { resolve, join, sep, dirname } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { NodeFileSystem } from '../core/fs-interface.js';
 import { PipelineEngine } from '../core/pipeline-engine.js';
 import { HANDOFF_STATUSES, PipelineStateStore, scanAllSpecs } from '../core/state-store.js';
 import { MemoryStore } from '../core/memory-store.js';
@@ -98,8 +97,8 @@ function safeResolveSpecDir(projectRoot, specDir) {
 }
 
 /** 在 spec 锁保护下执行写操作；拿不到锁则带重试等待 */
-async function withSpecLock(absSpecDir, fn, fsImpl) {
-  const lock = new SpecLock(absSpecDir, { fs: fsImpl });
+async function withSpecLock(absSpecDir, fn) {
+  const lock = new SpecLock(absSpecDir);
   const res = await lock.acquireWithRetry();
   if (!res.acquired) {
     return { error: `spec is locked by PID ${res.pid} (started: ${res.startedAt || 'unknown'})` };
@@ -730,8 +729,8 @@ export const CAPABILITY_GROUPS = {
   },
 };
 
-function readContextResource(uri, doc, projectRoot, fsImpl) {
-  const idx = loadContextIndex(join(projectRoot, '.loom'), doc, fsImpl);
+function readContextResource(uri, doc, projectRoot) {
+  const idx = loadContextIndex(join(projectRoot, '.loom'), doc);
   if (!idx) throw new Error(`Context resource not found: ${uri}`);
   return {
     uri,
@@ -740,12 +739,12 @@ function readContextResource(uri, doc, projectRoot, fsImpl) {
   };
 }
 
-function readFileResource(uri, path, mimeType, fsImpl) {
-  if (!fsImpl.existsSync(path)) throw new Error(`Resource not found: ${uri}`);
+function readFileResource(uri, path, mimeType) {
+  if (!existsSync(path)) throw new Error(`Resource not found: ${uri}`);
   return {
     uri,
     mimeType,
-    text: fsImpl.readFileSync(path, 'utf-8'),
+    text: readFileSync(path, 'utf-8'),
   };
 }
 
@@ -764,12 +763,11 @@ function decodeResourceId(value) {
   return decoded;
 }
 
-export function readMcpResource(uri, sessionStore, sessionId, { fs, projectRoot } = {}) {
+export function readMcpResource(uri, sessionStore, sessionId, { projectRoot } = {}) {
   if (!uri) throw new Error('Missing resource uri');
-  const fsImpl = fs || new NodeFileSystem();
 
   if (uri === 'loom://skills/catalog') {
-    const skills = new SkillLoader(SKILLS_DIR, { fs: fsImpl }).listSummaries();
+    const skills = new SkillLoader(SKILLS_DIR).listSummaries();
     return {
       contents: [{
         uri,
@@ -781,7 +779,7 @@ export function readMcpResource(uri, sessionStore, sessionId, { fs, projectRoot 
 
   const root = sessionStore.resolveProjectRoot(sessionId, projectRoot);
   if (uri === 'loom://memory') {
-    return { contents: [readContextResource(uri, 'memory', root, fsImpl)] };
+    return { contents: [readContextResource(uri, 'memory', root)] };
   }
 
   const contextMatch = uri.match(/^loom:\/\/context\/([^/]+)$/);
@@ -790,7 +788,7 @@ export function readMcpResource(uri, sessionStore, sessionId, { fs, projectRoot 
     if (!DOC_KEYS.includes(doc)) {
       throw new Error(`Unknown context resource: ${doc}. One of: ${DOC_KEYS.join(', ')}`);
     }
-    return { contents: [readContextResource(uri, doc, root, fsImpl)] };
+    return { contents: [readContextResource(uri, doc, root)] };
   }
 
   const specResourceMatch = uri.match(/^loom:\/\/spec\/(.+)\/(state|progress)$/);
@@ -799,7 +797,7 @@ export function readMcpResource(uri, sessionStore, sessionId, { fs, projectRoot 
     const [, , kind] = specResourceMatch;
     const file = kind === 'state' ? 'pipeline.state.json' : 'progress.md';
     const mimeType = kind === 'state' ? 'application/json' : 'text/markdown';
-    return { contents: [readFileResource(uri, join(specDir, file), mimeType, fsImpl)] };
+    return { contents: [readFileResource(uri, join(specDir, file), mimeType)] };
   }
 
   const handoffMatch = uri.match(/^loom:\/\/spec\/(.+)\/handoffs\/([^/]+)$/);
@@ -810,8 +808,7 @@ export function readMcpResource(uri, sessionStore, sessionId, { fs, projectRoot 
       contents: [readFileResource(
         uri,
         join(specDir, 'handoffs', `${handoffId}.json`),
-        'application/json',
-        fsImpl
+        'application/json'
       )],
     };
   }
@@ -821,8 +818,7 @@ export function readMcpResource(uri, sessionStore, sessionId, { fs, projectRoot 
 
 // ── 工具执行 ───────────────────────────────────────────────────────────────
 
-export async function executeToolCall(toolName, args, sessionStore, sessionId, { fs } = {}) {
-  const fsImpl = fs || new NodeFileSystem();
+export async function executeToolCall(toolName, args, sessionStore, sessionId) {
   const specDir = sessionStore.resolveSpecDir(sessionId, args.spec_dir);
   const projectRoot = sessionStore.resolveProjectRoot(sessionId, args.project_root);
 
@@ -850,7 +846,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
     case 'loom_get_context': {
       if (!args.doc) return { error: `Missing doc. One of: ${DOC_KEYS.join(', ')}` };
       const root = args.project_root || projectRoot;
-      const idx = loadContextIndex(join(root, '.loom'), args.doc, fsImpl);
+      const idx = loadContextIndex(join(root, '.loom'), args.doc);
       if (!idx) return { error: `Context doc not found: ${args.doc}` };
       // 回退闸：显式 full 或全局开关 → 整篇原文（绕过分节，防前言丢失）
       if (args.full || process.env.LOOM_CONTEXT_FULL) return idx.full();
@@ -880,7 +876,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
 
     case 'loom_get_project_status': {
       const root = args.project_root || projectRoot;
-      const allSpecs = scanAllSpecs(root, { fs: fsImpl });
+      const allSpecs = scanAllSpecs(root);
       const filteredSpecs = args.active_only
         ? allSpecs.filter(s => s.pipeline?.current_stage !== 'synced' && s.pipeline?.current_stage !== 'done')
         : allSpecs;
@@ -923,7 +919,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
 
     case 'loom_get_pipeline_context': {
       if (!specDir) return { error: 'No spec_dir. Call loom_attach_spec first or pass spec_dir.' };
-      const engine = new PipelineEngine(projectRoot, safeResolveSpecDir(projectRoot, specDir), { fs: fsImpl });
+      const engine = new PipelineEngine(projectRoot, safeResolveSpecDir(projectRoot, specDir));
       const ctx = engine.getStageContext();
       if (!ctx) return { error: 'Pipeline not initialized' };
       const currentStep = engine.getSteps().find(s => s.id === ctx.current_stage);
@@ -944,35 +940,35 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
     case 'loom_select_pipeline': {
       if (!args.request) return { error: 'request is required' };
       const absSpec = specDir ? safeResolveSpecDir(projectRoot, specDir) : null;
-      const selector = new PipelineSelector(projectRoot, absSpec, { fs: fsImpl });
+      const selector = new PipelineSelector(projectRoot, absSpec);
       const result = await selector.select(args.request, args.assessment);
 
       if (!args.initialize) return result;
 
       if (!absSpec) return { error: 'spec_dir is required when initialize=true' };
       return await withSpecLock(absSpec, () => {
-        const engine = new PipelineEngine(projectRoot, absSpec, { fs: fsImpl, requirePipelines: false });
+        const engine = new PipelineEngine(projectRoot, absSpec, { requirePipelines: false });
         const initResult = engine.initialize(null, { dynamicSteps: result.steps });
         return { ...result, initialized: true, state: initResult.state };
-      }, fsImpl);
+      });
     }
 
     case 'loom_advance_pipeline': {
       if (!specDir) return { error: 'No spec_dir' };
       const abs = safeResolveSpecDir(projectRoot, specDir);
-      return await withSpecLock(abs, () => new PipelineEngine(projectRoot, abs, { fs: fsImpl }).advance({ compressionConfirmed: args.compression_confirmed === true }), fsImpl);
+      return await withSpecLock(abs, () => new PipelineEngine(projectRoot, abs).advance({ compressionConfirmed: args.compression_confirmed === true }));
     }
 
     case 'loom_approve_gate': {
       if (!specDir) return { error: 'No spec_dir' };
       const abs = safeResolveSpecDir(projectRoot, specDir);
-      return await withSpecLock(abs, () => new PipelineEngine(projectRoot, abs, { fs: fsImpl }).approve(), fsImpl);
+      return await withSpecLock(abs, () => new PipelineEngine(projectRoot, abs).approve());
     }
 
     case 'loom_update_task_state': {
       if (!specDir) return { error: 'No spec_dir' };
       const abs = safeResolveSpecDir(projectRoot, specDir);
-      const store = new PipelineStateStore(abs, { fs: fsImpl, projectRoot });
+      const store = new PipelineStateStore(abs, { projectRoot });
       const patch = { status: args.status };
       if (args.blocker) patch.blocker = args.blocker;
       if (args.status === 'failed') {
@@ -989,7 +985,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
       if (args.stage && args.task_id) return { error: 'Use only one of stage or task_id' };
       const abs = safeResolveSpecDir(projectRoot, specDir);
       return await withSpecLock(abs, () => {
-        const store = new PipelineStateStore(abs, { fs: fsImpl, projectRoot });
+        const store = new PipelineStateStore(abs, { projectRoot });
         const payload = {
           ...(args.data || {}),
           status: args.status || args.data?.status || 'done',
@@ -1012,7 +1008,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
           handoff: compactHandoff(store.readHandoff(args.task_id)),
           next_required_action: 'use this compact handoff to locate artifacts, then verify signatures against current source'
         };
-      }, fsImpl);
+      });
     }
 
     case 'loom_stage_checkpoint': {
@@ -1020,14 +1016,14 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
       if (!args.stage) return { error: 'stage is required' };
       const abs = safeResolveSpecDir(projectRoot, specDir);
       return await withSpecLock(abs, () => {
-        const engine = new PipelineEngine(projectRoot, abs, { fs: fsImpl });
+        const engine = new PipelineEngine(projectRoot, abs);
         const initialCtx = engine.getStageContext();
         if (!initialCtx) return { error: 'Pipeline not initialized' };
         if (args.stage !== initialCtx.current_stage) {
           return { error: `checkpoint stage "${args.stage}" does not match current stage "${initialCtx.current_stage}"` };
         }
 
-        const store = new PipelineStateStore(abs, { fs: fsImpl, projectRoot });
+        const store = new PipelineStateStore(abs, { projectRoot });
         const payload = {
           ...(args.data || {}),
           status: args.status || args.data?.status || 'done',
@@ -1075,7 +1071,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
             : null,
           next_required_action: 'compress closed-stage raw context, then call loom_advance_pipeline with compression_confirmed=true'
         };
-      }, fsImpl);
+      });
     }
 
     case 'loom_adjust_pipeline': {
@@ -1083,14 +1079,14 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
       if (!args.new_remaining_steps?.length) return { error: 'new_remaining_steps is required and must not be empty' };
       const abs = safeResolveSpecDir(projectRoot, specDir);
       return await withSpecLock(abs, () => {
-        const engine = new PipelineEngine(projectRoot, abs, { fs: fsImpl });
+        const engine = new PipelineEngine(projectRoot, abs);
         const result = engine.adjust(args.new_remaining_steps);
         return result;
-      }, fsImpl);
+      });
     }
 
     case 'loom_get_memory': {
-      const memStore = new MemoryStore(join(projectRoot, '.loom'), { fs: fsImpl });
+      const memStore = new MemoryStore(join(projectRoot, '.loom'));
       return memStore.list({
         type: args.type,
         tag: args.tag,
@@ -1108,7 +1104,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
     }
 
     case 'loom_add_memory': {
-      const memStore = new MemoryStore(join(projectRoot, '.loom'), { fs: fsImpl });
+      const memStore = new MemoryStore(join(projectRoot, '.loom'));
       const entry = memStore.add(args.type, args.content, {
         context: args.context,
         tags: args.tags,
@@ -1141,7 +1137,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId, {
     }
 
     case 'loom_get_skill_context': {
-      const loader = new SkillLoader(SKILLS_DIR, { fs: fsImpl });
+      const loader = new SkillLoader(SKILLS_DIR);
 
       // 无 skill 参数 → L0 全量摘要
       if (!args.skill) {

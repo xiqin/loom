@@ -12,7 +12,7 @@
  * 纯函数式，无状态、无 IO 副作用（读文件由调用方负责）。
  */
 
-import { NodeFileSystem } from './fs-interface.js';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** 每节软上限：超过则在 outline 标记 oversized，提示进一步拆分。 */
@@ -33,7 +33,7 @@ export const DOC_PATHS = {
 export const DOC_KEYS = Object.keys(DOC_PATHS);
 
 /** 把 doc 键解析为 .loom 下的绝对路径；未知键返回 null。 */
-export function resolveDocPath(loomDir, doc, fs = new NodeFileSystem()) {
+export function resolveDocPath(loomDir, doc) {
   const rel = DOC_PATHS[doc];
   if (!rel) return null;
   return join(loomDir, ...rel);
@@ -169,8 +169,8 @@ export class ContextIndex {
 /**
  * 便捷封装：从 loomDir 读取 doc 文件并返回 ContextIndex；文件缺失返回 null。
  */
-export function loadContextIndex(loomDir, doc, fs = new NodeFileSystem()) {
-  const path = resolveDocPath(loomDir, doc, fs);
-  if (!path || !fs.existsSync(path)) return null;
-  return new ContextIndex(fs.readFileSync(path, 'utf-8'), doc);
+export function loadContextIndex(loomDir, doc) {
+  const path = resolveDocPath(loomDir, doc);
+  if (!path || !existsSync(path)) return null;
+  return new ContextIndex(readFileSync(path, 'utf-8'), doc);
 }

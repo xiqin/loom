@@ -11,20 +11,20 @@
  *   .loom/memory/sessions/       — 会话归档目录
  */
 
-import { NodeFileSystem } from './fs-interface.js';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { escapeMarkdown } from './markdown.js';
 import { join } from 'node:path';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { execSync } from 'node:child_process';
 
 /** 原子写：temp + rename，避免半写损坏 store.json */
-function writeFileAtomic(path, content, fs) {
+function writeFileAtomic(path, content) {
   const tmp = `${path}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    fs.writeFileSync(tmp, content, 'utf-8');
-    fs.renameSync(tmp, path);
+    writeFileSync(tmp, content, 'utf-8');
+    renameSync(tmp, path);
   } catch (err) {
-    try { fs.rmSync(tmp, { force: true }); } catch {}
+    try { rmSync(tmp, { force: true }); } catch {}
     throw err;
   }
 }
@@ -68,28 +68,27 @@ function assertValidSessionSlug(slug) {
 }
 
 export class MemoryStore {
-  constructor(loomDir, { fs } = {}) {
+  constructor(loomDir) {
     this.loomDir = loomDir;
     this.memDir = join(loomDir, 'memory');
     this.storePath = join(this.memDir, 'store.json');
     this.mdPath = join(this.memDir, 'MEMORY.md');
     this.sessionsDir = join(this.memDir, 'sessions');
-    this.fs = fs || new NodeFileSystem();
   }
 
   // ── 读写底层 ──────────────────────────────────────────────────────────────
 
   _load() {
-    if (!this.fs.existsSync(this.storePath)) return { entries: [], sessions: [] };
-    try { return JSON.parse(this.fs.readFileSync(this.storePath, 'utf-8')); }
+    if (!existsSync(this.storePath)) return { entries: [], sessions: [] };
+    try { return JSON.parse(readFileSync(this.storePath, 'utf-8')); }
     catch (err) {
       throw new Error(`Corrupt memory store: ${this.storePath} (${err.message}). Fix or delete it manually.`);
     }
   }
 
   _save(data) {
-    this.fs.mkdirSync(this.memDir, { recursive: true });
-    writeFileAtomic(this.storePath, JSON.stringify(data, null, 2) + '\n', this.fs);
+    mkdirSync(this.memDir, { recursive: true });
+    writeFileAtomic(this.storePath, JSON.stringify(data, null, 2) + '\n');
   }
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
@@ -180,10 +179,10 @@ export class MemoryStore {
   archiveSession(featureSlug, content) {
     assertValidSessionSlug(featureSlug);
     const data = this._load();
-    this.fs.mkdirSync(this.sessionsDir, { recursive: true });
+    mkdirSync(this.sessionsDir, { recursive: true });
     const filename = `${today()}-${featureSlug}.md`;
     const path = join(this.sessionsDir, filename);
-    this.fs.writeFileSync(path, content, 'utf-8');
+    writeFileSync(path, content, 'utf-8');
 
     data.sessions.unshift({
       file: `sessions/${filename}`,
@@ -213,10 +212,10 @@ export class MemoryStore {
     }
     this._save(data);
 
-    this.fs.mkdirSync(this.sessionsDir, { recursive: true });
+    mkdirSync(this.sessionsDir, { recursive: true });
     const archiveFilename = `archive-${featureSlug}-${archiveVersion}.json`;
     const archivePath = join(this.sessionsDir, archiveFilename);
-    this.fs.writeFileSync(archivePath, JSON.stringify({
+    writeFileSync(archivePath, JSON.stringify({
       featureSlug,
       version: archiveVersion,
       archived_at: now(),
@@ -307,8 +306,8 @@ export class MemoryStore {
     }
 
     const md = lines.join('\n');
-    this.fs.mkdirSync(this.memDir, { recursive: true });
-    this.fs.writeFileSync(this.mdPath, md, 'utf-8');
+    mkdirSync(this.memDir, { recursive: true });
+    writeFileSync(this.mdPath, md, 'utf-8');
     return md;
   }
 
@@ -320,7 +319,7 @@ export class MemoryStore {
   merge(otherStorePath) {
     const myData = this._load();
     let other;
-    try { other = JSON.parse(this.fs.readFileSync(otherStorePath, 'utf-8')); }
+    try { other = JSON.parse(readFileSync(otherStorePath, 'utf-8')); }
     catch { return { merged: 0, error: 'Cannot read other store' }; }
 
     const existingIds = new Set(myData.entries.map(e => e.id));

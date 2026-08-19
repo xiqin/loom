@@ -1,11 +1,28 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { createHash } from 'node:crypto';
-import { join, resolve } from 'node:path';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { EvidenceStore, normalizeComplianceRecord } from '../../src/core/evidence-store.js';
-import { InMemoryFileSystem } from '../../src/core/fs-interface.js';
 
-function seedHistory(fs, root, records) {
-  fs.writeFileSync(join(root, '.loom', 'compliance', 'history.json'), JSON.stringify(records, null, 2), 'utf-8');
+const dirs = [];
+function tmp() {
+  const d = mkdtempSync(join(tmpdir(), 'loom-evidence-'));
+  dirs.push(d);
+  return d;
+}
+afterEach(() => {
+  while (dirs.length) rmSync(dirs.pop(), { recursive: true, force: true });
+});
+
+function seedHistory(root, records) {
+  write(root, join('.loom', 'compliance', 'history.json'), JSON.stringify(records, null, 2));
+}
+
+function write(root, rel, content) {
+  const p = join(root, rel);
+  mkdirSync(dirname(p), { recursive: true });
+  writeFileSync(p, content, 'utf-8');
 }
 
 function sha256(content) {
@@ -44,9 +61,8 @@ describe('EvidenceStore', () => {
   });
 
   it('lists evidence sorted by timestamp and summarizes verdicts, risks, and types', () => {
-    const fs = new InMemoryFileSystem();
-    const root = '/repo';
-    seedHistory(fs, root, [
+    const root = tmp();
+    seedHistory(root, [
       {
         timestamp: '2026-07-07T10:00:00.000Z',
         stage: 'hook:UserPromptSubmit',
@@ -70,7 +86,7 @@ describe('EvidenceStore', () => {
       },
     ]);
 
-    const store = new EvidenceStore(root, { fs });
+    const store = new EvidenceStore(root);
     const items = store.list();
     expect(items.map(i => i.type)).toEqual(['file_change', 'user_prompt']);
     expect(items[0].verdict).toBe('WARN');
@@ -85,14 +101,13 @@ describe('EvidenceStore', () => {
   });
 
   it('filters evidence by type, risk, verdict, and spec directory', () => {
-    const fs = new InMemoryFileSystem();
-    const root = '/repo';
-    seedHistory(fs, root, [
+    const root = tmp();
+    seedHistory(root, [
       { spec_dir: 'specs/a', timestamp: '2026-07-07T10:00:00.000Z', stage: 'hook:TaskCompleted', skill: 'task-completed-audit', passed: true, risk: 'low', task: { id: 'T1' } },
       { spec_dir: 'specs/b', timestamp: '2026-07-07T10:01:00.000Z', stage: 'hook:PermissionDenied', skill: 'permission-denied-audit', passed: false, risk: 'medium', permission: { tool: 'bash' } },
     ]);
 
-    const store = new EvidenceStore(root, { fs });
+    const store = new EvidenceStore(root);
     expect(store.list({ type: 'permission' })).toHaveLength(1);
     expect(store.list({ risk: 'medium' })).toHaveLength(1);
     expect(store.list({ verdict: 'FAIL' })).toHaveLength(1);
@@ -100,33 +115,30 @@ describe('EvidenceStore', () => {
   });
 
   it('matches spec directory filters across relative and absolute paths', () => {
-    const fs = new InMemoryFileSystem();
-    const root = resolve('/repo');
-    seedHistory(fs, root, [
+    const root = tmp();
+    seedHistory(root, [
       { spec_dir: resolve(root, 'specs/a'), timestamp: '2026-07-07T10:00:00.000Z', stage: 'verification', passed: true, risk: 'low', violations: [] },
       { spec_dir: 'specs/b', timestamp: '2026-07-07T10:01:00.000Z', stage: 'verification', passed: true, risk: 'low', violations: [] },
     ]);
 
-    const store = new EvidenceStore(root, { fs });
+    const store = new EvidenceStore(root);
     expect(store.list({ specDir: 'specs/a' })).toHaveLength(1);
     expect(store.list({ specDir: resolve(root, 'specs/b') })).toHaveLength(1);
   });
 
   it('emits JSON Lines for filtered evidence', () => {
-    const fs = new InMemoryFileSystem();
-    const root = '/repo';
-    seedHistory(fs, root, [
+    const root = tmp();
+    seedHistory(root, [
       { timestamp: '2026-07-07T10:00:00.000Z', stage: 'verification', skill: 'loom-verification-before-completion', passed: true, violations: [] },
     ]);
 
-    const line = new EvidenceStore(root, { fs }).jsonl();
+    const line = new EvidenceStore(root).jsonl();
     expect(JSON.parse(line)).toMatchObject({ type: 'verification', verdict: 'PASS' });
   });
 
   it('adds sha256 hashes for existing artifact files when requested', () => {
-    const fs = new InMemoryFileSystem();
-    const root = resolve('/repo');
-    seedHistory(fs, root, [
+    const root = tmp();
+    seedHistory(root, [
       {
         spec_dir: 'specs/demo',
         timestamp: '2026-07-07T10:00:00.000Z',
@@ -137,10 +149,10 @@ describe('EvidenceStore', () => {
         task: { id: 'T1', artifacts: ['test-report.md', 'src/parser.js', '../escape.txt'] },
       },
     ]);
-    fs.writeFileSync(join(root, 'specs', 'demo', 'test-report.md'), 'PASS\n', 'utf-8');
-    fs.writeFileSync(join(root, 'src', 'parser.js'), 'export const ok = true;\n', 'utf-8');
+    write(root, join('specs', 'demo', 'test-report.md'), 'PASS\n');
+    write(root, join('src', 'parser.js'), 'export const ok = true;\n');
 
-    const [item] = new EvidenceStore(root, { fs }).list({ hashArtifacts: true });
+    const [item] = new EvidenceStore(root).list({ hashArtifacts: true });
     expect(item.artifact_hashes).toEqual({
       'src/parser.js': sha256('export const ok = true;\n'),
       'test-report.md': sha256('PASS\n'),
@@ -148,26 +160,24 @@ describe('EvidenceStore', () => {
   });
 
   it('exports normalized evidence to JSON and JSON Lines files', () => {
-    const fs = new InMemoryFileSystem();
-    const root = '/repo';
-    seedHistory(fs, root, [
+    const root = tmp();
+    seedHistory(root, [
       { timestamp: '2026-07-07T10:00:00.000Z', stage: 'verification', skill: 'loom-verification-before-completion', passed: true, violations: [] },
     ]);
 
-    const store = new EvidenceStore(root, { fs });
+    const store = new EvidenceStore(root);
     const jsonResult = store.export({ path: join(root, '.loom', 'evidence', 'evidence.json') });
-    const json = JSON.parse(fs.readFileSync(jsonResult.path, 'utf-8'));
+    const json = JSON.parse(readFileSync(jsonResult.path, 'utf-8'));
     expect(json.summary.total).toBe(1);
     expect(json.evidence[0]).toMatchObject({ type: 'verification', verdict: 'PASS' });
 
     const jsonlResult = store.export({ path: join(root, '.loom', 'evidence', 'evidence.jsonl'), format: 'jsonl' });
-    expect(JSON.parse(fs.readFileSync(jsonlResult.path, 'utf-8'))).toMatchObject({ type: 'verification' });
+    expect(JSON.parse(readFileSync(jsonlResult.path, 'utf-8'))).toMatchObject({ type: 'verification' });
   });
 
   it('exports Markdown and HTML evidence reports', () => {
-    const fs = new InMemoryFileSystem();
-    const root = '/repo';
-    seedHistory(fs, root, [
+    const root = tmp();
+    seedHistory(root, [
       {
         timestamp: '2026-07-07T10:00:00.000Z',
         stage: 'hook:PostToolUse',
@@ -179,24 +189,23 @@ describe('EvidenceStore', () => {
       },
     ]);
 
-    const store = new EvidenceStore(root, { fs });
+    const store = new EvidenceStore(root);
     const markdownResult = store.export({ path: join(root, '.loom', 'evidence', 'report.md'), format: 'markdown' });
-    const markdown = fs.readFileSync(markdownResult.path, 'utf-8');
+    const markdown = readFileSync(markdownResult.path, 'utf-8');
     expect(markdown).toContain('# Loom Evidence Report');
     expect(markdown).toContain('| FAIL | medium | tool_use |');
     expect(markdown).toContain('Build failed');
 
     const htmlResult = store.export({ path: join(root, '.loom', 'evidence', 'report.html'), format: 'html' });
-    const html = fs.readFileSync(htmlResult.path, 'utf-8');
+    const html = readFileSync(htmlResult.path, 'utf-8');
     expect(html).toContain('<title>Loom Evidence Report</title>');
     expect(html).toContain('<td>FAIL</td>');
     expect(html).toContain('Build failed');
   });
 
   it('computes trend metrics across normalized evidence', () => {
-    const fs = new InMemoryFileSystem();
-    const root = '/repo';
-    seedHistory(fs, root, [
+    const root = tmp();
+    seedHistory(root, [
       {
         timestamp: '2026-07-07T10:00:00.000Z',
         stage: 'hook:PostToolUse',
@@ -233,7 +242,7 @@ describe('EvidenceStore', () => {
       },
     ]);
 
-    const trends = new EvidenceStore(root, { fs }).trends({ top: 1 });
+    const trends = new EvidenceStore(root).trends({ top: 1 });
     expect(trends.total).toBe(4);
     expect(trends.window).toEqual({ limit: null, earliest: '2026-07-07T10:00:00.000Z', latest: '2026-07-07T10:03:00.000Z' });
     expect(trends.verdicts).toEqual({ PASS: 1, WARN: 1, FAIL: 2 });
@@ -246,15 +255,14 @@ describe('EvidenceStore', () => {
   });
 
   it('exports trend metrics to a JSON file', () => {
-    const fs = new InMemoryFileSystem();
-    const root = '/repo';
-    seedHistory(fs, root, [
+    const root = tmp();
+    seedHistory(root, [
       { timestamp: '2026-07-07T10:00:00.000Z', stage: 'verification', skill: 'loom-verification-before-completion', passed: true, violations: [] },
     ]);
 
-    const store = new EvidenceStore(root, { fs });
+    const store = new EvidenceStore(root);
     const result = store.exportTrends({ path: join(root, '.loom', 'evidence', 'trends.json') });
-    const trends = JSON.parse(fs.readFileSync(result.path, 'utf-8'));
+    const trends = JSON.parse(readFileSync(result.path, 'utf-8'));
     expect(trends).toMatchObject({ total: 1, verdicts: { PASS: 1, WARN: 0, FAIL: 0 }, rates: { pass: 1, warn: 0, fail: 0 } });
   });
 });
