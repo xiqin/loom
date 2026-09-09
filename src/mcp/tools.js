@@ -213,7 +213,8 @@ export const TOOL_DEFINITIONS = [
       type: 'object',
       properties: {
         spec_dir: { type: 'string', description: 'Path to spec directory (optional if attached)' },
-        compression_confirmed: { type: 'boolean', description: 'Set true only after the host agent has called its context compression tool for the closed stage.' }
+        compression_confirmed: { type: 'boolean', description: 'Set true only after the host agent has called its context compression tool for the closed stage.' },
+        worktree_root: { type: 'string', description: 'Optional Git worktree root used only to resolve test and evidence references.' }
       }
     }
   },
@@ -443,7 +444,8 @@ export const TOOL_DEFINITIONS = [
       type: 'object',
       properties: {
         spec_dir: { type: 'string', description: 'Path to spec directory (optional if attached)' },
-        round: { type: 'number', description: 'Convergence round number (default 1)' }
+        round: { type: 'number', description: 'Convergence round number (default 1)' },
+        worktree_root: { type: 'string', description: 'Optional Git worktree root used only to resolve test and evidence references.' }
       }
     }
   },
@@ -465,7 +467,8 @@ export const TOOL_DEFINITIONS = [
     inputSchema: {
       type: 'object',
       properties: {
-        spec_dir: { type: 'string', description: 'Path to spec directory (optional if attached)' }
+        spec_dir: { type: 'string', description: 'Path to spec directory (optional if attached)' },
+        worktree_root: { type: 'string', description: '仅用于查找隔离工作树中的测试和证据引用' }
       }
     }
   }
@@ -956,7 +959,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId) {
     case 'loom_advance_pipeline': {
       if (!specDir) return { error: 'No spec_dir' };
       const abs = safeResolveSpecDir(projectRoot, specDir);
-      return await withSpecLock(abs, () => new PipelineEngine(projectRoot, abs).advance({ compressionConfirmed: args.compression_confirmed === true }));
+      return await withSpecLock(abs, () => new PipelineEngine(projectRoot, abs, { worktreeRoot: args.worktree_root || null }).advance({ compressionConfirmed: args.compression_confirmed === true }));
     }
 
     case 'loom_approve_gate': {
@@ -1223,7 +1226,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId) {
       if (!specDir) return { error: 'No spec_dir. Call loom_attach_spec first or pass spec_dir.' };
       const abs = safeResolveSpecDir(projectRoot, specDir);
       const round = positiveInt(args.round, 1);
-      const r = runConverge(abs, round);
+      const r = runConverge(abs, round, { worktreeRoot: args.worktree_root || null });
       return {
         ok: r.ok,
         error: r.error || null,
@@ -1247,7 +1250,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId) {
     case 'loom_verify_artifacts': {
       if (!specDir) return { error: 'No spec_dir. Call loom_attach_spec first or pass spec_dir.' };
       const abs = safeResolveSpecDir(projectRoot, specDir);
-      const r = verifyArtifacts({ specDir: abs });
+       const r = verifyArtifacts({ specDir: abs, worktreeRoot: args.worktree_root || null });
       return {
         ok: r.ok,
         errors: r.errors || [],

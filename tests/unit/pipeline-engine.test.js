@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { loadWorkflow, PipelineEngine } from '../../src/core/pipeline-engine.js';
@@ -501,6 +501,32 @@ selection_rules:
       ]
     });
     eng.store.updateMetadata({ convergence_round: 2 });
+    eng.store.writeStageHandoff('converge', { status: 'done', summary: 'converged' });
+
+    expect(eng.advance({ compressionConfirmed: true })).toMatchObject({ ok: true, to: 'verification' });
+    expect(eng.store.read().metadata.convergence_round).toBeUndefined();
+  });
+
+  it('uses an explicit worktree root for convergence validation without changing the project root', () => {
+    const root = setupProject(WF_WITH_CATALOG);
+    const specDir = join(root, 'specs', 'converge-worktree');
+    mkdirSync(specDir, { recursive: true });
+    writeStructuredSpec(specDir);
+    rmSync(join(specDir, 'tests', 'example.test.js'));
+    rmSync(join(specDir, 'evidence', 'example.log'));
+    const worktreeRoot = tmp();
+    mkdirSync(join(worktreeRoot, 'tests'), { recursive: true });
+    mkdirSync(join(worktreeRoot, 'evidence'), { recursive: true });
+    writeFileSync(join(worktreeRoot, 'tests', 'example.test.js'), 'test passes', 'utf-8');
+    writeFileSync(join(worktreeRoot, 'evidence', 'example.log'), 'evidence passes', 'utf-8');
+
+    const eng = new PipelineEngine(root, specDir, { worktreeRoot });
+    eng.initialize(null, {
+      dynamicSteps: [
+        { id: 'converge', skill: 'loom-converge', outputs: ['handoffs/converge.json'], validators: ['convergence-pass'] },
+        { id: 'verification', skill: 'loom-verification-before-completion', requires: ['convergence-report.json'] }
+      ]
+    });
     eng.store.writeStageHandoff('converge', { status: 'done', summary: 'converged' });
 
     expect(eng.advance({ compressionConfirmed: true })).toMatchObject({ ok: true, to: 'verification' });

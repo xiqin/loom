@@ -95,11 +95,11 @@ description: loom 全部技能快速参考
 
 ## 通用 Skills（继承 superpowers 框架）
 
-### test-driven-development
+### test-after-implementation
 
-- **用途**：测试驱动开发
-- **触发**：需要 TDD 方式开发
-- **循环**：确认 seam → 红 → 绿 → 重构
+- **用途**：实现后测试
+- **触发**：需要先实现再写测试的方式开发
+- **循环**：确认 seam → 实现 → 重构 → 测试 → 验证
 
 ### systematic-debugging
 

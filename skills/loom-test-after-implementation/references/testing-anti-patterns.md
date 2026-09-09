@@ -56,12 +56,13 @@ test('saves user', () => {
   expect(mockRepo.save).toHaveBeenCalled();
 });
 ```
-问题：mock 掩盖了真实的依赖行为，可能错过集成问题。
+问题：mock 掩盖了真实的依赖行为，可能错过集成问题。更严重的是，为了能注入 mockRepo 而给 UserService 加构造参数，是 test-induced design damage。
 
 **好的做法：**
 - 尽可能使用真实依赖
 - 如果必须 mock，确保理解被 mock 的依赖的真实行为
 - 编写集成测试覆盖真实依赖交互
+- 不为 mock 而改生产代码的构造签名
 
 ### 4. 测试过于宽泛
 
@@ -93,6 +94,33 @@ test('divides correctly', () => {
 - 测试异常流程（错误处理）
 - 测试边界条件（0、负数、null、undefined、最大值等）
 
+### 6. 为可测试性而设计（test-induced design damage）
+
+**坏的示例：**
+```typescript
+// 为能 mock 文件系统而建抽象
+interface FileSystem {
+  read(path: string): Promise<string>;
+  write(path: string, content: string): Promise<void>;
+}
+class RealFileSystem implements FileSystem { /* 转发 Node fs */ }
+// 仅测试用 InMemoryFileSystem implements FileSystem
+```
+问题：FileSystem 抽象是对标准库的无逻辑薄壳转发，只为测试而存在。这是 mockist 风格驱使出的设计——即使取消测试先行，惯性仍会带回来。
+
+**好的做法：**
+- 文件 I/O 用 `mkdtempSync` 真实临时目录，不建文件系统抽象
+- 依赖替换仅限三边界
+- 设计服务于业务需求，不服务于测试便利
+
+### 7. 跳过重构直接写测试
+
+**坏的示例：**
+实现完成后直接写测试，测试接触的是未清理的凌乱代码。之后重构发现测试绑定了一堆实现细节，改不动了。
+
+**好的做法：**
+实现 → 重构 → 写测试。测试锁定的是重构后的干净结构。
+
 ## 总结
 
 - 测试真实行为，不是 mock 行为
@@ -102,3 +130,5 @@ test('divides correctly', () => {
 - 理解依赖关系
 - 测试要专注（一个行为一个测试）
 - 覆盖边界条件
+- 先重构再写测试，让测试锁定干净结构
+- 覆盖率是发现工具，不是达标指标

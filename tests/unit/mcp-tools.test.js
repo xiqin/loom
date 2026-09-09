@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, copyFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { executeToolCall, readMcpResource, TOOL_DEFINITIONS } from '../../src/mcp/tools.js';
@@ -857,6 +857,32 @@ describe('loom_validate_plan / loom_detail_expansion_check / loom_analyze_artifa
     expect(existsSync(join(specDir, 'convergence-report.json'))).toBe(true);
   });
 
+  it('converge resolves test and evidence references from an explicit worktree root', async () => {
+    const { root, specDir } = setupSpecDir();
+    const worktreeRoot = tmp();
+    mkdirSync(join(worktreeRoot, 'tests'), { recursive: true });
+    mkdirSync(join(worktreeRoot, 'evidence'), { recursive: true });
+    writeFileSync(join(worktreeRoot, 'tests', 'example.test.js'), 'test passes');
+    writeFileSync(join(worktreeRoot, 'evidence', 'example.log'), 'evidence passes');
+    writePlanningTraceability(specDir, ['tests/example.test.js'], ['evidence/example.log']);
+
+    const store = new SessionStore();
+    await executeToolCall('loom_attach_spec', { spec_dir: specDir, project_root: root }, store, 's1');
+    const r = await executeToolCall('loom_converge', { round: 1, worktree_root: worktreeRoot }, store, 's1');
+
+    expect(r.ok).toBe(true);
+    expect(r.report.status).toBe('converged');
+    expect(r.report.coverage.behavior_coverage).toBe('100%');
+  });
+
+  it('exposes worktree_root on converge and advance schemas', () => {
+    const converge = TOOL_DEFINITIONS.find(tool => tool.name === 'loom_converge');
+    const advance = TOOL_DEFINITIONS.find(tool => tool.name === 'loom_advance_pipeline');
+
+    expect(converge.inputSchema.properties.worktree_root).toMatchObject({ type: 'string' });
+    expect(advance.inputSchema.properties.worktree_root).toMatchObject({ type: 'string' });
+  });
+
   it('omission_hunt blocks when behavior test references missing files', async () => {
     const { root, specDir } = setupSpecDir();
     writeFileSync(join(specDir, 'traceability.json'), JSON.stringify({
@@ -893,6 +919,28 @@ describe('loom_validate_plan / loom_detail_expansion_check / loom_analyze_artifa
     const store = new SessionStore();
     await executeToolCall('loom_attach_spec', { spec_dir: specDir, project_root: root }, store, 's1');
     const r = await executeToolCall('loom_verify_artifacts', {}, store, 's1');
+    expect(r.ok).toBe(true);
+    expect(r.errors).toEqual([]);
+  });
+
+  it('verify_artifacts resolves traceability references from an explicit worktree root', async () => {
+    const { root, specDir } = setupSpecDir();
+    const worktreeRoot = tmp();
+    mkdirSync(join(worktreeRoot, 'tests'), { recursive: true });
+    mkdirSync(join(worktreeRoot, 'evidence'), { recursive: true });
+    writeFileSync(join(worktreeRoot, 'tests', 'auth.test.js'), 'test evidence reference\n');
+    writeFileSync(join(worktreeRoot, 'evidence', 'auth.log'), 'PASS\n');
+    writePlanningTraceability(specDir, ['tests/auth.test.js'], ['evidence/auth.log']);
+    writeFileSync(join(specDir, 'progress.md'), '# Progress\n\nDone at 12:34\n');
+    writeFileSync(join(specDir, 'test-report.md'), '# Test Report\n\n结论: WARN\n\nREQ-001 covered by manual evidence.\n');
+
+    rmSync(join(specDir, 'tests'), { recursive: true, force: true });
+    rmSync(join(specDir, 'evidence'), { recursive: true, force: true });
+
+    const store = new SessionStore();
+    await executeToolCall('loom_attach_spec', { spec_dir: specDir, project_root: root }, store, 's1');
+    const r = await executeToolCall('loom_verify_artifacts', { worktree_root: worktreeRoot }, store, 's1');
+
     expect(r.ok).toBe(true);
     expect(r.errors).toEqual([]);
   });

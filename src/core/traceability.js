@@ -75,8 +75,8 @@ export function validateTraceabilityFile(specDir, errors, options = {}) {
     if (entry.tasks.length === 0) errors.push(`traceability.json ${id} has no task references`);
     if (requireEvidence && entry.tests.length === 0) errors.push(`traceability.json ${id} has no test references`);
     if (requireEvidence && entry.evidence.length === 0) errors.push(`traceability.json ${id} has no evidence references`);
-    checkTraceabilityReferences(specDir, id, entry, errors, { requireEvidence, requireTaskFiles });
-    checkBehaviorTraceability(specDir, id, behaviorIdsByRequirement[id] || [], entry, errors, { requireEvidence, requireTaskFiles });
+    checkTraceabilityReferences(specDir, id, entry, errors, { requireEvidence, requireTaskFiles, worktreeRoot: options.worktreeRoot });
+    checkBehaviorTraceability(specDir, id, behaviorIdsByRequirement[id] || [], entry, errors, { requireEvidence, requireTaskFiles, worktreeRoot: options.worktreeRoot });
   }
 
   for (const entry of entries) {
@@ -140,14 +140,14 @@ function checkTraceabilityReferences(specDir, requirementId, entry, errors, opti
 
   if (options.requireEvidence !== false) {
     for (const test of entry.tests) {
-      const path = resolveProjectReference(specDir, stripReferenceTarget(test));
+      const path = resolveProjectReference(specDir, stripReferenceTarget(test), options.worktreeRoot);
       if (!path || !existsSync(path)) {
         errors.push(`traceability.json ${requirementId} test reference not found: ${test}`);
       }
     }
 
     for (const evidence of entry.evidence) {
-      const path = resolveSpecReference(specDir, stripReferenceTarget(evidence));
+      const path = resolveSpecReference(specDir, stripReferenceTarget(evidence), options.worktreeRoot);
       if (!path || !existsSync(path)) {
         errors.push(`traceability.json ${requirementId} evidence reference not found: ${evidence}`);
       }
@@ -184,17 +184,23 @@ function resolveTaskReference(specDir, ref) {
   return resolveSpecReference(specDir, clean);
 }
 
-function resolveSpecReference(specDir, ref) {
+function resolveSpecReference(specDir, ref, worktreeRoot = null) {
   if (!ref || /^(?:https?:|urn:|sha256:)/i.test(ref)) return null;
   if (isAbsolute(ref)) return ref;
-  return join(specDir, ref);
+  const specPath = join(specDir, ref);
+  if (existsSync(specPath) || !worktreeRoot) return specPath;
+  return join(worktreeRoot, ref);
 }
 
-function resolveProjectReference(specDir, ref) {
+function resolveProjectReference(specDir, ref, worktreeRoot = null) {
   if (!ref || /^(?:https?:|urn:|sha256:)/i.test(ref)) return null;
   if (isAbsolute(ref)) return ref;
   const specLocal = join(specDir, ref);
   if (existsSync(specLocal)) return specLocal;
+  if (worktreeRoot) {
+    const worktreePath = join(worktreeRoot, ref);
+    if (existsSync(worktreePath)) return worktreePath;
+  }
   return join(projectRootForSpecDir(specDir), ref);
 }
 

@@ -237,7 +237,7 @@ brainstorming → planning → approved(gate) → git-worktree → executing
 |------|-------|
 | 流水线 | brainstorming · detail-expansion · writing-plans · analyze-artifacts · using-git-worktrees · subagent-driven-development · converge · omission-hunter · verification-before-completion · index-update |
 | 辅助 | init-project · router · pipeline-selector · using-loom |
-| 通用 | test-driven-development · systematic-debugging · requesting-code-review · receiving-code-review · dispatching-parallel-agents · writing-skills · finishing-a-development-branch |
+| 通用 | test-after-implementation · systematic-debugging · requesting-code-review · receiving-code-review · dispatching-parallel-agents · writing-skills · finishing-a-development-branch |
 | 测试 | qa |
 
 **SKILL.md 结构**：YAML frontmatter（`name` / `description: Use when: …`）+ 正文按 `## 触发条件` / `## 执行流程` / `## …` 组织，支持 `references/` 与 `assets/` 子目录。Cursor 适配器默认转紧凑模式（仅 L0 摘要 + MCP 引用），`LOOM_CURSOR_FULL_SKILL=1` 切全量。

@@ -56,7 +56,10 @@ export default async function run(options) {
     process.exitCode = 1;
     return;
   }
-  const engine = new PipelineEngine(cwd, absSpecDir, { requirePipelines: requiresTypePipelines });
+  const engine = new PipelineEngine(cwd, absSpecDir, {
+    requirePipelines: requiresTypePipelines,
+    worktreeRoot: options.worktreeRoot || null,
+  });
   const lock = new SpecLock(absSpecDir);
 
   if (options.verdict) {

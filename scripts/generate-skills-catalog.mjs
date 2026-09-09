@@ -70,7 +70,7 @@ const PIPELINE_SKILLS = [
 ];
 const AUX_SKILLS = ['loom-init-project', 'loom-router', 'loom-pipeline-selector', 'loom-using-loom'];
 const GENERAL_SKILLS = [
-  'loom-test-driven-development', 'loom-systematic-debugging',
+  'loom-test-after-implementation', 'loom-systematic-debugging',
   'loom-requesting-code-review', 'loom-receiving-code-review',
   'loom-dispatching-parallel-agents', 'loom-writing-skills',
   'loom-finishing-a-development-branch'
@@ -92,7 +92,7 @@ const SKILL_DETAILS = {
   'loom-router': { note: '轻量入口路由（分流到 skill 或 pipeline selector，不写流水线状态）' },
   'loom-pipeline-selector': { note: '开发流水线步骤选择（确认后写入 dynamic_steps）' },
   'loom-using-loom': { note: 'loom 框架使用指南（本 skill）' },
-  'loom-test-driven-development': { note: 'TDD 测试驱动开发，+流程图、好/坏示例、常见借口表' },
+  'loom-test-after-implementation': { note: '实现后测试，先实现再重构再写行为验证测试，+流程图、好/坏示例、常见误区表' },
   'loom-systematic-debugging': { note: '系统化调试, +4阶段流程图、条件等待、纵深防御' },
   'loom-requesting-code-review': { note: '请求代码审查, +预审查清单、审查模板' },
   'loom-receiving-code-review': { note: '接受代码审查, +响应模板、流程图' },

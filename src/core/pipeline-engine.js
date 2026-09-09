@@ -306,9 +306,9 @@ const ADVANCE_VALIDATORS = {
       hint: 'spec.md 中每个 REQ-xxx 都必须出现在至少一个 tasks/Tn.md 的 frontmatter requirements 列表中。'
     };
   },
-  'verification-artifacts': ({ specDir, stage }) => {
+  'verification-artifacts': ({ specDir, stage, worktreeRoot }) => {
     if (stage !== 'verification') return { ok: true };
-    const verification = verifyArtifacts({ specDir });
+    const verification = verifyArtifacts({ specDir, worktreeRoot });
     if (verification.ok) return { ok: true };
     return {
       ok: false,
@@ -338,11 +338,11 @@ const ADVANCE_VALIDATORS = {
       hint: '跨产物一致性检查发现 blocker：spec/requirements/tasks/traceability 之间存在缺失、未映射或冲突。请按 findings 列表逐项修复后重新运行 analyze-artifacts。'
     };
   },
-  'convergence-pass': ({ specDir, stage, store }) => {
+  'convergence-pass': ({ specDir, stage, store, worktreeRoot }) => {
     if (stage !== 'converge') return { ok: true };
     const state = store?.read?.() || {};
     const round = (state.metadata?.convergence_round || 0) + 1;
-    const result = runConverge(specDir, round);
+    const result = runConverge(specDir, round, { worktreeRoot });
     if (result.ok) return { ok: true, clear_convergence_round: true };
     if (round >= 3) {
       return {
@@ -461,9 +461,10 @@ export class PipelineEngine {
    * @param {string} projectRoot  项目根目录
    * @param {string} specDir      specs/<date+feature> 的绝对路径
    */
-  constructor(projectRoot, specDir, { requirePipelines = true } = {}) {
+  constructor(projectRoot, specDir, { requirePipelines = true, worktreeRoot = null } = {}) {
     this.projectRoot = resolve(projectRoot);
     this.specDir = resolve(specDir);
+    this.worktreeRoot = worktreeRoot ? resolve(worktreeRoot) : null;
     this.store = new PipelineStateStore(this.specDir, { projectRoot: this.projectRoot });
     this.lock = new SpecLock(this.specDir);
     this.workflow = loadWorkflow(this.projectRoot, { requirePipelines });
@@ -613,6 +614,7 @@ export class PipelineEngine {
       step: currentStep,
       specDir: this.specDir,
       projectRoot: this.projectRoot,
+      worktreeRoot: this.worktreeRoot,
       store: this.store
     });
     if (!validatorCheck.ok) {

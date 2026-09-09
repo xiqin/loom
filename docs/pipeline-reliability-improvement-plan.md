@@ -31,7 +31,7 @@ Loom 当前已经具备规格、计划、任务、执行、验证、审查和索
 3. 新增实现前的细节展开和产物一致性分析阶段。
 4. 将执行阶段改为每次只实现 1 至 3 个行为义务的细粒度循环。
 5. 为每次实现生成冻结、有哈希、范围受控的 Implementation Packet。
-6. 每个行为义务执行独立的 Red-Green-Verify 循环。
+6. 每个行为义务执行独立的 Implement-Refactor-Test-Verify 循环。
 7. 增加专门从需求反查代码的 `omission-hunter`，发现“应该存在但不存在”的实现。
 8. 新增实现后的 convergence 阶段，发现遗漏后追加任务并回流执行。
 9. 将任务状态、需求闭环、审批哈希和结构化收据变成状态机硬门禁。
@@ -505,17 +505,18 @@ Implementation Packet 必须包含：
 
 该文件由规划器和仓库侦察器生成，implementer 不得自行扩大允许修改范围。确需扩大时必须提交 scope-change finding，由 orchestrator 更新计划和 Packet。
 
-### 7.4 行为级 Red-Green-Verify
+### 7.4 行为级 Implement-Refactor-Test-Verify
 
 每个行为义务执行独立循环：
 
 ```text
 读取 Behavior Obligation
-  -> 写入或确认对应失败测试
-  -> 执行测试并确认失败原因符合预期
-  -> 编写最小生产代码
-  -> 执行目标测试
+  -> 编写生产代码实现行为
+  -> 重构代码结构（消除重复、改善命名、理清职责）
+  -> 针对实现的 public boundary 写行为验证测试
+  -> 执行目标测试并确认通过
   -> 执行影响测试
+  -> 查看覆盖率未测区域，逐项判断是否有独立可错路径
   -> 记录代码和测试引用
   -> 提交候选证据
   -> 外部验证器裁决
@@ -524,7 +525,8 @@ Implementation Packet 必须包含：
 禁止以下做法：
 
 - 在整个任务完成后统一声称全部行为通过。
-- 没有观察到预期失败就直接编写生产代码。
+- 跳过重构直接写测试，把凌乱实现锁死在测试里。
+- 为可测试性给生产代码添加构造参数/接口/仅测试方法（test-induced design damage）。
 - 使用一个宽泛的测试命令证明所有行为。
 - implementer 自行将行为标记为 `passing`。
 
@@ -999,7 +1001,7 @@ CI 增加 drift test：
 | `loom-brainstorming` | 强制 Requirement ID、成功指标、非目标、风险、迁移和可观测性输入 |
 | `loom-writing-plans` | 按 Behavior Obligation 拆任务；检查 depends_on、环、owns 和测试映射 |
 | `loom-subagent-driven-development` | 按 Implementation Packet 执行；一次最多 3 个行为义务；输出结构化候选收据 |
-| `loom-test-driven-development` | 将 Red-Green 周期绑定到 obligation ID，并保存失败与成功证据 |
+| `loom-test-after-implementation` | 将 Implement-Refactor-Test-Verify 周期绑定到 obligation ID，并保存测试与成功证据 |
 | `loom-verification-before-completion` | 消费 traceability 和 receipts；不再信任 PASS 文本 |
 | `loom-requesting-code-review` | 生成结构化 review request 和 spec/behavior 覆盖摘要 |
 | `loom-receiving-code-review` | finding 必须转化为新 obligation/task 或有理由关闭 |
@@ -1059,7 +1061,7 @@ P0 验收：
 4. 规划器按 Behavior Obligation 拆分任务。
 5. 新增 Implementation Packet 生成器。
 6. implementer 按 1 至 3 个行为义务执行。
-7. 引入行为级 Red-Green-Verify 收据。
+7. 引入行为级 Implement-Refactor-Test-Verify 收据。
 8. 新增 `loom-omission-hunter`。
 9. 新增 `loom-converge` 和回流机制。
 10. verification 强制 obligation 级代码、测试和证据闭环。

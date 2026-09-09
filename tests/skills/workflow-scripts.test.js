@@ -392,6 +392,16 @@ None
     expect(result.errors).toContain('progress.md still contains literal HH:mm placeholder');
   });
 
+  it('does not treat a failing report with an empty blocking-issues section as known warning', () => {
+    const specDir = join(TMP_ROOT, 'specs', 'failing-blocking-issues-report');
+    mkdirSync(specDir, { recursive: true });
+    writeFileSync(join(specDir, 'test-report.md'), 'verdict: FAIL\n\n## 阻断问题 (0)\n');
+
+    const result = verifyArtifacts({ specDir });
+    expect(result.ok).toBe(false);
+    expect(result.errors).toContain('test-report.md contains failing result without known-warning context');
+  });
+
   it('rejects passing verification reports that omit spec requirement coverage', () => {
     const specDir = join(TMP_ROOT, 'specs', 'missing-coverage');
     mkdirSync(specDir, { recursive: true });

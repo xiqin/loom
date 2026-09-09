@@ -44,7 +44,7 @@ user-invocable: true
 ## Task 粒度
 
 - 每个 task 是一个可独立验证的交付物。
-- 每个 task 包含层级、复杂度、依赖、涉及文件、Requirement ID 验收映射、TDD 步骤、测试说明。
+- 每个 task 包含层级、复杂度、依赖、涉及文件、Requirement ID 验收映射、测试步骤、测试说明。
 - **每个 task 文件必须声明 YAML frontmatter**，包含 `owns`（独占写入的文件/目录）、`reads`（只读依赖）、`depends_on`（前置 task）、`requirements`（覆盖的 `REQ-xxx`）、`behavior_ids`（覆盖的 `REQ-xxx-Bnn`）、`complexity`。这些字段驱动 `loom tasks` 命令的冲突检测、批次调度和 traceability 初始映射。
 - 依赖必须无循环；有循环依赖时拆开或合并。
 - 后续 task 使用的类型、方法签名和属性名必须与前序 task 匹配。

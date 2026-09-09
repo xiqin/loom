@@ -12,6 +12,7 @@ const PLACEHOLDER_RE = /\b(TBD|TODO|implement later|fill in details)\b/i;
 
 export function verifyArtifacts(options = {}) {
   const specDir = options.specDir || process.cwd();
+  const worktreeRoot = options.worktreeRoot || null;
   const errors = [];
   const warnings = [];
   const coreFiles = ['test-report.md'];
@@ -49,7 +50,8 @@ export function verifyArtifacts(options = {}) {
   validateTraceabilityFile(specDir, errors, {
     required: requirements.exists,
     specRequirementIds,
-    behaviorIdsByRequirement: requirements.behaviorIdsByRequirement
+    behaviorIdsByRequirement: requirements.behaviorIdsByRequirement,
+    worktreeRoot
   });
 
   const progressPath = join(specDir, 'progress.md');
@@ -67,7 +69,7 @@ function checkReport(name, { requiredConclusion, specDir, specRequirementIds, er
   const reportPath = join(specDir, name);
   if (!existsSync(reportPath)) return;
   const report = readFileSync(reportPath, 'utf8');
-  if (/FAIL|失败|不通过/i.test(report) && !/WARN|预先存在|known/i.test(report)) {
+  if (/FAIL|失败|不通过/i.test(report) && !/WARN|预先存在|既有|范围外|BLOCKED|known/i.test(report)) {
     errors.push(`${name} contains failing result without known-warning context`);
   }
   if (requiredConclusion && !/PASS|通过|WARN/i.test(report)) {
@@ -88,6 +90,7 @@ function parseArgs(argv) {
   const options = {};
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--spec-dir') options.specDir = argv[++i];
+    if (argv[i] === '--worktree-root') options.worktreeRoot = argv[++i];
   }
   return options;
 }

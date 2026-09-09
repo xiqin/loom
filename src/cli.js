@@ -92,6 +92,7 @@ program
   .description('Pipeline execution engine: init, advance, approve, recover')
   .requiredOption('--spec-dir <path>', 'Path to spec directory')
   .option('--cwd <path>', 'Project root')
+  .option('--worktree-root <path>', 'Additional worktree root for test/evidence references')
   .option('--advance', 'Advance to next stage')
   .option('--compression-confirmed', 'Confirm closed-stage raw context was compressed before advancing')
   .option('--approve', 'Approve human-approval gate')

@@ -5,7 +5,7 @@ import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { validateRequirementsFile } from '../../../src/core/requirements.js';
 import { validateTraceabilityFile } from '../../../src/core/traceability.js';
 
-export function runConverge(specDir, round = 1) {
+export function runConverge(specDir, round = 1, { worktreeRoot, roots = [] } = {}) {
   const errors = [];
 
   if (!existsSync(join(specDir, 'requirements.json'))) {
@@ -77,8 +77,8 @@ export function runConverge(specDir, round = 1) {
 
     const hasTests = (behaviorEntry.tests || []).length > 0;
     const hasEvidence = (behaviorEntry.evidence || []).length > 0;
-    const testsExist = (behaviorEntry.tests || []).every((ref) => fileExists(specDir, ref));
-    const evidenceExists = (behaviorEntry.evidence || []).every((ref) => fileExists(specDir, ref));
+    const testsExist = (behaviorEntry.tests || []).every((ref) => fileExists(specDir, ref, { worktreeRoot, roots }));
+    const evidenceExists = (behaviorEntry.evidence || []).every((ref) => fileExists(specDir, ref, { worktreeRoot, roots }));
 
     if (!hasTests || !hasEvidence || !testsExist || !evidenceExists) {
       const kind = hasTests || hasEvidence ? 'partial' : 'missing';
@@ -157,13 +157,16 @@ function percent(part, total) {
   return `${Math.round((part / total) * 100)}%`;
 }
 
-function fileExists(specDir, ref) {
+function fileExists(specDir, ref, { worktreeRoot, roots = [] } = {}) {
   if (!ref || /^(https?:|urn:|sha256:)/.test(ref)) return true;
   const stripped = ref.replace(/[#:].*$/, '');
   if (!stripped) return true;
   if (/^(?:[A-Za-z]:[\\/]|\\\\)/.test(stripped) || stripped.startsWith('/')) return existsSync(stripped);
   const projectRoot = dirname(dirname(specDir));
-  return existsSync(join(specDir, stripped)) || existsSync(join(projectRoot, stripped));
+  const searchRoots = [specDir, projectRoot, worktreeRoot, ...roots]
+    .filter(Boolean)
+    .map((root) => root.replace(/[\\/]+$/, ''));
+  return searchRoots.some((root) => existsSync(join(root, stripped)));
 }
 
 function normalizeTraceabilityEntries(data) {
@@ -223,7 +226,7 @@ function normalizeBehaviors(behaviors) {
 const isMain = process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('converge.mjs');
 if (isMain) {
   const options = parseArgs(process.argv.slice(2));
-  const r = runConverge(options.specDir, options.round);
+  const r = runConverge(options.specDir, options.round, { worktreeRoot: options.worktreeRoot });
   if (r.error) console.error(`ERROR ${r.error}`);
   for (const e of r.errors || []) console.error(e);
   if (r.report) {
@@ -233,11 +236,12 @@ if (isMain) {
 }
 
 function parseArgs(argv) {
-  const options = { specDir: process.cwd(), round: 1 };
+  const options = { specDir: process.cwd(), round: 1, worktreeRoot: null };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--spec-dir') options.specDir = argv[++i];
     else if (arg === '--round') options.round = parseInt(argv[++i], 10);
+    else if (arg === '--worktree-root') options.worktreeRoot = argv[++i];
   }
   return options;
 }

@@ -12,7 +12,7 @@
 
 - `visual-companion.md` - 可视化伴侣详细指南
 - `testing-anti-patterns.md` - 测试反模式
-- `common-excuses.md` - 常见借口对照表
+- `common-pitfalls.md` - 常见误区对照表
 - `design-checklist.md` - 设计自检清单
 
 ## Scripts / Assets / Evals
@@ -49,7 +49,7 @@ npm run test:skills
 
 ## 测试新 Skill
 
-核心：TDD for Skills。
+核心：用 evals 驱动 Skill 改进。
 
 1. 不用 skill 时跑一遍，记录失败模式。
 2. 写最少的 skill 内容让 agent 不再犯同类错误。
