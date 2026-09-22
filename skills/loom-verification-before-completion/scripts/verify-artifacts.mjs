@@ -12,7 +12,8 @@ const PLACEHOLDER_RE = /\b(TBD|TODO|implement later|fill in details)\b/i;
 
 export function verifyArtifacts(options = {}) {
   const specDir = options.specDir || process.cwd();
-  const worktreeRoot = options.worktreeRoot || null;
+  const worktreeRoot = options.worktreeRoot || options.projectRoot || specDir;
+  const requireVersionBinding = Boolean(options.worktreeRoot || options.projectRoot);
   const errors = [];
   const warnings = [];
   const coreFiles = ['test-report.md'];
@@ -44,8 +45,8 @@ export function verifyArtifacts(options = {}) {
     if (match) errors.push(`${name} contains placeholder phrase: ${match[0]}`);
   }
 
-  checkReport('test-report.md', { requiredConclusion: true, specDir, specRequirementIds, errors, warnings });
-  checkReport('verify-report.md', { requiredConclusion: false, specDir, specRequirementIds, errors, warnings });
+  checkReport('test-report.md', { requiredConclusion: true, specDir, specRequirementIds, errors, warnings, worktreeRoot, requireVersionBinding });
+  checkReport('verify-report.md', { requiredConclusion: false, specDir, specRequirementIds, errors, warnings, worktreeRoot, requireVersionBinding });
   const requirements = validateRequirementsFile(specDir, errors);
   validateTraceabilityFile(specDir, errors, {
     required: requirements.exists,
@@ -65,7 +66,7 @@ export function verifyArtifacts(options = {}) {
   return { ok: errors.length === 0, errors, warnings, specDir };
 }
 
-function checkReport(name, { requiredConclusion, specDir, specRequirementIds, errors, warnings }) {
+function checkReport(name, { requiredConclusion, specDir, specRequirementIds, errors, warnings, worktreeRoot, requireVersionBinding }) {
   const reportPath = join(specDir, name);
   if (!existsSync(reportPath)) return;
   const report = readFileSync(reportPath, 'utf8');
@@ -76,7 +77,7 @@ function checkReport(name, { requiredConclusion, specDir, specRequirementIds, er
     warnings.push(`${name} should include an explicit PASS/WARN conclusion`);
   }
   if (/^\s*(?:verdict|结论)\s*[:：]\s*(?:PASS|通过)/mi.test(report)) {
-    const receipt = validateReportEvidence(specDir, report);
+    const receipt = validateReportEvidence(specDir, report, { requireVersionBinding, projectRoot: worktreeRoot || process.cwd() });
     for (const error of receipt.errors) errors.push(`${name} evidence: ${error}`);
     for (const id of specRequirementIds) {
       if (!new RegExp(`\\b${id}\\b`).test(report)) {

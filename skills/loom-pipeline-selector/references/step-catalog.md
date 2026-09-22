@@ -82,6 +82,7 @@
 - skill: `loom-requesting-code-review` / (human-approval gate) / `loom-receiving-code-review`
 - requires: `verify-report.md` → `review-request.md` → `review-feedback.md`
 - outputs: `review-request.md` → (gate) → `review-response.md`
+- 作用: code-review-request 在双轴预审查后强制做 Spec 遗漏自审（对照 spec.md / requirements.json 逐条检查实现是否遗漏；有账本时调用 omission-hunter）。遗漏 blocker 未修复不得发出审查请求
 
 ## 依赖闭包
 

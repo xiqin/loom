@@ -230,7 +230,7 @@ AI 收到任务后会先判断类型并告知用户，必须等用户明确确�
 | 3    | git-worktree                | 创建隔离分支                                              | feature 分支                                 |
 | 4    | subagent-driven-development | Subagent 隔离派发 + 双审查                                | 源码 + `test-report.md` + 更新后的 `traceability.json` |
 | 5    | verification                | 完成前验证，Spec覆盖/类型一致性/编译测试                  | `verify-report.md`                           |
-| 6    | code-review-request         | 双轴预审查（Standards + Spec），生成审查请求             | `review-request.md`                          |
+| 6    | code-review-request         | 双轴预审查（Standards + Spec）+ Spec 遗漏自审，生成审查请求 | `review-request.md`                          |
 | 7    | review-gate                 | 人工 gate，等待审查者反馈                                 | —                                            |
 | 8    | code-review-response        | 处理审查反馈，修复 BLOCKER，push back 不合理建议          | `review-response.md`                         |
 | 9    | index-update                | codegraph 同步与结构化记忆更新（无 codegraph 时跳过索引） | codegraph 图索引 / `.loom/memory/store.json` |
@@ -296,7 +296,7 @@ npm run traceability:check -- --spec-dir specs/feat --required
 | ----------------------------------- | ------------------------------------------------- |
 | loom-test-after-implementation | 实现后测试，先实现再重构再写行为验证测试，+流程图、好/坏示例、常见误区表 |
 | loom-systematic-debugging | 系统化调试, +4阶段流程图、条件等待、纵深防御 |
-| loom-requesting-code-review | 请求代码审查, +预审查清单、审查模板 |
+| loom-requesting-code-review | 请求代码审查, +预审查清单、Spec遗漏自审、审查模板 |
 | loom-receiving-code-review | 接受代码审查, +响应模板、流程图 |
 | loom-dispatching-parallel-agents | 并行 agent 派发, +模型选择、并发工作流图 |
 | loom-writing-skills | 编写自定义 skills, +方法论深度、流程图 |

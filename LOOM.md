@@ -65,7 +65,7 @@ brainstorming → writing-plans → git-worktree → subagent-dev → verificati
 | ----------------------------------- | ------------------------------------------------- |
 | loom-test-after-implementation | 实现后测试，先实现再重构再写行为验证测试，+流程图、好/坏示例、常见误区表 |
 | loom-systematic-debugging | 系统化调试, +4阶段流程图、条件等待、纵深防御 |
-| loom-requesting-code-review | 请求代码审查, +预审查清单、审查模板 |
+| loom-requesting-code-review | 请求代码审查, +预审查清单、Spec遗漏自审、审查模板 |
 | loom-receiving-code-review | 接受代码审查, +响应模板、流程图 |
 | loom-dispatching-parallel-agents | 并行 agent 派发, +模型选择、并发工作流图 |
 | loom-writing-skills | 编写自定义 skills, +方法论深度、流程图 |

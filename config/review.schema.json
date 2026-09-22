@@ -153,6 +153,16 @@
         ]
       },
       {
+        "id": "spec-omission",
+        "name": "Spec 遗漏自审",
+        "items": [
+          "spec.md / requirements.json 中每个 REQ 是否都有对应代码实现",
+          "每个 Behavior Obligation 是否都有代码落点与测试覆盖",
+          "验收标准、边界条件、失败场景是否有实现或保护",
+          "有 requirements.json 时是否已对照 traceability 完成遗漏检查（可调用 omission-hunter）"
+        ]
+      },
+      {
         "id": "scope-check",
         "name": "范围检查",
         "items": [

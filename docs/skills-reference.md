@@ -129,7 +129,8 @@ description: loom 全部技能快速参考
 
 - **用途**：请求代码审查
 - **触发**：准备审查
-- **输出**：Standards + Spec 双轴预审查结果和审查请求材料
+- **输出**：Standards + Spec 双轴预审查、Spec 遗漏自审结果和审查请求材料
+- **流程**：验证 → 双轴预审查 → Spec 遗漏自审 → 生成审查请求
 
 ### receiving-code-review
 

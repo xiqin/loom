@@ -164,7 +164,7 @@ brainstorming → planning → approved(gate) → git-worktree → executing
 | chore | executing→verification | 依赖/配置/文档 |
 | qa | qa-analysis→qa-design→qa-approved→qa-execution→qa-signoff→qa-report | QA 验收（两次人工 gate） |
 
-`code-review` 段含三步：code-review-request（双轴预审查+发请求）→ review-gate（人工 gate）→ code-review-response（处理反馈）。低风险流水线（hotfix/quickfix/chore）跳过。
+`code-review` 段含三步：code-review-request（双轴预审查+Spec遗漏自审+发请求）→ review-gate（人工 gate）→ code-review-response（处理反馈）。低风险流水线（hotfix/quickfix/chore）跳过。
 
 ### 5.3 智能选择模式（`loom run --auto --request "<text>"` 或 MCP `loom_select_pipeline`）
 

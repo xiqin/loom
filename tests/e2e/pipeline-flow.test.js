@@ -4,6 +4,8 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+
 import { PipelineEngine } from '../../src/core/pipeline-engine.js';
 import { PipelineStateStore } from '../../src/core/state-store.js';
 
@@ -20,6 +22,9 @@ function setupRealProject() {
   writeFileSync(join(root, 'package.json'), JSON.stringify({ version: '2.0.1' }), 'utf-8');
   const specDir = join(root, 'specs', '2026-05-30+demo');
   mkdirSync(specDir, { recursive: true });
+  execFileSync('git', ['init', '-q'], { cwd: root });
+  execFileSync('git', ['-c', 'user.email=test@example.com', '-c', 'user.name=test', 'add', '.'], { cwd: root });
+  execFileSync('git', ['-c', 'user.email=test@example.com', '-c', 'user.name=test', 'commit', '-qm', 'fixture'], { cwd: root });
   return { root, specDir };
 }
 
@@ -92,7 +97,11 @@ const writePassingReport = (dir, file, command = 'npm test', coverage = '') => {
   const log = `${command}: passed\n`;
   write(dir, `evidence/${evidenceName}`, log);
   const hash = createHash('sha256').update(log).digest('hex');
-  write(dir, file, `verdict: PASS\nevidence-command: ${command}\nevidence-exit-code: 0\nevidence-file: evidence/${evidenceName}\nevidence-sha256: ${hash}${coverage ? `\n\n${coverage}` : ''}`);
+  const projectRoot = join(dir, '..', '..');
+  const tree = execFileSync('git', ['-C', projectRoot, 'log', '-1', '--format=%T'], { encoding: 'utf8' }).trim();
+  const diff = execFileSync('git', ['-C', projectRoot, 'diff', 'HEAD', '--', '.', ':(exclude)specs/**', ':(exclude)qa/**'], { encoding: 'buffer' });
+  const diffHash = createHash('sha256').update(diff).digest('hex');
+  write(dir, file, `verdict: PASS\nevidence-command: ${command}\nevidence-exit-code: 0\nevidence-file: evidence/${evidenceName}\nevidence-sha256: ${hash}\nevidence-git-tree: ${tree}\nevidence-diff-sha256: ${diffHash}${coverage ? `\n\n${coverage}` : ''}`);
 };
 
 describe('feature pipeline end-to-end (real workflow.yaml)', () => {

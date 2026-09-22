@@ -38,6 +38,7 @@ handoff 仅用于定位文件；接口和行为必须以当前源码、真实 di
 5. 行为验证测试文件是否已持久化到项目标准测试目录（非临时文件）；生产代码不得新增仅为测试服务的构造参数/接口/方法
 6. task 中每个 Requirement ID 是否都有代码和测试落点；实际修改文件是否都落在 `owns` 内。缺失需求映射或未声明写入均为阻断。
 7. task frontmatter 中每个 `behavior_ids` 是否都有对应代码、持久化测试和 `traceability.json` behavior 级 `tests`/`evidence` 引用；只更新 REQ 级映射、不更新 behavior 级映射为阻断。
+8. **Spec 遗漏自审**：对照 spec.md / requirements.json，逐条确认当前 task 负责的 REQ 与 behavior 均有代码与测试落点；应存在但不存在的实现记为严重偏差。不得用“整体看起来完整”代替逐条核对。
 
 ### SPEC 结果
 

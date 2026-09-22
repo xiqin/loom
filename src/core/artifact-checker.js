@@ -7,7 +7,9 @@
  */
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { isAbsolute, join, relative, resolve } from 'node:path';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { sha256File } from './fingerprints.js';
 
 // 占位符标记：大写形式，区分大小写，避免误伤正文 "todo list" 这类普通词
@@ -80,31 +82,56 @@ export function isReportPassing(specDir, filename, options = {}) {
   const verdict = parseVerdict(content);
   if (verdict) {
     if (verdict !== 'PASS') return false;
-    return !options.requireEvidence || validateReportEvidence(specDir, content).ok;
+    return !options.requireEvidence || validateReportEvidence(specDir, content, options).ok;
   }
   // fallback 启发式（无显式裁定时保守判断）
   const hasFail = /\bFAIL\b|失败|不通过|\bBLOCKER\b/.test(content);
   const hasPass = /\bPASS\b|通过|all checks passed/i.test(content);
   if (!hasPass || hasFail) return false;
-  return !options.requireEvidence || validateReportEvidence(specDir, content).ok;
+  return !options.requireEvidence || validateReportEvidence(specDir, content, options).ok;
 }
 
 /**
  * Validate a compact evidence receipt embedded in a report.
  * Raw command output remains on disk, keeping prompts small while preventing a bare PASS.
  */
-export function validateReportEvidence(specDir, content) {
+export function validateReportEvidence(specDir, content, options = {}) {
   const field = name => content.match(new RegExp(`^\\s*(?:[-*]\\s*)?${name}\\s*:\\s*(.+?)\\s*$`, 'mi'))?.[1]?.replace(/^`|`$/g, '');
   const command = field('evidence-command');
   const exitCode = field('evidence-exit-code');
   const evidenceFile = field('evidence-file');
   const expectedHash = field('evidence-sha256')?.toLowerCase();
+  const expectedTree = field('evidence-git-tree');
+  const expectedDiff = field('evidence-diff-sha256')?.toLowerCase();
   const errors = [];
 
   if (!command) errors.push('missing evidence-command');
   if (exitCode !== '0') errors.push('evidence-exit-code must be 0');
   if (!evidenceFile) errors.push('missing evidence-file');
   if (!/^[a-f0-9]{64}$/.test(expectedHash || '')) errors.push('invalid evidence-sha256');
+  if (options.requireVersionBinding) {
+    const cwd = options.projectRoot || options.worktreeRoot;
+    if (cwd) {
+      try {
+        execFileSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd, stdio: 'ignore' });
+        if (!expectedTree) errors.push('missing evidence-git-tree');
+        if (!/^[a-f0-9]{64}$/.test(expectedDiff || '')) errors.push('invalid evidence-diff-sha256');
+        const actualTree = execFileSync('git', ['log', '-1', '--format=%T'], { cwd, encoding: 'utf8' }).trim();
+        execFileSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd, stdio: 'ignore' });
+        const specRelative = relative(resolve(cwd), resolve(specDir)).split(sep).join('/');
+        const pathspec = specRelative && !specRelative.startsWith('..') && !isAbsolute(specRelative)
+          ? [':(exclude)' + specRelative.replace(/\/$/, '') + '/**']
+          : [];
+        const actualDiff = execFileSync('git', ['diff', 'HEAD', '--', '.', ...pathspec], { cwd, encoding: 'buffer' });
+        const actualDiffHash = createHash('sha256').update(actualDiff).digest('hex');
+        if (actualTree !== expectedTree) errors.push('evidence-git-tree mismatch');
+        if (actualDiffHash !== expectedDiff) errors.push('evidence-diff-sha256 mismatch');
+      } catch (error) {
+        const nonGit = error?.status === 128 || /not a git repository/i.test(error?.stderr?.toString?.() || '');
+        if (!nonGit) errors.push('unable to verify evidence git binding');
+      }
+    }
+  }
 
   let actualHash = null;
   if (evidenceFile) {

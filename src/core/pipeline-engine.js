@@ -107,6 +107,15 @@ const STAGE_RECOMMENDED_READS = {
     'handoffs/converge.json',
     '.loom/rules/constitution.md'
   ],
+  'code-review-request': [
+    'spec.md',
+    'requirements.json',
+    'traceability.json',
+    'verify-report.md',
+    'progress.md',
+    'handoffs/verification.json',
+    '.loom/rules/constitution.md'
+  ],
   synced: [
     'verify-report.md',
     'progress.md',
@@ -238,7 +247,7 @@ function parseVerdict(content) {
   return match ? match[1].trim().toUpperCase() : null;
 }
 
-function checkReviewFeedbackApproval(specDir, currentStep) {
+function checkReviewFeedbackApproval(specDir, currentStep, { allowUnresolved = false } = {}) {
   if (!currentStep?.approval_requires?.includes('review-feedback.md')) return { ok: true };
   const feedbackPath = join(specDir, 'review-feedback.md');
   if (!existsSync(feedbackPath)) return { ok: true };
@@ -246,6 +255,7 @@ function checkReviewFeedbackApproval(specDir, currentStep) {
   const content = readFileSync(feedbackPath, 'utf8');
   const verdict = parseVerdict(content);
   const blockers = content.match(/\b(BLOCKER|FAIL|FAILED|CHANGES_REQUESTED|CHANGE_REQUESTED|REQUEST_CHANGES|REJECTED)\b/gi) || [];
+  if (allowUnresolved && verdict && ['PASS', 'FAIL', 'PARTIAL'].includes(verdict)) return { ok: true };
   if (verdict === 'PASS' && blockers.length === 0) return { ok: true };
 
   const reasons = [];
@@ -306,9 +316,9 @@ const ADVANCE_VALIDATORS = {
       hint: 'spec.md 中每个 REQ-xxx 都必须出现在至少一个 tasks/Tn.md 的 frontmatter requirements 列表中。'
     };
   },
-  'verification-artifacts': ({ specDir, stage, worktreeRoot }) => {
+  'verification-artifacts': ({ specDir, stage, projectRoot, worktreeRoot }) => {
     if (stage !== 'verification') return { ok: true };
-    const verification = verifyArtifacts({ specDir, worktreeRoot });
+    const verification = verifyArtifacts({ specDir, worktreeRoot, projectRoot });
     if (verification.ok) return { ok: true };
     return {
       ok: false,
@@ -604,7 +614,7 @@ export class PipelineEngine {
 
     // 声明式 verdict 门禁（gate_verdict 在当前 step 声明）
     if (currentStep?.gate_verdict) {
-      if (!isReportPassing(this.specDir, currentStep.gate_verdict, { requireEvidence: currentStep.evidence_required === true })) {
+      if (!isReportPassing(this.specDir, currentStep.gate_verdict, { requireEvidence: currentStep.evidence_required === true, requireVersionBinding: current === 'verification' && currentStep.evidence_required === true, projectRoot: this.worktreeRoot || this.projectRoot })) {
         return { ok: false, error: `${currentStep.gate_verdict} lacks a valid PASS verdict or evidence receipt.`, hint: `确认报告为 PASS；若本阶段要求证据，还需提供 evidence-command / exit-code / file / sha256，且日志哈希必须匹配。` };
       }
     }
@@ -712,7 +722,7 @@ export class PipelineEngine {
       if (approvalCheck.withPlaceholders.length > 0) reasons.push(`placeholders in: ${approvalCheck.withPlaceholders.join(', ')}`);
       return { ok: false, error: `Approval requirements for "${state.current_stage}" not met: ${reasons.join('; ')}`, hint: `通过该人工 gate 前必须补齐 approval_requires 产物且无占位符。缺失: ${approvalCheck.missing.join(', ')}，有占位符: ${approvalCheck.withPlaceholders.join(', ')}` };
     }
-    const reviewFeedbackCheck = checkReviewFeedbackApproval(this.specDir, currentStep);
+    const reviewFeedbackCheck = checkReviewFeedbackApproval(this.specDir, currentStep, { allowUnresolved: state.current_stage === 'review-gate' });
     if (!reviewFeedbackCheck.ok) {
       return {
         ok: false,

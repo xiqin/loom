@@ -49,7 +49,7 @@ user-invocable: true
 | 需求含糊、设计取舍多 | `loom-brainstorming` | 先澄清 shared understanding，再进入 spec / plan。 |
 | bug、测试失败、异常行为 | `loom-systematic-debugging` | 先构造 red-capable feedback loop，再考虑修复。 |
 | 明确行为变更或 bug 修复 | `loom-test-after-implementation` | 在实现阶段使用 seam gate 和实现后测试。 |
-| 准备发起审查 | `loom-requesting-code-review` | 先做 Standards + Spec 双轴预审查，再生成审查请求。 |
+| 准备发起审查 | `loom-requesting-code-review` | 先做 Standards + Spec 双轴预审查和 Spec 遗漏自审，再生成审查请求。 |
 | 收到审查反馈 | `loom-receiving-code-review` | 分类处理、修复或 push back。 |
 | 新功能验收或 release 验收 | `loom-qa` | 生成/执行 QA 用例并输出报告。 |
 | 开发分支已验证完成 | `loom-finishing-a-development-branch` | 选择 merge、PR、keep 或 discard。 |

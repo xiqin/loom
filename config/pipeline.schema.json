@@ -480,7 +480,7 @@
       "step": 9,
       "skill": "loom-requesting-code-review",
       "command": null,
-      "description": "双轴预审查（Standards + Spec）后生成代码审查请求",
+      "description": "双轴预审查（Standards + Spec）并自审 spec 遗漏后生成代码审查请求",
       "allowedTransitions": [
         "review-gate",
         "failed"
@@ -510,6 +510,8 @@
       "reads": [
         "specs/<date+feature>/verify-report.md",
         "specs/<date+feature>/spec.md",
+        "specs/<date+feature>/requirements.json",
+        "specs/<date+feature>/traceability.json",
         "源码文件"
       ],
       "interactive": true,

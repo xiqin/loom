@@ -18,6 +18,7 @@ user-invocable: true
 
 ## 完成条件与下一步
 
+- Spec 遗漏自审已完成（或已写明跳过原因），遗漏 blocker 已修复
 - 审查请求已生成并发送
 - 下一步：等待审查反馈 → 使用 `loom-receiving-code-review` 处理反馈
 
@@ -32,6 +33,7 @@ user-invocable: true
 - [ ] 代码符合项目编码红线
 - [ ] 图后端状态已确认（可用时通过 `loom_graph_status` 查询，否则注明图查询已跳过）
 - [ ] 已完成 Standards + Spec 双轴预审查，或已说明跳过某一轴的原因
+- [ ] 已完成 Spec 遗漏自审，或已说明跳过原因
 
 ## 执行流程
 
@@ -61,7 +63,7 @@ user-invocable: true
 - 对照验收标准、Requirement ID、边界条件和不做范围。
 - 缺少 spec 来源时，明确写“Spec 轴跳过：未找到来源”，或向用户请求来源；不得凭想象补需求。
 
-输出必须分成两个独立区块，不合并、不重排：
+  输出必须分成独立区块，不合并、不重排：
 
 ```markdown
 ## Standards
@@ -72,22 +74,51 @@ user-invocable: true
 
 - <finding、跳过原因 或 无发现>
 
+## Spec 遗漏自审
+
+- <见 Step3>
+
 ## 预审查摘要
 
 - Standards findings: <数量>，worst: <最严重问题或 none>
 - Spec findings: <数量/跳过>，worst: <最严重问题或 none>
+- Spec 遗漏: <数量/跳过>，worst: <最严重遗漏或 none>
 ```
 
-若任一轴发现 blocker，先修复并重新验证，再生成审查请求。
+  若任一轴或遗漏自审发现 blocker，先修复并重新验证，再生成审查请求。
 
-### Step3：整理变更摘要
+### Step3：Spec 遗漏自审
+
+有 spec 来源时必须执行；缺少 spec 来源时写明跳过原因，不得凭想象补需求。本步检查的是“spec 里有的是否都实现了”，与 Spec 轴的符合性检查分开记录。
+
+逐条对照 `spec.md`（及 `requirements.json` / `traceability.json`，若存在）：
+
+1. **需求条目**：每个 REQ / 验收标准是否都有对应代码实现。
+2. **Behavior**：每个 `REQ-xxx-Bnn` 是否有代码落点；`traceability.json` 是否有 `tests` / `evidence`。
+3. **边界与失败**：边界条件、无效输入、失败场景、禁止行为是否有实现或保护。
+4. **确定性辅助**：若存在 `requirements.json` 与 `traceability.json`，调用 `loom_omission_hunt`（参数 `spec_dir`）。blocker 视为本步失败。
+5. **不做范围**：spec 明确不做的内容若被实现，记为 scope 偏差，不记为遗漏。
+
+输出必须单独成块：
+
+```markdown
+## Spec 遗漏自审
+
+- 检查条目: <N>
+- 遗漏: <列表或无>
+- omission-hunter: <pass/blocked/跳过原因>
+```
+
+若发现遗漏（含 omission-hunter blocker），先修复并重新验证，再进入下一步。不得用“整体看起来完整”代替逐条核对。
+
+### Step4：整理变更摘要
 
 ```bash
 git diff --stat
 git log --oneline -10
 ```
 
-### Step4：生成审查请求
+### Step5：生成审查请求
 
 ```markdown
 # 代码审查请求
@@ -117,6 +148,7 @@ git log --oneline -10
 - [x] 测试通过（TEST_CMD）
 - [x] 代码符合编码红线
 - [x] 图后端已同步，或已注明索引查询跳过
+- [x] Spec 遗漏自审通过，或已说明跳过原因
 
 ## 变更详情
 
@@ -140,3 +172,5 @@ git log --oneline -10
 - 必须提供自测情况
 - Findings 必须优先于总结，且包含文件/行号或明确的证据来源。
 - 缺少 spec 来源时不得伪造 Spec findings。
+- 有 spec 来源时不得跳过 Spec 遗漏自审。
+- 遗漏 blocker 未修复前不得生成审查请求。

@@ -4,6 +4,7 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { PipelineEngine } from '../../src/core/pipeline-engine.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -18,6 +19,9 @@ function setupQaProject() {
   writeFileSync(join(root, 'package.json'), JSON.stringify({ version: '1.0.0' }), 'utf-8');
   const qaDir = join(root, 'qa', '2026-06-04+user-auth');
   mkdirSync(qaDir, { recursive: true });
+  execFileSync('git', ['init', '-q'], { cwd: root });
+  execFileSync('git', ['-c', 'user.email=test@example.com', '-c', 'user.name=test', 'add', '.'], { cwd: root });
+  execFileSync('git', ['-c', 'user.email=test@example.com', '-c', 'user.name=test', 'commit', '-qm', 'fixture'], { cwd: root });
   return { root, qaDir };
 }
 

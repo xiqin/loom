@@ -90,6 +90,6 @@ jobs:
               node node_modules/.bin/loom-verify-artifacts \
                 --spec-dir "${spec_dir}" 2>/dev/null || \
               node "$(npm root -g)/loom-engineering/skills/loom-verification-before-completion/scripts/verify-artifacts.mjs" \
-                --spec-dir "${spec_dir}" || true
+                --spec-dir "${spec_dir}"
             fi
           done

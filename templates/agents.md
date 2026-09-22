@@ -28,7 +28,7 @@
 - 新功能、跨模块改动、开发型任务：说明原因后交给 `loom-pipeline-selector` 选择 steps。
 - bug、测试失败、异常行为：优先进入 `loom-systematic-debugging`，先建立 red-capable feedback loop。
 - 需求含糊、设计取舍多：进入 `loom-brainstorming`，必要时一问一答澄清。
-- 准备审查：进入 `loom-requesting-code-review`，先做 Standards + Spec 双轴预审查。
+- 准备审查：进入 `loom-requesting-code-review`，先做 Standards + Spec 双轴预审查和 Spec 遗漏自审。
 - QA 验收、分支收尾、索引同步、技能编写、loom 使用咨询：分别进入对应 skill，不要强行启动开发流水线。
 
 需要建立开发流水线的任务，由 selector 在结构化治理约束下按下一节选择具体步骤。

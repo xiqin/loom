@@ -123,7 +123,7 @@ pipelines:
         next: review-gate
         requires: [verify-report.md, spec.md]
         outputs: [review-request.md, handoffs/code-review-request.json]
-        description: "双轴预审查（Standards + Spec）后生成代码审查请求"
+        description: "双轴预审查（Standards + Spec）并自审 spec 遗漏后生成代码审查请求"
 
       - id: review-gate
         gate: human-approval
@@ -185,7 +185,7 @@ pipelines:
         next: review-gate
         requires: [verify-report.md]
         outputs: [review-request.md, handoffs/code-review-request.json]
-        description: "双轴预审查（Standards + Spec）后生成代码审查请求"
+        description: "双轴预审查（Standards + Spec）并自审 spec 遗漏后生成代码审查请求"
 
       - id: review-gate
         gate: human-approval
@@ -307,7 +307,7 @@ pipelines:
         next: review-gate
         requires: [verify-report.md, spec.md]
         outputs: [review-request.md, handoffs/code-review-request.json]
-        description: "双轴预审查（Standards + Spec）后生成代码审查请求"
+        description: "双轴预审查（Standards + Spec）并自审 spec 遗漏后生成代码审查请求"
 
       - id: review-gate
         gate: human-approval
@@ -513,7 +513,7 @@ step_catalog:
     skill: loom-requesting-code-review
     requires: [verify-report.md]
     outputs: [review-request.md, handoffs/code-review-request.json]
-    description: "双轴预审查（Standards + Spec）后生成代码审查请求"
+    description: "双轴预审查（Standards + Spec）并自审 spec 遗漏后生成代码审查请求"
     skip_when: "低风险小改动 / 用户明确跳过人工审查"
 
   review-gate:
