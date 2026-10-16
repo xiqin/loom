@@ -5,7 +5,7 @@ import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { validateRequirementsFile } from '../../../src/core/requirements.js';
 import { validateTraceabilityFile } from '../../../src/core/traceability.js';
 
-export function runOmissionHunt(specDir) {
+export function runOmissionHunt(specDir, { worktreeRoot = null } = {}) {
   const errors = [];
 
   if (!existsSync(join(specDir, 'requirements.json'))) {
@@ -76,7 +76,7 @@ export function runOmissionHunt(specDir) {
         blockerCount += 1;
       } else {
         for (const ref of tests) {
-          if (!fileExists(specDir, ref)) {
+          if (!fileExists(specDir, ref, { worktreeRoot })) {
             findings.push({
               id: `F-omit-${findings.length + 1}`,
               kind: 'missing',
@@ -105,7 +105,7 @@ export function runOmissionHunt(specDir) {
         });
       } else {
         for (const ref of evidence) {
-          if (!fileExists(specDir, ref)) {
+          if (!fileExists(specDir, ref, { worktreeRoot })) {
             findings.push({
               id: `F-omit-${findings.length + 1}`,
               kind: 'missing',
@@ -185,13 +185,15 @@ export function runOmissionHunt(specDir) {
   };
 }
 
-function fileExists(specDir, ref) {
+function fileExists(specDir, ref, { worktreeRoot } = {}) {
   if (!ref || /^(https?:|urn:|sha256:)/.test(ref)) return true;
-  const stripped = ref.replace(/[#:].*$/, '');
+  const stripped = ref.replace(/#.*$/, '').replace(/:\d+(?::\d+)?$/, '');
   if (!stripped) return true;
   if (/^(?:[A-Za-z]:[\\/]|\\\\)/.test(stripped) || stripped.startsWith('/')) return existsSync(stripped);
   const projectRoot = dirname(dirname(specDir));
-  return existsSync(join(specDir, stripped)) || existsSync(join(projectRoot, stripped));
+  return [specDir, projectRoot, worktreeRoot]
+    .filter(Boolean)
+    .some((root) => existsSync(join(root, stripped)));
 }
 
 function normalizeTraceabilityEntries(data) {

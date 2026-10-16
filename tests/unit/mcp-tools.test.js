@@ -875,11 +875,13 @@ describe('loom_validate_plan / loom_detail_expansion_check / loom_analyze_artifa
     expect(r.report.coverage.behavior_coverage).toBe('100%');
   });
 
-  it('exposes worktree_root on converge and advance schemas', () => {
+  it('exposes worktree_root on converge, omission hunt and advance schemas', () => {
     const converge = TOOL_DEFINITIONS.find(tool => tool.name === 'loom_converge');
+    const omission = TOOL_DEFINITIONS.find(tool => tool.name === 'loom_omission_hunt');
     const advance = TOOL_DEFINITIONS.find(tool => tool.name === 'loom_advance_pipeline');
 
     expect(converge.inputSchema.properties.worktree_root).toMatchObject({ type: 'string' });
+    expect(omission.inputSchema.properties.worktree_root).toMatchObject({ type: 'string' });
     expect(advance.inputSchema.properties.worktree_root).toMatchObject({ type: 'string' });
   });
 
@@ -904,6 +906,44 @@ describe('loom_validate_plan / loom_detail_expansion_check / loom_analyze_artifa
     expect(r.ok).toBe(false);
     expect(r.report.status).toBe('blocked');
     expect(existsSync(join(specDir, 'findings', 'omission-hunter.json'))).toBe(true);
+  });
+
+  it('omission_hunt resolves worktree tests while keeping spec evidence references', async () => {
+    const { root, specDir } = setupSpecDir();
+    const worktreeRoot = tmp();
+    mkdirSync(join(worktreeRoot, 'tests'), { recursive: true });
+    mkdirSync(join(specDir, 'evidence'), { recursive: true });
+    writeFileSync(join(worktreeRoot, 'tests', 'example.test.js'), 'test passes');
+    writeFileSync(join(specDir, 'evidence', 'example.log'), 'evidence passes');
+    writePlanningTraceability(specDir, ['tests/example.test.js#TestExample'], ['evidence/example.log']);
+
+    const store = new SessionStore();
+    await executeToolCall('loom_attach_spec', { spec_dir: specDir, project_root: root }, store, 's1');
+    const missing = await executeToolCall('loom_omission_hunt', {}, store, 's1');
+    expect(missing.ok).toBe(false);
+    expect(missing.report.blocker_count).toBe(2);
+
+    const resolved = await executeToolCall('loom_omission_hunt', { worktree_root: worktreeRoot }, store, 's1');
+    expect(resolved.ok).toBe(true);
+    expect(resolved.report.blocker_count).toBe(0);
+    expect(resolved.report.status).toBe('pass');
+  });
+
+  it('omission_hunt preserves the drive colon in absolute Windows test references', async () => {
+    const { root, specDir } = setupSpecDir();
+    const worktreeRoot = tmp();
+    mkdirSync(join(worktreeRoot, 'tests'), { recursive: true });
+    mkdirSync(join(specDir, 'evidence'), { recursive: true });
+    const testPath = join(worktreeRoot, 'tests', 'example.test.js');
+    writeFileSync(testPath, 'test passes');
+    writeFileSync(join(specDir, 'evidence', 'example.log'), 'evidence passes');
+    writePlanningTraceability(specDir, [`${testPath}#TestExample`], ['evidence/example.log']);
+
+    const store = new SessionStore();
+    await executeToolCall('loom_attach_spec', { spec_dir: specDir, project_root: root }, store, 's1');
+    const resolved = await executeToolCall('loom_omission_hunt', {}, store, 's1');
+    expect(resolved.ok).toBe(true);
+    expect(resolved.report.blocker_count).toBe(0);
   });
 
   it('verify_artifacts passes when final evidence artifacts are complete', async () => {

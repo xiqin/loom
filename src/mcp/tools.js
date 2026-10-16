@@ -456,7 +456,8 @@ export const TOOL_DEFINITIONS = [
     inputSchema: {
       type: 'object',
       properties: {
-        spec_dir: { type: 'string', description: 'Path to spec directory (optional if attached)' }
+        spec_dir: { type: 'string', description: 'Path to spec directory (optional if attached)' },
+        worktree_root: { type: 'string', description: 'Optional Git worktree root used only to resolve test and evidence references.' }
       }
     }
   },
@@ -1238,7 +1239,7 @@ export async function executeToolCall(toolName, args, sessionStore, sessionId) {
     case 'loom_omission_hunt': {
       if (!specDir) return { error: 'No spec_dir. Call loom_attach_spec first or pass spec_dir.' };
       const abs = safeResolveSpecDir(projectRoot, specDir);
-      const r = runOmissionHunt(abs);
+      const r = runOmissionHunt(abs, { worktreeRoot: args.worktree_root || null });
       return {
         ok: r.ok,
         error: r.error || null,

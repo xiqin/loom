@@ -28,7 +28,7 @@ user-invocable: true
 
 ### Step 1：运行遗漏猎人
 
-调用 loom MCP 工具 `loom_omission_hunt`（参数 `spec_dir`）。
+调用 loom MCP 工具 `loom_omission_hunt`（参数 `spec_dir`；测试或证据仅位于隔离工作树时，额外传入 `worktree_root`）。
 
 工具只读检查 `requirements.json`、`traceability.json`，对每个 behavior 做负空间检查，输出 `findings/omission-hunter.json`。返回 `ok:false` 表示有 blocker，需回流到 `loom-converge`。
 
