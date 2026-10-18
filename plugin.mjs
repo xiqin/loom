@@ -1,11 +1,13 @@
 import { existsSync, readdirSync, mkdirSync, cpSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
 const _require = createRequire(import.meta.url);
 const { checkProject, formatReport } = _require('./hooks/handlers/health-check.cjs');
 
+const PACKAGE_DIR = dirname(fileURLToPath(import.meta.url));
 const USER_DIR = join(homedir(), '.config', 'opencode');
 const SKILLS_DIR = join(USER_DIR, 'skills');
 const COMMANDS_DIR = join(USER_DIR, 'commands');
@@ -86,54 +88,99 @@ function copyTemplates(packageDir, log) {
   log.push('  templates: copied to loom-init-project skill dir');
 }
 
-// 把检查结果推给用户。优先 OpenCode toast（用户可见），失败回落到 console。
-async function surfaceReport(client, lines) {
+// 同步失败不能让整个插件加载失败（例如误把用户主目录当包目录时的 EPERM）。
+function syncPackage(packageDir, log) {
+  try {
+    copySkills(packageDir, log);
+    copyCommands(packageDir, log);
+    copyTemplates(packageDir, log);
+  } catch (err) {
+    log.push(`  sync skipped: ${err?.message || err}`);
+  }
+}
+
+function packageDirFrom(ctx) {
+  const override = ctx?.options?.packageDir;
+  if (typeof override === 'string' && override) return override;
+  return PACKAGE_DIR;
+}
+
+function projectRootFrom(ctx, eventDirectory) {
+  if (typeof eventDirectory === 'string' && eventDirectory) return eventDirectory;
+  const project = ctx?.location?.project;
+  return project?.directory || project?.canonical || ctx?.location?.directory || process.cwd();
+}
+
+// 兼容 V1 properties 与 V2 data / 外层 payload。
+function unwrapEvent(raw) {
+  if (raw?.payload && typeof raw.payload.type === 'string') {
+    return { event: raw.payload, directory: raw.directory };
+  }
+  const directory = raw?.location?.directory || raw?.directory;
+  return { event: raw, directory };
+}
+
+function extractSessionId(event) {
+  const payload = event?.properties ?? event?.data ?? {};
+  return payload.info?.id ?? payload.sessionID ?? payload.session?.id ?? payload.id ?? event?.sessionID ?? null;
+}
+
+// V2 插件上下文没有 tui；测试或未来宿主若注入 showToast 则优先使用。
+async function surfaceReport(ctx, lines) {
   if (lines.length === 0) return;
   const message = lines.join('\n');
   try {
-    if (client?.tui?.showToast) {
-      await client.tui.showToast({ body: { message, variant: 'warning' } });
+    if (typeof ctx?.tui?.showToast === 'function') {
+      await ctx.tui.showToast({ message, variant: 'warning', body: { message, variant: 'warning' } });
       return;
     }
-  } catch {}
-  // 回落：写进 OpenCode 插件日志
+  } catch {
+    // 回落到日志
+  }
   for (const line of lines) console.log(`[loom] ${line}`);
 }
 
-// 提取 session id，兼容多种 event payload 结构。
-function extractSessionId(event) {
-  const p = event?.properties ?? {};
-  return p.info?.id ?? p.sessionID ?? p.session?.id ?? p.id ?? null;
+async function onSessionEvent(ctx, raw, checkedSessions) {
+  const { event, directory } = unwrapEvent(raw);
+  if (!event || typeof event.type !== 'string') return;
+  if (!event.type.startsWith('session.')) return;
+
+  const sessionId = extractSessionId(event) ?? '__global__';
+  if (checkedSessions.has(sessionId)) return;
+  checkedSessions.add(sessionId);
+
+  try {
+    const result = checkProject(projectRootFrom(ctx, directory));
+    await surfaceReport(ctx, formatReport(result));
+  } catch {
+    // 健康检查永不阻塞会话
+  }
 }
 
-export const Plugin = async ({ directory, worktree, client }) => {
-  const log = [];
-  log.push(`Loom plugin initializing...`);
+const plugin = {
+  id: 'loom-engineering',
+  async setup(ctx) {
+    const log = [];
+    log.push('Loom plugin initializing...');
+    syncPackage(packageDirFrom(ctx), log);
 
-  copySkills(directory, log);
-  copyCommands(directory, log);
-  copyTemplates(directory, log);
+    const checkedSessions = new Set();
+    const controller = new AbortController();
 
-  // OpenCode 原生 hook：等价 Claude Code 的 session-start。
-  // 每个 session 首次活动时跑一次 loom 项目健康检查并提示用户。
-  const projectRoot = worktree || directory || process.cwd();
-  const checkedSessions = new Set();
+    if (typeof ctx?.event?.subscribe === 'function') {
+      void (async () => {
+        try {
+          for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
+            await onSessionEvent(ctx, event, checkedSessions);
+          }
+        } catch (err) {
+          if (controller.signal.aborted || err?.name === 'AbortError') return;
+        }
+      })();
+    }
 
-  return {
-    event: async ({ event }) => {
-      if (!event || typeof event.type !== 'string') return;
-      if (!event.type.startsWith('session.')) return;
-
-      const sessionId = extractSessionId(event) ?? '__global__';
-      if (checkedSessions.has(sessionId)) return;
-      checkedSessions.add(sessionId);
-
-      try {
-        const result = checkProject(projectRoot);
-        await surfaceReport(client, formatReport(result));
-      } catch {
-        // 健康检查永不阻塞会话
-      }
-    },
-  };
+    return () => controller.abort();
+  },
 };
+
+export default plugin;

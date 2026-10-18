@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { Plugin } from '../../plugin.mjs';
+import plugin from '../../plugin.mjs';
 
 function makeTempDir() {
   return mkdtempSync(join(tmpdir(), 'loom-ocplugin-test-'));
@@ -14,36 +14,72 @@ function uninitializedProject() {
   return dir;
 }
 
-function mockClient() {
+function harness(project, events, { toast = true } = {}) {
   const showToast = vi.fn().mockResolvedValue(undefined);
-  return { client: { tui: { showToast } }, showToast };
+  let markDone;
+  const done = new Promise((resolve) => {
+    markDone = resolve;
+  });
+  const ctx = {
+    location: {
+      directory: project,
+      project: { directory: project },
+    },
+    options: { packageDir: makeTempDir() },
+    event: {
+      subscribe() {
+        return (async function* () {
+          for (const event of events) yield event;
+          markDone();
+        })();
+      },
+    },
+  };
+  if (toast) ctx.tui = { showToast };
+  return { ctx, showToast, done };
 }
 
-describe('OpenCode plugin event hook', () => {
-  it('registers an event hook', async () => {
-    const { client } = mockClient();
-    const hooks = await Plugin({ directory: makeTempDir(), worktree: uninitializedProject(), client });
-    expect(typeof hooks.event).toBe('function');
+describe('OpenCode V2 plugin', () => {
+  it('exports a default definition with id and setup', () => {
+    expect(plugin.id).toBe('loom-engineering');
+    expect(typeof plugin.setup).toBe('function');
   });
 
   it('runs health check once per session on session events', async () => {
     const project = uninitializedProject();
-    const { client, showToast } = mockClient();
-    const hooks = await Plugin({ directory: makeTempDir(), worktree: project, client });
-
     const event = { type: 'session.updated', properties: { info: { id: 's1' } } };
-    await hooks.event({ event });
-    await hooks.event({ event }); // same session → no re-check
+    const { ctx, showToast, done } = harness(project, [event, event]);
+
+    const cleanup = await plugin.setup(ctx);
+    await done;
 
     expect(showToast).toHaveBeenCalledTimes(1);
-    expect(showToast.mock.calls[0][0].body.message).toContain('项目未初始化');
+    expect(showToast.mock.calls[0][0].message).toContain('项目未初始化');
+    cleanup();
+  });
+
+  it('reads V2 session event data', async () => {
+    const project = uninitializedProject();
+    const event = { type: 'session.created', data: { sessionID: 's2' } };
+    const { ctx, showToast, done } = harness(project, [event, event]);
+
+    const cleanup = await plugin.setup(ctx);
+    await done;
+
+    expect(showToast).toHaveBeenCalledTimes(1);
+    cleanup();
   });
 
   it('ignores non-session events', async () => {
-    const { client, showToast } = mockClient();
-    const hooks = await Plugin({ directory: makeTempDir(), worktree: uninitializedProject(), client });
-    await hooks.event({ event: { type: 'message.updated', properties: {} } });
+    const { ctx, showToast, done } = harness(uninitializedProject(), [
+      { type: 'message.updated', properties: {} },
+    ]);
+
+    const cleanup = await plugin.setup(ctx);
+    await done;
+
     expect(showToast).not.toHaveBeenCalled();
+    cleanup();
   });
 
   it('stays silent for a healthy project', async () => {
@@ -52,18 +88,29 @@ describe('OpenCode plugin event hook', () => {
     writeFileSync(join(project, '.loom', 'memory', 'constitution.md'), '# c');
     writeFileSync(join(project, '.loom', 'workflow.yaml'), 'version: 1');
 
-    const { client, showToast } = mockClient();
-    const hooks = await Plugin({ directory: makeTempDir(), worktree: project, client });
-    await hooks.event({ event: { type: 'session.updated', properties: { info: { id: 's1' } } } });
+    const { ctx, showToast, done } = harness(project, [
+      { type: 'session.updated', properties: { info: { id: 's1' } } },
+    ]);
+
+    const cleanup = await plugin.setup(ctx);
+    await done;
+
     expect(showToast).not.toHaveBeenCalled();
+    cleanup();
   });
 
   it('falls back to console when toast unavailable', async () => {
     const project = uninitializedProject();
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const hooks = await Plugin({ directory: makeTempDir(), worktree: project, client: {} });
-    await hooks.event({ event: { type: 'session.idle', properties: { sessionID: 's9' } } });
-    expect(spy.mock.calls.some(c => String(c[0]).includes('项目未初始化'))).toBe(true);
+    const { ctx, done } = harness(project, [
+      { type: 'session.idle', data: { sessionID: 's9' } },
+    ], { toast: false });
+
+    const cleanup = await plugin.setup(ctx);
+    await done;
+
+    expect(spy.mock.calls.some((call) => String(call[0]).includes('项目未初始化'))).toBe(true);
     spy.mockRestore();
+    cleanup();
   });
 });
